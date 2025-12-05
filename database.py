@@ -1,87 +1,800 @@
+"""
+Database Manager for Time Tracking App
+Handles all database operations including time entries, clients, projects, and billing
+"""
+
 import sqlite3
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
+from pathlib import Path
+
 
 class DatabaseManager:
-    def __init__(self, db_path="time_tracker.db"):
+    def __init__(self, db_path="data/time_tracker.db"):
+        """Initialize database manager and create data directory if needed"""
         self.db_path = db_path
-        self.init_database()
-    
+
+        # Create data directory if it doesn't exist
+        data_dir = Path(db_path).parent
+        data_dir.mkdir(exist_ok=True)
+
+        self.conn = sqlite3.connect(db_path, check_same_thread=False)
+        self.conn.execute("PRAGMA foreign_keys = ON")  # Enable foreign key constraints
+
+        # Comprehensive database setup
+        self.setup_database()
+
+    def setup_database(self):
+        """Comprehensive database setup with validation and migration"""
+        print("Setting up database...")
+
+        # Create all base tables
+        self.create_all_tables()
+
+        # Validate and fix schema
+        self.validate_and_fix_schema()
+
+        # Debug output
+        self.debug_schema()
+
+        print("Database setup complete.")
+
+    def create_all_tables(self):
+        """Create all necessary tables"""
+        # Core tables
+        self.create_clients_table()
+        self.create_projects_table()
+        self.create_tasks_table()
+        self.create_time_entries_table()
+
+        # Company and billing tables
+        self.create_company_info_table()
+        self.create_billing_records_table()
+        self.create_billing_time_entries_table()
+
+    def validate_and_fix_schema(self):
+        """Validate and fix all table schemas"""
+        print("Validating database schema...")
+
+        # Check and fix each table
+        self.fix_clients_table()
+        self.fix_projects_table()
+        self.fix_tasks_table()
+        self.fix_time_entries_table()
+        self.fix_company_info_table()
+        self.fix_billing_tables()
+
+        print("Schema validation complete.")
+
+    def get_table_columns(self, table_name):
+        """Get list of columns for a table"""
+        cursor = self.conn.cursor()
+        cursor.execute(f"PRAGMA table_info({table_name})")
+        return [column[1] for column in cursor.fetchall()]
+
+    def table_exists(self, table_name):
+        """Check if table exists"""
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", (table_name,))
+        return cursor.fetchone() is not None
+
+    def add_column_if_missing(self, table_name, column_name, column_definition):
+        """Add column to table if it doesn't exist"""
+        columns = self.get_table_columns(table_name)
+        if column_name not in columns:
+            # Clean up the column definition - remove PRIMARY KEY and AUTOINCREMENT
+            clean_definition = column_definition.replace('PRIMARY KEY AUTOINCREMENT', '').replace('AUTOINCREMENT', '').strip()
+            if clean_definition.endswith(','):
+                clean_definition = clean_definition[:-1]
+
+            query = f"ALTER TABLE {table_name} ADD COLUMN {column_name} {clean_definition}"
+            try:
+                self.execute_query(query)
+                print(f"Added column {column_name} to {table_name}")
+            except Exception as e:
+                print(f"Error adding column {column_name} to {table_name}: {e}")
+
+    def debug_schema(self):
+        """Debug method to show all table schemas"""
+        tables = ['clients', 'projects', 'tasks', 'time_entries', 'billing_records']
+        for table in tables:
+            if self.table_exists(table):
+                print(f"\n{table.upper()} columns:")
+                columns = self.get_table_columns(table)
+                for col in columns:
+                    print(f"  - {col}")
+            else:
+                print(f"\n{table.upper()}: TABLE DOES NOT EXIST")
+
+    def create_clients_table(self):
+        """Create the clients table with columns matching your existing code"""
+        query = '''
+        CREATE TABLE IF NOT EXISTS clients (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT UNIQUE NOT NULL,
+            company TEXT,
+            email TEXT,
+            phone TEXT,
+            address TEXT,
+            contact_email TEXT,
+            contact_phone TEXT,
+            hourly_rate REAL DEFAULT 50.0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        '''
+        self.execute_query(query)
+
+    def fix_clients_table(self):
+        """Ensure clients table has all required columns"""
+        if not self.table_exists('clients'):
+            self.create_clients_table()
+            return
+
+        required_columns = {
+            'name': 'TEXT UNIQUE NOT NULL',
+            'company': 'TEXT',
+            'email': 'TEXT',
+            'phone': 'TEXT',
+            'address': 'TEXT',
+            'contact_email': 'TEXT',
+            'contact_phone': 'TEXT',
+            'hourly_rate': 'REAL DEFAULT 50.0',
+            'created_at': 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
+            'updated_at': 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'
+        }
+
+        for column_name, column_def in required_columns.items():
+            self.add_column_if_missing('clients', column_name, column_def)
+
+    def create_projects_table(self):
+        """Create the projects table with all expected columns"""
+        query = '''
+        CREATE TABLE IF NOT EXISTS projects (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            client_id INTEGER NOT NULL,
+            name TEXT NOT NULL,
+            description TEXT,
+            hourly_rate REAL,
+            is_lump_sum INTEGER DEFAULT 0,
+            lump_sum_amount REAL DEFAULT 0,
+            client_name TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (client_id) REFERENCES clients (id),
+            UNIQUE(name, client_id)
+        )
+        '''
+        self.execute_query(query)
+
+    def fix_projects_table(self):
+        """Ensure projects table has all required columns"""
+        if not self.table_exists('projects'):
+            self.create_projects_table()
+            return
+
+        required_columns = {
+            'client_id': 'INTEGER',
+            'name': 'TEXT NOT NULL',
+            'description': 'TEXT',
+            'hourly_rate': 'REAL',
+            'is_lump_sum': 'INTEGER DEFAULT 0',
+            'lump_sum_amount': 'REAL DEFAULT 0',
+            'client_name': 'TEXT',
+            'created_at': 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
+            'updated_at': 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'
+        }
+
+        for column_name, column_def in required_columns.items():
+            self.add_column_if_missing('projects', column_name, column_def)
+
+        # Update client_name based on client_id for existing records
+        self.update_project_client_names()
+
+    def update_project_client_names(self):
+        """Update project client_name based on client_id"""
+        query = '''
+        UPDATE projects 
+        SET client_name = (
+            SELECT c.name 
+            FROM clients c 
+            WHERE c.id = projects.client_id
+        )
+        WHERE client_name IS NULL AND client_id IS NOT NULL
+        '''
+        self.execute_query(query)
+
+    def create_tasks_table(self):
+        """Create the tasks table"""
+        query = '''
+        CREATE TABLE IF NOT EXISTS tasks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            project_name TEXT,
+            client_name TEXT,
+            project_id INTEGER,
+            client_id INTEGER,
+            description TEXT,
+            hourly_rate REAL DEFAULT 0,
+            is_lump_sum INTEGER DEFAULT 0,
+            lump_sum_amount REAL DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (client_name) REFERENCES clients (name),
+            FOREIGN KEY (project_name) REFERENCES projects (name),
+            FOREIGN KEY (client_id) REFERENCES clients (id),
+            FOREIGN KEY (project_id) REFERENCES projects (id),
+            UNIQUE(name, project_id)
+        )
+        '''
+        self.execute_query(query)
+
+    def fix_tasks_table(self):
+        """Ensure tasks table has all required columns"""
+        if not self.table_exists('tasks'):
+            self.create_tasks_table()
+            return
+
+        required_columns = {
+            'project_id': 'INTEGER',
+            'client_id': 'INTEGER',
+            'project_name': 'TEXT',
+            'client_name': 'TEXT',
+            'description': 'TEXT',
+            'hourly_rate': 'REAL DEFAULT 0',
+            'is_lump_sum': 'INTEGER DEFAULT 0',
+            'lump_sum_amount': 'REAL DEFAULT 0',
+            'created_at': 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
+            'updated_at': 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'
+        }
+
+        for column_name, column_def in required_columns.items():
+            self.add_column_if_missing('tasks', column_name, column_def)
+
+    def create_time_entries_table(self):
+        """Create the time_entries table"""
+        query = '''
+        CREATE TABLE IF NOT EXISTS time_entries (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            client_name TEXT NOT NULL,
+            project_name TEXT,
+            task_name TEXT,
+            task_description TEXT,
+            client_id INTEGER,
+            project_id INTEGER,
+            task_id INTEGER,
+            date TEXT NOT NULL,
+            start_time TEXT NOT NULL,
+            end_time TEXT NOT NULL,
+            duration REAL NOT NULL,
+            is_billed INTEGER DEFAULT 0,
+            billing_record_id INTEGER,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (client_name) REFERENCES clients (name),
+            FOREIGN KEY (client_id) REFERENCES clients (id),
+            FOREIGN KEY (project_id) REFERENCES projects (id),
+            FOREIGN KEY (task_id) REFERENCES tasks (id),
+            FOREIGN KEY (billing_record_id) REFERENCES billing_records (id)
+        )
+        '''
+        self.execute_query(query)
+
+    def fix_time_entries_table(self):
+        """Ensure time_entries table has all required columns"""
+        if not self.table_exists('time_entries'):
+            self.create_time_entries_table()
+            return
+
+        required_columns = {
+            'task_name': 'TEXT',
+            'client_id': 'INTEGER',
+            'project_id': 'INTEGER',
+            'task_id': 'INTEGER',
+            'is_billed': 'INTEGER DEFAULT 0',
+            'billing_record_id': 'INTEGER',
+            'created_at': 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
+            'updated_at': 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'
+        }
+
+        for column_name, column_def in required_columns.items():
+            self.add_column_if_missing('time_entries', column_name, column_def)
+
+    def create_company_info_table(self):
+        """Create the company_info table for invoice details"""
+        query = '''
+        CREATE TABLE IF NOT EXISTS company_info (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            company_name TEXT NOT NULL,
+            address TEXT,
+            phone TEXT,
+            email TEXT,
+            website TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        '''
+        self.execute_query(query)
+
+        # Insert default company info if table is empty
+        count_query = "SELECT COUNT(*) FROM company_info"
+        result = self.fetch_one(count_query)
+
+        if result and result[0] == 0:
+            default_query = '''
+            INSERT INTO company_info (company_name, address, phone, email)
+            VALUES (?, ?, ?, ?)
+            '''
+            default_params = [
+                "Your Company Name",
+                "Your Address",
+                "Your Phone",
+                "your-email@example.com"
+            ]
+            self.execute_query(default_query, default_params)
+
+    def fix_company_info_table(self):
+        """Ensure company_info table has all required columns"""
+        if not self.table_exists('company_info'):
+            self.create_company_info_table()
+            return
+
+        required_columns = {
+            'website': 'TEXT',
+            'created_at': 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
+            'updated_at': 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'
+        }
+
+        for column_name, column_def in required_columns.items():
+            self.add_column_if_missing('company_info', column_name, column_def)
+
+    def create_billing_records_table(self):
+        """Create table to track billing records"""
+        query = '''
+        CREATE TABLE IF NOT EXISTS billing_records (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            client_name TEXT NOT NULL,
+            client_id INTEGER,
+            project_name TEXT,
+            project_id INTEGER,
+            start_date TEXT NOT NULL,
+            end_date TEXT NOT NULL,
+            total_hours REAL NOT NULL,
+            hourly_rate REAL NOT NULL,
+            total_amount REAL NOT NULL,
+            billing_date TEXT NOT NULL,
+            notes TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (client_name) REFERENCES clients (name),
+            FOREIGN KEY (client_id) REFERENCES clients (id),
+            FOREIGN KEY (project_id) REFERENCES projects (id)
+        )
+        '''
+        self.execute_query(query)
+
+    def create_billing_time_entries_table(self):
+        """Create junction table linking billing records to specific time entries"""
+        query = '''
+        CREATE TABLE IF NOT EXISTS billing_time_entries (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            billing_record_id INTEGER NOT NULL,
+            time_entry_id INTEGER NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (billing_record_id) REFERENCES billing_records (id),
+            FOREIGN KEY (time_entry_id) REFERENCES time_entries (id),
+            UNIQUE(billing_record_id, time_entry_id)
+        )
+        '''
+        self.execute_query(query)
+
+    def fix_billing_tables(self):
+        """Ensure billing tables have all required columns"""
+        if not self.table_exists('billing_records'):
+            self.create_billing_records_table()
+        else:
+            required_columns = {
+                'client_id': 'INTEGER',
+                'project_id': 'INTEGER',
+                'created_at': 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'
+            }
+            for column_name, column_def in required_columns.items():
+                self.add_column_if_missing('billing_records', column_name, column_def)
+
+        if not self.table_exists('billing_time_entries'):
+            self.create_billing_time_entries_table()
+
     def get_connection(self):
-        return sqlite3.connect(self.db_path)
-    
-    def init_database(self):
-        with self.get_connection() as conn:
-            cursor = conn.cursor()
-            
-            # Clients table
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS clients (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    name TEXT NOT NULL,
-                    company TEXT,
-                    email TEXT,
-                    phone TEXT,
-                    address TEXT,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            ''')
-            
-            # Projects table
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS projects (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    client_id INTEGER NOT NULL,
-                    name TEXT NOT NULL,
-                    description TEXT,
-                    hourly_rate REAL DEFAULT 0,
-                    is_lump_sum BOOLEAN DEFAULT 0,
-                    lump_sum_amount REAL DEFAULT 0,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (client_id) REFERENCES clients (id)
-                )
-            ''')
-            
-            # Tasks table
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS tasks (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    project_id INTEGER NOT NULL,
-                    name TEXT NOT NULL,
-                    description TEXT,
-                    hourly_rate REAL DEFAULT 0,
-                    is_lump_sum BOOLEAN DEFAULT 0,
-                    lump_sum_amount REAL DEFAULT 0,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (project_id) REFERENCES projects (id)
-                )
-            ''')
-            
-            # Time entries table
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS time_entries (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    task_id INTEGER NOT NULL,
-                    start_time TIMESTAMP,
-                    end_time TIMESTAMP,
-                    duration_minutes INTEGER,
-                    description TEXT,
-                    is_manual BOOLEAN DEFAULT 0,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (task_id) REFERENCES tasks (id)
-                )
-            ''')
-            
-            # Company info table
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS company_info (
-                    id INTEGER PRIMARY KEY,
-                    name TEXT NOT NULL,
-                    address TEXT,
-                    phone TEXT,
-                    email TEXT,
-                    logo_path TEXT
-                )
-            ''')
-            
-            conn.commit()
+        """Get the database connection"""
+        return self.conn
+
+    def execute_query(self, query, params=None):
+        """Execute a query with optional parameters"""
+        try:
+            cursor = self.conn.cursor()
+            if params:
+                cursor.execute(query, params)
+            else:
+                cursor.execute(query)
+            self.conn.commit()
+            return True
+        except sqlite3.Error as e:
+            print(f"Database error: {e}")
+            return False
+
+    def fetch_all(self, query, params=None):
+        """Fetch all results from a query"""
+        try:
+            cursor = self.conn.cursor()
+            if params:
+                cursor.execute(query, params)
+            else:
+                cursor.execute(query)
+            return cursor.fetchall()
+        except sqlite3.Error as e:
+            print(f"Database error: {e}")
+            return []
+
+    def fetch_one(self, query, params=None):
+        """Fetch one result from a query"""
+        try:
+            cursor = self.conn.cursor()
+            if params:
+                cursor.execute(query, params)
+            else:
+                cursor.execute(query)
+            return cursor.fetchone()
+        except sqlite3.Error as e:
+            print(f"Database error: {e}")
+            return None
+
+    # Time Entry Methods
+    def add_time_entry(self, client_name, project_name, task_description, date, start_time, end_time, duration):
+        """Add a new time entry"""
+        query = '''
+        INSERT INTO time_entries (client_name, project_name, task_description, date, start_time, end_time, duration)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        '''
+        params = [client_name, project_name, task_description, date, start_time, end_time, duration]
+        return self.execute_query(query, params)
+
+    def get_time_entries(self, client_name=None, project_name=None, start_date=None, end_date=None):
+        """Get time entries with optional filters"""
+        query = "SELECT * FROM time_entries WHERE 1=1"
+        params = []
+
+        if client_name:
+            query += " AND client_name = ?"
+            params.append(client_name)
+
+        if project_name:
+            query += " AND project_name = ?"
+            params.append(project_name)
+
+        if start_date:
+            query += " AND date >= ?"
+            params.append(start_date)
+
+        if end_date:
+            query += " AND date <= ?"
+            params.append(end_date)
+
+        query += " ORDER BY date DESC, start_time DESC"
+        return self.fetch_all(query, params)
+
+    def update_time_entry(self, entry_id, client_name, project_name, task_description, date, start_time, end_time, duration):
+        """Update an existing time entry"""
+        query = '''
+        UPDATE time_entries 
+        SET client_name=?, project_name=?, task_description=?, date=?, start_time=?, end_time=?, duration=?, updated_at=CURRENT_TIMESTAMP
+        WHERE id=?
+        '''
+        params = [client_name, project_name, task_description, date, start_time, end_time, duration, entry_id]
+        return self.execute_query(query, params)
+
+    def delete_time_entry(self, entry_id):
+        """Delete a time entry"""
+        query = "DELETE FROM time_entries WHERE id = ?"
+        return self.execute_query(query, [entry_id])
+
+    # Client Methods
+    def add_client(self, name, company="", email="", phone="", address="", hourly_rate=50.0):
+        """Add a new client with all expected fields"""
+        query = '''
+        INSERT INTO clients (name, company, email, phone, address, hourly_rate)
+        VALUES (?, ?, ?, ?, ?, ?)
+        '''
+        params = [name, company, email, phone, address, hourly_rate]
+        return self.execute_query(query, params)
+
+    def get_clients(self):
+        """Get all clients"""
+        query = "SELECT * FROM clients ORDER BY name"
+        return self.fetch_all(query)
+
+    def get_client(self, name):
+        """Get a specific client by name"""
+        query = "SELECT * FROM clients WHERE name = ?"
+        return self.fetch_one(query, [name])
+
+    def get_client_by_id(self, client_id):
+        """Get a specific client by ID"""
+        query = "SELECT * FROM clients WHERE id = ?"
+        return self.fetch_one(query, [client_id])
+
+    def update_client(self, original_name, name, company="", email="", phone="", address="", hourly_rate=50.0):
+        """Update client information"""
+        query = '''
+        UPDATE clients 
+        SET name=?, company=?, email=?, phone=?, address=?, hourly_rate=?, updated_at=CURRENT_TIMESTAMP
+        WHERE name=?
+        '''
+        params = [name, company, email, phone, address, hourly_rate, original_name]
+        return self.execute_query(query, params)
+
+    def delete_client(self, name):
+        """Delete a client"""
+        query = "DELETE FROM clients WHERE name = ?"
+        return self.execute_query(query, [name])
+
+    # Project Methods
+    def add_project(self, client_id, name, description="", hourly_rate=None, is_lump_sum=False, lump_sum_amount=0):
+        """Add a new project with all expected fields"""
+        client = self.get_client_by_id(client_id)
+        client_name = client[1] if client else None
+
+        query = '''
+        INSERT INTO projects (client_id, name, description, hourly_rate, is_lump_sum, lump_sum_amount, client_name)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        '''
+        params = [client_id, name, description, hourly_rate, int(is_lump_sum), lump_sum_amount, client_name]
+        return self.execute_query(query, params)
+
+    def get_projects(self, client_name=None, client_id=None):
+        """Get projects, optionally filtered by client"""
+        if client_id:
+            query = "SELECT * FROM projects WHERE client_id = ? ORDER BY name"
+            params = [client_id]
+        elif client_name:
+            query = "SELECT * FROM projects WHERE client_name = ? ORDER BY name"
+            params = [client_name]
+        else:
+            query = "SELECT * FROM projects ORDER BY client_name, name"
+            params = None
+        return self.fetch_all(query, params)
+
+    def get_project(self, name, client_name=None, project_id=None):
+        """Get a specific project"""
+        if project_id:
+            query = "SELECT * FROM projects WHERE id = ?"
+            params = [project_id]
+        else:
+            query = "SELECT * FROM projects WHERE name = ? AND client_name = ?"
+            params = [name, client_name]
+        return self.fetch_one(query, params)
+
+    def update_project(self, project_id, client_id, name, description="", hourly_rate=None, is_lump_sum=False, lump_sum_amount=0):
+        """Update project information"""
+        client = self.get_client_by_id(client_id)
+        client_name = client[1] if client else None
+
+        query = '''
+        UPDATE projects 
+        SET client_id=?, name=?, description=?, hourly_rate=?, is_lump_sum=?, lump_sum_amount=?, client_name=?, updated_at=CURRENT_TIMESTAMP
+        WHERE id=?
+        '''
+        params = [client_id, name, description, hourly_rate, int(is_lump_sum), lump_sum_amount, client_name, project_id]
+        return self.execute_query(query, params)
+
+    def delete_project(self, project_id):
+        """Delete a project"""
+        query = "DELETE FROM projects WHERE id = ?"
+        return self.execute_query(query, [project_id])
+
+    # Task Methods
+    def add_task(self, name, project_id, client_id, description="", hourly_rate=0, is_lump_sum=False, lump_sum_amount=0):
+        """Add a new task"""
+        project = self.get_project(None, project_id=project_id)
+        client = self.get_client_by_id(client_id)
+
+        project_name = project[2] if project else None
+        client_name = client[1] if client else None
+
+        query = '''
+        INSERT INTO tasks (name, project_id, client_id, project_name, client_name, description, hourly_rate, is_lump_sum, lump_sum_amount)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        '''
+        params = [name, project_id, client_id, project_name, client_name, description, hourly_rate, int(is_lump_sum), lump_sum_amount]
+        return self.execute_query(query, params)
+
+    def get_tasks(self, client_id=None, project_id=None):
+        """Get tasks, optionally filtered by client and/or project"""
+        query = "SELECT * FROM tasks WHERE 1=1"
+        params = []
+
+        if client_id:
+            query += " AND client_id = ?"
+            params.append(client_id)
+
+        if project_id:
+            query += " AND project_id = ?"
+            params.append(project_id)
+
+        query += " ORDER BY client_name, project_name, name"
+        return self.fetch_all(query, params)
+
+    def get_task(self, task_id):
+        """Get a specific task"""
+        query = "SELECT * FROM tasks WHERE id = ?"
+        return self.fetch_one(query, [task_id])
+
+    def update_task(self, task_id, name, project_id, client_id, description="", hourly_rate=0, is_lump_sum=False, lump_sum_amount=0):
+        """Update task information"""
+        project = self.get_project(None, project_id=project_id)
+        client = self.get_client_by_id(client_id)
+
+        project_name = project[2] if project else None
+        client_name = client[1] if client else None
+
+        query = '''
+        UPDATE tasks 
+        SET name=?, project_id=?, client_id=?, project_name=?, client_name=?, description=?, hourly_rate=?, is_lump_sum=?, lump_sum_amount=?, updated_at=CURRENT_TIMESTAMP
+        WHERE id=?
+        '''
+        params = [name, project_id, client_id, project_name, client_name, description, hourly_rate, int(is_lump_sum), lump_sum_amount, task_id]
+        return self.execute_query(query, params)
+
+    def delete_task(self, task_id):
+        """Delete a task"""
+        query = "DELETE FROM tasks WHERE id = ?"
+        return self.execute_query(query, [task_id])
+
+    # Billing Methods
+    def get_unbilled_hours(self, client_name, project_name=None, start_date=None, end_date=None):
+        """Get unbilled time entries for a client/project within date range"""
+        query = '''
+        SELECT * FROM time_entries 
+        WHERE client_name = ? 
+        AND (is_billed = 0 OR is_billed IS NULL)
+        '''
+        params = [client_name]
+
+        if project_name:
+            query += ' AND project_name = ?'
+            params.append(project_name)
+
+        if start_date:
+            query += ' AND date >= ?'
+            params.append(start_date)
+
+        if end_date:
+            query += ' AND date <= ?'
+            params.append(end_date)
+
+        query += ' ORDER BY date, start_time'
+        return self.fetch_all(query, params)
+
+    def mark_entries_as_billed(self, entry_ids, billing_record_id):
+        """Mark specific time entries as billed"""
+        if not entry_ids:
+            return False
+
+        placeholders = ','.join(['?' for _ in entry_ids])
+        query = f'''
+        UPDATE time_entries 
+        SET is_billed = 1, billing_record_id = ?
+        WHERE id IN ({placeholders})
+        '''
+
+        params = [billing_record_id] + entry_ids
+        return self.execute_query(query, params)
+
+    def create_billing_record(self, client_name, project_name, start_date, end_date,
+                            total_hours, hourly_rate, total_amount, notes=""):
+        """Create a new billing record and return its ID"""
+        query = '''
+        INSERT INTO billing_records 
+        (client_name, project_name, start_date, end_date, total_hours, 
+         hourly_rate, total_amount, billing_date, notes)
+        VALUES (?, ?, ?, ?, ?, ?, ?, date('now'), ?)
+        '''
+
+        params = [client_name, project_name, start_date, end_date,
+                 total_hours, hourly_rate, total_amount, notes]
+
+        cursor = self.conn.cursor()
+        cursor.execute(query, params)
+        self.conn.commit()
+        return cursor.lastrowid
+
+    def link_billing_to_entries(self, billing_record_id, entry_ids):
+        """Link billing record to specific time entries"""
+        if not entry_ids:
+            return False
+
+        query = '''
+        INSERT INTO billing_time_entries (billing_record_id, time_entry_id)
+        VALUES (?, ?)
+        '''
+
+        for entry_id in entry_ids:
+            self.execute_query(query, [billing_record_id, entry_id])
+
+        return True
+
+    def get_billing_history(self, client_name=None, start_date=None, end_date=None):
+        """Get billing history with optional filters"""
+        query = '''
+        SELECT br.*, 
+               COUNT(bte.time_entry_id) as entry_count
+        FROM billing_records br
+        LEFT JOIN billing_time_entries bte ON br.id = bte.billing_record_id
+        WHERE 1=1
+        '''
+        params = []
+
+        if client_name:
+            query += ' AND br.client_name = ?'
+            params.append(client_name)
+
+        if start_date:
+            query += ' AND br.billing_date >= ?'
+            params.append(start_date)
+
+        if end_date:
+            query += ' AND br.billing_date <= ?'
+            params.append(end_date)
+
+        query += ' GROUP BY br.id ORDER BY br.billing_date DESC'
+        return self.fetch_all(query, params)
+
+    def get_billing_details(self, billing_record_id):
+        """Get detailed information about a specific billing record"""
+        query = '''
+        SELECT te.*, br.hourly_rate, br.billing_date
+        FROM time_entries te
+        JOIN billing_time_entries bte ON te.id = bte.time_entry_id
+        JOIN billing_records br ON bte.billing_record_id = br.id
+        WHERE br.id = ?
+        ORDER BY te.date, te.start_time
+        '''
+        return self.fetch_all(query, [billing_record_id])
+
+    # Utility Methods
+    def get_summary_stats(self):
+        """Get summary statistics"""
+        stats = {}
+
+        # Total hours
+        query = "SELECT SUM(duration) FROM time_entries"
+        result = self.fetch_one(query)
+        stats['total_hours'] = result[0] if result[0] else 0
+
+        # Total clients
+        query = "SELECT COUNT(DISTINCT client_name) FROM time_entries"
+        result = self.fetch_one(query)
+        stats['total_clients'] = result[0] if result[0] else 0
+
+        # Total projects
+        query = "SELECT COUNT(DISTINCT project_name) FROM time_entries"
+        result = self.fetch_one(query)
+        stats['total_projects'] = result[0] if result[0] else 0
+
+        # Billed vs unbilled hours
+        query = "SELECT SUM(duration) FROM time_entries WHERE is_billed = 1"
+        result = self.fetch_one(query)
+        stats['billed_hours'] = result[0] if result[0] else 0
+
+        query = "SELECT SUM(duration) FROM time_entries WHERE is_billed = 0 OR is_billed IS NULL"
+        result = self.fetch_one(query)
+        stats['unbilled_hours'] = result[0] if result[0] else 0
+
+        return stats
+
+    def close(self):
+        """Close the database connection"""
+        if self.conn:
+            self.conn.close()
+
+    def __del__(self):
+        """Ensure database connection is closed when object is destroyed"""
+        self.close()
