@@ -967,11 +967,14 @@ class TimeTrackerApp:
             messagebox.showerror("Error", "Project and task name are required")
             return
 
-        # Get project ID
+        # Get project ID by matching the display format
         projects = self.project_model.get_all()
         project_id = None
         for project in projects:
-            project_display = f"{project[8]} - {project[2]}"  # client - project
+            client_id = project[1]  # client_id is at index 1
+            client = self.client_model.get_by_id(client_id)
+            client_name = client[1] if client else "Unknown Client"
+            project_display = f"{client_name} - {project[2]}"
             if project_display == project_text:
                 project_id = project[0]
                 break
@@ -1499,7 +1502,7 @@ class TimeTrackerApp:
         for project in projects:
             billing_type = "Lump Sum" if project[5] else "Hourly"
             rate_amount = project[6] if project[5] else project[4]
-            client_name = project[8] if len(project) > 8 else "Unknown Client"
+            client_name = project[7] if len(project) > 7 else "Unknown Client"
 
             self.project_tree.insert('', 'end', values=(
                 project[0], client_name, project[2], billing_type, f"${rate_amount:.2f}"
@@ -1511,13 +1514,14 @@ class TimeTrackerApp:
 
         tasks = self.task_model.get_all()
         for task in tasks:
-            billing_type = "Lump Sum" if task[5] else "Hourly"
-            rate_amount = task[6] if task[5] else task[4]
-            project_name = task[7] if len(task) > 7 else "Unknown Project"
-            client_name = task[8] if len(task) > 8 else "Unknown Client"
+            # New column structure: id, name, project_name, client_name, project_id, client_id, description, hourly_rate, is_lump_sum, lump_sum_amount, created_at, updated_at
+            billing_type = "Lump Sum" if task[8] else "Hourly"  # is_lump_sum is now at index 8
+            rate_amount = task[9] if task[8] else task[7]  # lump_sum_amount at 9, hourly_rate at 7
+            project_name = task[2] if len(task) > 2 else "Unknown Project"  # project_name at index 2
+            client_name = task[3] if len(task) > 3 else "Unknown Client"  # client_name at index 3
 
             self.task_tree.insert('', 'end', values=(
-                task[0], project_name, client_name, task[2], billing_type, f"${rate_amount:.2f}"
+                task[0], project_name, client_name, task[1], billing_type, f"${rate_amount:.2f}"
             ))
 
     def refresh_time_entries(self):
@@ -1555,5 +1559,10 @@ class TimeTrackerApp:
         # Refresh project combos for the Tasks tab (unchanged)
         projects = self.project_model.get_all()
         if projects:
-            project_displays = [f"{project[8]} - {project[2]}" for project in projects if len(project) > 8]
+            project_displays = []
+            for project in projects:
+                client_id = project[1]  # client_id is at index 1
+                client = self.client_model.get_by_id(client_id)
+                client_name = client[1] if client else "Unknown Client"
+                project_displays.append(f"{client_name} - {project[2]}")
             self.task_project_combo['values'] = project_displays
