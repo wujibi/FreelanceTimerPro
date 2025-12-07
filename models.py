@@ -189,17 +189,40 @@ class TimeEntry:
                         WHERE id=?
                     ''', (end_time, duration, self.current_entry))
             self.current_entry = None
-    
+
     def add_manual_entry(self, task_id, start_time, end_time, description=""):
         duration = int((end_time - start_time).total_seconds() / 60)
         with self.db.get_connection() as conn:
             cursor = conn.cursor()
+
+            # Get task, project, and client info
             cursor.execute('''
-                INSERT INTO time_entries (task_id, start_time, end_time, duration_minutes, description, is_manual)
-                VALUES (?, ?, ?, ?, ?, 1)
-            ''', (task_id, start_time, end_time, duration, description))
+                           SELECT t.name, p.id, p.name, c.id, c.name
+                           FROM tasks t
+                                    JOIN projects p ON t.project_id = p.id
+                                    JOIN clients c ON p.client_id = c.id
+                           WHERE t.id = ?
+                           ''', (task_id,))
+
+            task_info = cursor.fetchone()
+            if not task_info:
+                raise ValueError("Task not found")
+
+            task_name, project_id, project_name, client_id, client_name = task_info
+
+            # Extract date from start_time
+            date_str = start_time.strftime('%Y-%m-%d')
+
+            cursor.execute('''
+                           INSERT INTO time_entries (task_id, task_name, project_id, project_name,
+                                                     client_id, client_name, date, start_time, end_time,
+                                                     duration_minutes, duration, description, is_manual, is_billed)
+                           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 0)
+                           ''', (task_id, task_name, project_id, project_name,
+                                 client_id, client_name, date_str, start_time.isoformat(), end_time.isoformat(),
+                                 duration, duration / 60.0, description))
             return cursor.lastrowid
-    
+
     def get_by_task(self, task_id):
         with self.db.get_connection() as conn:
             cursor = conn.cursor()
