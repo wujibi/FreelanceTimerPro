@@ -1,4 +1,4 @@
-"""Complete fix for invoice generation"""
+"""Complete fix for invoice generation """
 import sqlite3
 
 conn = sqlite3.connect("data/time_tracker.db")
