@@ -296,21 +296,28 @@ class TimeTrackerApp:
         form_frame = ttk.Frame(task_form)
         form_frame.pack(fill='x', padx=10, pady=10)
 
-        ttk.Label(form_frame, text="Project:").grid(row=0, column=0, sticky='w', pady=2)
+        # Client selector
+        ttk.Label(form_frame, text="Client:").grid(row=0, column=0, sticky='w', pady=2)
+        self.task_client_combo = ttk.Combobox(form_frame, state='readonly')
+        self.task_client_combo.grid(row=0, column=1, sticky='ew', padx=5, pady=2)
+        self.task_client_combo.bind('<<ComboboxSelected>>', self.on_task_client_select)
+
+        # Project selector
+        ttk.Label(form_frame, text="Project:").grid(row=1, column=0, sticky='w', pady=2)
         self.task_project_combo = ttk.Combobox(form_frame, state='readonly')
-        self.task_project_combo.grid(row=0, column=1, sticky='ew', padx=5, pady=2)
+        self.task_project_combo.grid(row=1, column=1, sticky='ew', padx=5, pady=2)
 
-        ttk.Label(form_frame, text="Name:").grid(row=1, column=0, sticky='w', pady=2)
+        ttk.Label(form_frame, text="Name:").grid(row=2, column=0, sticky='w', pady=2)
         self.task_name_entry = ttk.Entry(form_frame)
-        self.task_name_entry.grid(row=1, column=1, sticky='ew', padx=5, pady=2)
+        self.task_name_entry.grid(row=2, column=1, sticky='ew', padx=5, pady=2)
 
-        ttk.Label(form_frame, text="Description:").grid(row=2, column=0, sticky='nw', pady=2)
+        ttk.Label(form_frame, text="Description:").grid(row=3, column=0, sticky='nw', pady=2)
         self.task_desc_text = tk.Text(form_frame, height=3)
-        self.task_desc_text.grid(row=2, column=1, sticky='ew', padx=5, pady=2)
+        self.task_desc_text.grid(row=3, column=1, sticky='ew', padx=5, pady=2)
 
         # Task billing options
         billing_frame = ttk.Frame(form_frame)
-        billing_frame.grid(row=3, column=1, sticky='ew', padx=5, pady=2)
+        billing_frame.grid(row=4, column=1, sticky='ew', padx=5, pady=2)
 
         self.task_billing_var = tk.StringVar(value="hourly")
         ttk.Radiobutton(billing_frame, text="Hourly Rate", variable=self.task_billing_var,
@@ -318,9 +325,9 @@ class TimeTrackerApp:
         ttk.Radiobutton(billing_frame, text="Lump Sum", variable=self.task_billing_var,
                         value="lump_sum", command=self.toggle_task_billing).pack(side='left', padx=10)
 
-        ttk.Label(form_frame, text="Rate/Amount:").grid(row=4, column=0, sticky='w', pady=2)
+        ttk.Label(form_frame, text="Rate/Amount:").grid(row=5, column=0, sticky='w', pady=2)
         self.task_rate_entry = ttk.Entry(form_frame)
-        self.task_rate_entry.grid(row=4, column=1, sticky='ew', padx=5, pady=2)
+        self.task_rate_entry.grid(row=5, column=1, sticky='ew', padx=5, pady=2)
 
         form_frame.columnconfigure(1, weight=1)
 
@@ -538,33 +545,48 @@ class TimeTrackerApp:
             messagebox.showerror("Error", "Please select a task first")
             return
 
-        # Get task ID
+        # Get task ID from the selected display text
         task_text = self.timer_task_combo.get()
+        client_name = self.timer_client_combo.get()
+        project_name = self.timer_project_combo.get()
+
+        # Extract just the task name from "Client - Project - Task" format
+        # The format is: client_name - project_name - task_name
+        parts = task_text.split(' - ')
+        if len(parts) >= 3:
+            task_name = ' - '.join(parts[2:])  # In case task name has dashes
+        else:
+            messagebox.showerror("Error", "Invalid task format")
+            return
+
+        # Find the task by matching client, project, and task names
         tasks = self.task_model.get_all()
+        self.current_task_id = None
 
         for task in tasks:
-            client_name = task[9]
-            project_name = task[8]
-            task_display = f"{client_name} - {project_name} - {task[2]}"
-            if task_display == task_text:
+            if task[9] == client_name and task[8] == project_name and task[2] == task_name:
                 self.current_task_id = task[0]
                 break
 
         if not self.current_task_id:
-            messagebox.showerror("Error", "Invalid task selected")
+            messagebox.showerror("Error", f"Could not find task: {task_name}")
             return
 
-        # Start the timer
-        self.timer_running = True
-        self.timer_start_time = datetime.now()
-        self.time_entry_model.start_timer(self.current_task_id)
+        try:
+            # Start the timer
+            self.timer_running = True
+            self.timer_start_time = datetime.now()
+            self.time_entry_model.start_timer(self.current_task_id)
 
-        # Update UI
-        self.start_button.config(state='disabled')
-        self.stop_button.config(state='normal')
+            # Update UI
+            self.start_button.config(state='disabled')
+            self.stop_button.config(state='normal')
 
-        # Start timer thread
-        self.update_timer_display()
+            # Start timer thread
+            self.update_timer_display()
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to start timer: {str(e)}")
+            self.timer_running = False
 
     def stop_timer(self):
         if self.timer_running:
@@ -624,6 +646,24 @@ class TimeTrackerApp:
                 task_displays = [f"{client_name} - {project_name} - {t[2]}" for t in tasks]
                 self.timer_task_combo['values'] = task_displays
                 self.timer_task_combo.set('')
+
+    def on_task_client_select(self, event):
+        """When client is selected in tasks tab, populate projects"""
+        client_name = self.task_client_combo.get()
+        if client_name:
+            # Get client ID
+            clients = self.client_model.get_all()
+            client_id = None
+            for client in clients:
+                if client[1] == client_name:
+                    client_id = client[0]
+                    break
+
+            if client_id:
+                # Load projects for this client
+                projects = self.project_model.get_by_client(client_id)
+                self.task_project_combo['values'] = [p[2] for p in projects]
+                self.task_project_combo.set('')
 
     def add_manual_entry(self):
         task_text = self.manual_task_combo.get()
@@ -894,22 +934,20 @@ class TimeTrackerApp:
 
     # Task methods
     def add_task(self):
+        client_text = self.task_client_combo.get()
         project_text = self.task_project_combo.get()
         name = self.task_name_entry.get().strip()
 
-        if not project_text or not name:
-            messagebox.showerror("Error", "Project and task name are required")
+        if not client_text or not project_text or not name:
+            messagebox.showerror("Error", "Client, project, and task name are required")
             return
 
-        # Get project ID by matching the display format
+        # Get project ID by matching client and project names
         projects = self.project_model.get_all()
         project_id = None
         for project in projects:
-            client_id = project[1]
-            client = self.client_model.get_by_id(client_id)
-            client_name = client[1] if client else "Unknown Client"
-            project_display = f"{client_name} - {project[2]}"
-            if project_display == project_text:
+            client_name = project[9] if len(project) > 9 else None
+            if client_name == client_text and project[2] == project_text:
                 project_id = project[0]
                 break
 
@@ -972,6 +1010,7 @@ class TimeTrackerApp:
             messagebox.showinfo("Success", "Task deleted successfully")
 
     def clear_task_form(self):
+        self.task_client_combo.set("")
         self.task_project_combo.set("")
         self.task_name_entry.delete(0, tk.END)
         self.task_desc_text.delete("1.0", tk.END)
@@ -984,13 +1023,20 @@ class TimeTrackerApp:
             task_id = self.task_tree.item(selection[0])['values'][0]
             task = self.task_model.get_by_id(task_id)
             if task:
-                # Set project
+                # Set project and client
                 project = self.project_model.get_by_id(task[1])
                 if project:
                     client = self.client_model.get_by_id(project[1])
                     if client:
-                        project_display = f"{client[1]} - {project[2]}"
-                        self.task_project_combo.set(project_display)
+                        self.task_client_combo.set(client[1])
+                        # Trigger the client selection to populate projects
+                        clients = self.client_model.get_all()
+                        for c in clients:
+                            if c[1] == client[1]:
+                                projects = self.project_model.get_by_client(c[0])
+                                self.task_project_combo['values'] = [p[2] for p in projects]
+                                break
+                        self.task_project_combo.set(project[2])
 
                 # Set task details
                 self.task_name_entry.delete(0, tk.END)
@@ -1047,23 +1093,32 @@ class TimeTrackerApp:
         form_frame = ttk.Frame(edit_window)
         form_frame.pack(fill='both', expand=True, padx=10, pady=10)
 
-        ttk.Label(form_frame, text=f"Task: {entry[10]} - {entry[9]} - {entry[8]}").grid(row=0, column=0, columnspan=2,
-                                                                                        sticky='w', pady=5)
+        # Try to get task/project/client names from proper positions
+        try:
+            task_name = entry[-3] if len(entry) > 3 else "Unknown"
+            project_name = entry[-2] if len(entry) > 2 else "Unknown"
+            client_name = entry[-1] if len(entry) > 1 else "Unknown"
+        except:
+            task_name = project_name = client_name = "Unknown"
+
+        ttk.Label(form_frame, text=f"Task: {task_name} - {project_name} - {client_name}").grid(row=0, column=0,
+                                                                                               columnspan=2,
+                                                                                               sticky='w', pady=5)
 
         ttk.Label(form_frame, text="Start Time:").grid(row=1, column=0, sticky='w', pady=2)
         start_entry = ttk.Entry(form_frame, width=20)
         start_entry.grid(row=1, column=1, sticky='ew', padx=5, pady=2)
-        start_entry.insert(0, entry[2] if entry[2] else "")
+        start_entry.insert(0, entry[9] if len(entry) > 9 and entry[9] else "")
 
         ttk.Label(form_frame, text="End Time:").grid(row=2, column=0, sticky='w', pady=2)
         end_entry = ttk.Entry(form_frame, width=20)
         end_entry.grid(row=2, column=1, sticky='ew', padx=5, pady=2)
-        end_entry.insert(0, entry[3] if entry[3] else "")
+        end_entry.insert(0, entry[10] if len(entry) > 10 and entry[10] else "")
 
         ttk.Label(form_frame, text="Description:").grid(row=3, column=0, sticky='w', pady=2)
         desc_entry = ttk.Entry(form_frame)
         desc_entry.grid(row=3, column=1, sticky='ew', padx=5, pady=2)
-        desc_entry.insert(0, entry[5] if entry[5] else "")
+        desc_entry.insert(0, entry[13] if len(entry) > 13 and entry[13] else "")
 
         form_frame.columnconfigure(1, weight=1)
 
@@ -1297,6 +1352,9 @@ class TimeTrackerApp:
                     self.invoice_tree.delete(item)
                 self.invoice_total_label.config(text="Total: $0.00")
 
+                # Refresh time entries to show billed status
+                self.refresh_time_entries()
+
             except Exception as e:
                 messagebox.showerror("Error", f"Failed to save invoice: {str(e)}")
 
@@ -1412,12 +1470,18 @@ class TimeTrackerApp:
         # Add projects
         projects = self.project_model.get_all()
         for project in projects:
+            # Project structure from models.py get_all():
+            # 0: id, 1: client_id, 2: name, 3: description,
+            # 4: hourly_rate, 5: is_lump_sum, 6: lump_sum_amount,
+            # 7: created_at, 8: updated_at, 9: client_name (from JOIN)
+
             billing_type = "Lump Sum" if project[5] else "Hourly"
             rate = f"${project[6]:.2f}" if project[5] else f"${project[4]:.2f}/hr"
+            client_name = project[9] if len(project) > 9 else "Unknown Client"
 
             self.project_tree.insert('', 'end', values=(
                 project[0],  # ID
-                project[7],  # Client name
+                client_name,  # Client name (was project[7], should be project[9])
                 project[2],  # Project name
                 billing_type,
                 rate
@@ -1431,13 +1495,22 @@ class TimeTrackerApp:
         # Add tasks
         tasks = self.task_model.get_all()
         for task in tasks:
+            # Task structure from models.py get_all():
+            # 0: id, 1: project_id, 2: name, 3: description,
+            # 4: hourly_rate, 5: is_lump_sum, 6: lump_sum_amount, 7: created_at
+            # 8: project_name, 9: client_name
+
             billing_type = "Lump Sum" if task[5] else "Hourly"
             rate = f"${task[6]:.2f}" if task[5] else f"${task[4]:.2f}/hr"
 
+            # Verify we have project and client names
+            project_name = task[8] if len(task) > 8 and task[8] else "Unknown Project"
+            client_name = task[9] if len(task) > 9 and task[9] else "Unknown Client"
+
             self.task_tree.insert('', 'end', values=(
                 task[0],  # ID
-                task[8],  # Project name
-                task[9],  # Client name
+                project_name,  # Project name
+                client_name,  # Client name
                 task[2],  # Task name
                 billing_type,
                 rate
@@ -1451,16 +1524,29 @@ class TimeTrackerApp:
         # Add time entries
         entries = self.time_entry_model.get_all()
         for entry in entries:
-            duration = entry[4] / 60.0 if entry[4] else 0
+            duration_minutes = entry[6] if entry[6] else 0
+            duration_hours = duration_minutes / 60.0
+
+            # Format start time nicely
+            start_time = entry[4]
+            try:
+                dt = datetime.fromisoformat(start_time)
+                start_display = dt.strftime("%m/%d/%y %I:%M %p")
+            except:
+                start_display = start_time
+
+            # Add billed indicator
+            is_billed = entry[8]
+            billed_indicator = " [BILLED]" if is_billed else ""
 
             self.entries_tree.insert('', 'end', values=(
                 entry[0],  # ID
-                entry[10],  # Client name
-                entry[9],  # Project name
-                entry[8],  # Task name
-                entry[2],  # Start time
-                f"{duration:.2f}",  # Duration
-                entry[5] or ""  # Description
+                entry[1],  # Client name
+                entry[2],  # Project name
+                entry[3] + billed_indicator,  # Task name with billed indicator
+                start_display,  # Start time formatted
+                f"{duration_hours:.2f}",  # Duration in hours
+                entry[7] or ""  # Description
             ))
 
     def refresh_combos(self):
@@ -1470,26 +1556,73 @@ class TimeTrackerApp:
         self.timer_client_combo['values'] = client_names
 
         # Refresh project combo
-        projects = self.project_model.get_all()
-        project_displays = []
-        for project in projects:
-            client = self.client_model.get_by_id(project[1])
-            if client:
-                project_displays.append(f"{client[1]} - {project[2]}")
         self.project_client_combo['values'] = client_names
-        self.task_project_combo['values'] = project_displays
 
-        # Refresh task combo
+        # Refresh task client combo
+        self.task_client_combo['values'] = client_names
+
+        # Refresh task combo for manual entry
         tasks = self.task_model.get_all()
         task_displays = []
         for task in tasks:
-            client_name = task[9]
-            project_name = task[8]
+            client_name = task[9] if len(task) > 9 else "Unknown"
+            project_name = task[8] if len(task) > 8 else "Unknown"
             task_displays.append(f"{client_name} - {project_name} - {task[2]}")
         self.manual_task_combo['values'] = task_displays
 
         # Refresh invoice client combo
         self.invoice_client_combo['values'] = client_names
+
+    def generate_invoice_data(self, client_id, start_date, end_date):
+        # Get connection directly (not using context manager for row_factory)
+        conn = self.db.conn
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+
+        cursor.execute('''
+                       SELECT *
+                       FROM invoice_view
+                       WHERE client_id = ?
+                         AND DATE (start_time) BETWEEN ?
+                         AND ?
+                         AND (is_billed = 0
+                          OR is_billed IS NULL)
+                       ''', (client_id, start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d")))
+
+        entries = cursor.fetchall()
+        conn.row_factory = None  # Reset to default
+
+        if not entries:
+            messagebox.showinfo("No Unbilled Hours", "No unbilled hours found for the selected client and date range.")
+            return None
+
+        self.pending_entry_ids = [row['entry_id'] for row in entries]
+        invoice_items = []
+
+        # Simple task grouping
+        tasks = {}
+        for row in entries:
+            key = f"{row['project_name']} - {row['task_name']}"
+            if key not in tasks:
+                tasks[key] = {'minutes': 0, 'rate': row['task_rate'] or row['project_rate']}
+            tasks[key]['minutes'] += row['duration_minutes'] or 0
+
+        for task_name, data in tasks.items():
+            hours = data['minutes'] / 60.0
+            invoice_items.append({
+                'description': task_name,
+                'quantity': f"{hours:.2f} hrs",
+                'rate': f"${data['rate']:.2f}/hr",
+                'amount': hours * data['rate']
+            })
+
+        return {
+            'client_id': client_id,
+            'start_date': start_date,
+            'end_date': end_date,
+            'items': invoice_items,
+            'total': sum(item['amount'] for item in invoice_items)
+        }
 
     def refresh_all_data(self):
         self.refresh_clients()
