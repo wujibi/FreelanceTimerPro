@@ -3,6 +3,7 @@ from tkinter import ttk, messagebox, filedialog
 from datetime import datetime, timedelta
 from database import DatabaseManager
 from models import Client, Project, Task, TimeEntry, CompanyInfo
+import sqlite3
 import threading
 import time
 
@@ -82,76 +83,62 @@ class TimeTrackerApp:
         task_frame.pack(fill='x', pady=2)
 
         ttk.Label(task_frame, text="Task:").pack(side='left')
-        self.task_combo = ttk.Combobox(task_frame, state='readonly')
-        self.task_combo.pack(side='left', fill='x', expand=True, padx=5)
+        self.timer_task_combo = ttk.Combobox(task_frame, state='readonly')
+        self.timer_task_combo.pack(side='left', fill='x', expand=True, padx=5)
 
         # Timer buttons
         button_frame = ttk.Frame(timer_display_frame)
         button_frame.pack(pady=10)
 
-        self.start_button = ttk.Button(button_frame, text="Start", command=self.start_timer)
+        self.start_button = ttk.Button(button_frame, text="Start Timer", command=self.start_timer)
         self.start_button.pack(side='left', padx=5)
 
-        self.stop_button = ttk.Button(button_frame, text="Stop", command=self.stop_timer, state='disabled')
+        self.stop_button = ttk.Button(button_frame, text="Stop Timer", command=self.stop_timer, state='disabled')
         self.stop_button.pack(side='left', padx=5)
 
-        # Description
-        desc_frame = ttk.Frame(timer_display_frame)
-        desc_frame.pack(fill='x', padx=10, pady=5)
-
-        ttk.Label(desc_frame, text="Description:").pack(side='left')
-        self.timer_desc_entry = ttk.Entry(desc_frame)
-        self.timer_desc_entry.pack(side='left', fill='x', expand=True, padx=5)
-
-        # Manual entry section
+        # Manual time entry section
         manual_frame = ttk.LabelFrame(timer_frame, text="Manual Time Entry")
-        manual_frame.pack(fill='x', padx=10, pady=10)
+        manual_frame.pack(fill='both', expand=True, padx=10, pady=10)
 
-        # Manual entry form
         form_frame = ttk.Frame(manual_frame)
         form_frame.pack(fill='x', padx=10, pady=10)
 
-        # Client selection for manual entry
-        ttk.Label(form_frame, text="Client:").grid(row=0, column=0, sticky='w', pady=2)
-        self.manual_client_combo = ttk.Combobox(form_frame, state='readonly')
-        self.manual_client_combo.grid(row=0, column=1, sticky='ew', padx=5, pady=2)
-        self.manual_client_combo.bind('<<ComboboxSelected>>', self.on_manual_client_select)
+        # Date
+        ttk.Label(form_frame, text="Date (MM/DD/YY):").grid(row=0, column=0, sticky='w', pady=2)
+        self.manual_date_entry = ttk.Entry(form_frame)
+        self.manual_date_entry.grid(row=0, column=1, sticky='ew', padx=5, pady=2)
+        self.manual_date_entry.insert(0, datetime.now().strftime("%m/%d/%y"))
 
-        # Project selection for manual entry
-        ttk.Label(form_frame, text="Project:").grid(row=1, column=0, sticky='w', pady=2)
-        self.manual_project_combo = ttk.Combobox(form_frame, state='readonly')
-        self.manual_project_combo.grid(row=1, column=1, sticky='ew', padx=5, pady=2)
-        self.manual_project_combo.bind('<<ComboboxSelected>>', self.on_manual_project_select)
+        # Start Time
+        ttk.Label(form_frame, text="Start Time (HH:MM AM/PM):").grid(row=1, column=0, sticky='w', pady=2)
+        self.manual_start_entry = ttk.Entry(form_frame)
+        self.manual_start_entry.grid(row=1, column=1, sticky='ew', padx=5, pady=2)
+        self.manual_start_entry.insert(0, "09:00 AM")
 
-        # Task selection for manual entry
-        ttk.Label(form_frame, text="Task:").grid(row=2, column=0, sticky='w', pady=2)
+        # End Time
+        ttk.Label(form_frame, text="End Time (HH:MM AM/PM):").grid(row=2, column=0, sticky='w', pady=2)
+        self.manual_end_entry = ttk.Entry(form_frame)
+        self.manual_end_entry.grid(row=2, column=1, sticky='ew', padx=5, pady=2)
+        self.manual_end_entry.insert(0, "05:00 PM")
+
+        # Task
+        ttk.Label(form_frame, text="Task:").grid(row=3, column=0, sticky='w', pady=2)
         self.manual_task_combo = ttk.Combobox(form_frame, state='readonly')
-        self.manual_task_combo.grid(row=2, column=1, sticky='ew', padx=5, pady=2)
-
-        # Start time
-        ttk.Label(form_frame, text="Start Time:").grid(row=3, column=0, sticky='w', pady=2)
-        self.start_time_entry = ttk.Entry(form_frame)
-        self.start_time_entry.grid(row=3, column=1, sticky='ew', padx=5, pady=2)
-        self.start_time_entry.insert(0, datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-
-        # End time
-        ttk.Label(form_frame, text="End Time:").grid(row=4, column=0, sticky='w', pady=2)
-        self.end_time_entry = ttk.Entry(form_frame)
-        self.end_time_entry.grid(row=4, column=1, sticky='ew', padx=5, pady=2)
-        self.end_time_entry.insert(0, (datetime.now() + timedelta(hours=1)).strftime("%Y-%m-%d %H:%M:%S"))
+        self.manual_task_combo.grid(row=3, column=1, sticky='ew', padx=5, pady=2)
 
         # Description
-        ttk.Label(form_frame, text="Description:").grid(row=5, column=0, sticky='w', pady=2)
-        self.manual_desc_entry = ttk.Entry(form_frame)
-        self.manual_desc_entry.grid(row=5, column=1, sticky='ew', padx=5, pady=2)
+        ttk.Label(form_frame, text="Description:").grid(row=4, column=0, sticky='nw', pady=2)
+        self.manual_desc_text = tk.Text(form_frame, height=3)
+        self.manual_desc_text.grid(row=4, column=1, sticky='ew', padx=5, pady=2)
 
         form_frame.columnconfigure(1, weight=1)
 
-        # Add manual entry button
-        ttk.Button(manual_frame, text="Add Manual Entry", command=self.add_manual_entry).pack(pady=10)
+        # Manual entry buttons
+        manual_button_frame = ttk.Frame(manual_frame)
+        manual_button_frame.pack(fill='x', padx=10, pady=10)
 
-        # Start timer update thread
-        self.update_timer_display()
+        ttk.Button(manual_button_frame, text="Add Entry", command=self.add_manual_entry).pack(side='left', padx=5)
+        ttk.Button(manual_button_frame, text="Clear", command=self.clear_manual_entry_form).pack(side='left', padx=5)
 
     def create_clients_tab(self):
         # Clients tab
@@ -159,13 +146,12 @@ class TimeTrackerApp:
         self.notebook.add(clients_frame, text="Clients")
 
         # Client form
-        client_form = ttk.LabelFrame(clients_frame, text="Add/Edit Client")
+        client_form = ttk.LabelFrame(clients_frame, text="Client Information")
         client_form.pack(fill='x', padx=10, pady=10)
 
         form_frame = ttk.Frame(client_form)
         form_frame.pack(fill='x', padx=10, pady=10)
 
-        # Client form fields
         ttk.Label(form_frame, text="Name:").grid(row=0, column=0, sticky='w', pady=2)
         self.client_name_entry = ttk.Entry(form_frame)
         self.client_name_entry.grid(row=0, column=1, sticky='ew', padx=5, pady=2)
@@ -182,7 +168,7 @@ class TimeTrackerApp:
         self.client_phone_entry = ttk.Entry(form_frame)
         self.client_phone_entry.grid(row=3, column=1, sticky='ew', padx=5, pady=2)
 
-        ttk.Label(form_frame, text="Address:").grid(row=4, column=0, sticky='w', pady=2)
+        ttk.Label(form_frame, text="Address:").grid(row=4, column=0, sticky='nw', pady=2)
         self.client_address_text = tk.Text(form_frame, height=3)
         self.client_address_text.grid(row=4, column=1, sticky='ew', padx=5, pady=2)
 
@@ -200,7 +186,6 @@ class TimeTrackerApp:
         list_frame = ttk.LabelFrame(clients_frame, text="Clients")
         list_frame.pack(fill='both', expand=True, padx=10, pady=10)
 
-        # Treeview for clients
         self.client_tree = ttk.Treeview(list_frame, columns=('ID', 'Name', 'Company', 'Email', 'Phone'),
                                         show='headings')
         self.client_tree.heading('ID', text='ID')
@@ -213,12 +198,12 @@ class TimeTrackerApp:
         self.client_tree.column('Name', width=150)
         self.client_tree.column('Company', width=150)
         self.client_tree.column('Email', width=200)
-        self.client_tree.column('Phone', width=150)
+        self.client_tree.column('Phone', width=100)
 
         self.client_tree.pack(fill='both', expand=True, padx=10, pady=10)
         self.client_tree.bind('<<TreeviewSelect>>', self.on_client_select)
 
-        # Client list buttons
+        # Client buttons
         client_button_frame = ttk.Frame(list_frame)
         client_button_frame.pack(fill='x', padx=10, pady=5)
 
@@ -230,26 +215,25 @@ class TimeTrackerApp:
         self.notebook.add(projects_frame, text="Projects")
 
         # Project form
-        project_form = ttk.LabelFrame(projects_frame, text="Add/Edit Project")
+        project_form = ttk.LabelFrame(projects_frame, text="Project Information")
         project_form.pack(fill='x', padx=10, pady=10)
 
         form_frame = ttk.Frame(project_form)
         form_frame.pack(fill='x', padx=10, pady=10)
 
-        # Project form fields
         ttk.Label(form_frame, text="Client:").grid(row=0, column=0, sticky='w', pady=2)
         self.project_client_combo = ttk.Combobox(form_frame, state='readonly')
         self.project_client_combo.grid(row=0, column=1, sticky='ew', padx=5, pady=2)
 
-        ttk.Label(form_frame, text="Project Name:").grid(row=1, column=0, sticky='w', pady=2)
+        ttk.Label(form_frame, text="Name:").grid(row=1, column=0, sticky='w', pady=2)
         self.project_name_entry = ttk.Entry(form_frame)
         self.project_name_entry.grid(row=1, column=1, sticky='ew', padx=5, pady=2)
 
-        ttk.Label(form_frame, text="Description:").grid(row=2, column=0, sticky='w', pady=2)
+        ttk.Label(form_frame, text="Description:").grid(row=2, column=0, sticky='nw', pady=2)
         self.project_desc_text = tk.Text(form_frame, height=3)
         self.project_desc_text.grid(row=2, column=1, sticky='ew', padx=5, pady=2)
 
-        # Billing options
+        # Project billing options
         billing_frame = ttk.Frame(form_frame)
         billing_frame.grid(row=3, column=1, sticky='ew', padx=5, pady=2)
 
@@ -277,7 +261,8 @@ class TimeTrackerApp:
         list_frame = ttk.LabelFrame(projects_frame, text="Projects")
         list_frame.pack(fill='both', expand=True, padx=10, pady=10)
 
-        self.project_tree = ttk.Treeview(list_frame, columns=('ID', 'Client', 'Name', 'Type', 'Rate'), show='headings')
+        self.project_tree = ttk.Treeview(list_frame, columns=('ID', 'Client', 'Name', 'Type', 'Rate'),
+                                         show='headings')
         self.project_tree.heading('ID', text='ID')
         self.project_tree.heading('Client', text='Client')
         self.project_tree.heading('Name', text='Project')
@@ -300,33 +285,39 @@ class TimeTrackerApp:
         ttk.Button(project_button_frame, text="Delete Project", command=self.delete_project).pack(side='left', padx=5)
 
     def create_tasks_tab(self):
-        # Tasks tab (similar structure to projects)
+        # Tasks tab
         tasks_frame = ttk.Frame(self.notebook)
         self.notebook.add(tasks_frame, text="Tasks")
 
         # Task form
-        task_form = ttk.LabelFrame(tasks_frame, text="Add/Edit Task")
+        task_form = ttk.LabelFrame(tasks_frame, text="Task Information")
         task_form.pack(fill='x', padx=10, pady=10)
 
         form_frame = ttk.Frame(task_form)
         form_frame.pack(fill='x', padx=10, pady=10)
 
-        # Task form fields
-        ttk.Label(form_frame, text="Project:").grid(row=0, column=0, sticky='w', pady=2)
+        # Client selector
+        ttk.Label(form_frame, text="Client:").grid(row=0, column=0, sticky='w', pady=2)
+        self.task_client_combo = ttk.Combobox(form_frame, state='readonly')
+        self.task_client_combo.grid(row=0, column=1, sticky='ew', padx=5, pady=2)
+        self.task_client_combo.bind('<<ComboboxSelected>>', self.on_task_client_select)
+
+        # Project selector
+        ttk.Label(form_frame, text="Project:").grid(row=1, column=0, sticky='w', pady=2)
         self.task_project_combo = ttk.Combobox(form_frame, state='readonly')
-        self.task_project_combo.grid(row=0, column=1, sticky='ew', padx=5, pady=2)
+        self.task_project_combo.grid(row=1, column=1, sticky='ew', padx=5, pady=2)
 
-        ttk.Label(form_frame, text="Task Name:").grid(row=1, column=0, sticky='w', pady=2)
+        ttk.Label(form_frame, text="Name:").grid(row=2, column=0, sticky='w', pady=2)
         self.task_name_entry = ttk.Entry(form_frame)
-        self.task_name_entry.grid(row=1, column=1, sticky='ew', padx=5, pady=2)
+        self.task_name_entry.grid(row=2, column=1, sticky='ew', padx=5, pady=2)
 
-        ttk.Label(form_frame, text="Description:").grid(row=2, column=0, sticky='w', pady=2)
+        ttk.Label(form_frame, text="Description:").grid(row=3, column=0, sticky='nw', pady=2)
         self.task_desc_text = tk.Text(form_frame, height=3)
-        self.task_desc_text.grid(row=2, column=1, sticky='ew', padx=5, pady=2)
+        self.task_desc_text.grid(row=3, column=1, sticky='ew', padx=5, pady=2)
 
         # Task billing options
         billing_frame = ttk.Frame(form_frame)
-        billing_frame.grid(row=3, column=1, sticky='ew', padx=5, pady=2)
+        billing_frame.grid(row=4, column=1, sticky='ew', padx=5, pady=2)
 
         self.task_billing_var = tk.StringVar(value="hourly")
         ttk.Radiobutton(billing_frame, text="Hourly Rate", variable=self.task_billing_var,
@@ -334,9 +325,9 @@ class TimeTrackerApp:
         ttk.Radiobutton(billing_frame, text="Lump Sum", variable=self.task_billing_var,
                         value="lump_sum", command=self.toggle_task_billing).pack(side='left', padx=10)
 
-        ttk.Label(form_frame, text="Rate/Amount:").grid(row=4, column=0, sticky='w', pady=2)
+        ttk.Label(form_frame, text="Rate/Amount:").grid(row=5, column=0, sticky='w', pady=2)
         self.task_rate_entry = ttk.Entry(form_frame)
-        self.task_rate_entry.grid(row=4, column=1, sticky='ew', padx=5, pady=2)
+        self.task_rate_entry.grid(row=5, column=1, sticky='ew', padx=5, pady=2)
 
         form_frame.columnconfigure(1, weight=1)
 
@@ -393,26 +384,25 @@ class TimeTrackerApp:
         self.entries_tree.heading('Project', text='Project')
         self.entries_tree.heading('Task', text='Task')
         self.entries_tree.heading('Start', text='Start Time')
-        self.entries_tree.heading('Duration', text='Duration (min)')
+        self.entries_tree.heading('Duration', text='Duration (hrs)')
         self.entries_tree.heading('Description', text='Description')
 
         self.entries_tree.column('ID', width=50)
         self.entries_tree.column('Client', width=100)
-        self.entries_tree.column('Project', width=100)
-        self.entries_tree.column('Task', width=100)
+        self.entries_tree.column('Project', width=120)
+        self.entries_tree.column('Task', width=120)
         self.entries_tree.column('Start', width=150)
         self.entries_tree.column('Duration', width=100)
         self.entries_tree.column('Description', width=200)
 
         self.entries_tree.pack(fill='both', expand=True, padx=10, pady=10)
-        self.entries_tree.bind('<<TreeviewSelect>>', self.on_entry_select)
 
         # Entry buttons
         entry_button_frame = ttk.Frame(list_frame)
         entry_button_frame.pack(fill='x', padx=10, pady=5)
 
-        ttk.Button(entry_button_frame, text="Edit Entry", command=self.edit_entry).pack(side='left', padx=5)
-        ttk.Button(entry_button_frame, text="Delete Entry", command=self.delete_entry).pack(side='left', padx=5)
+        ttk.Button(entry_button_frame, text="Edit Entry", command=self.edit_time_entry).pack(side='left', padx=5)
+        ttk.Button(entry_button_frame, text="Delete Entry", command=self.delete_time_entry).pack(side='left', padx=5)
 
     def create_company_tab(self):
         # Company info tab
@@ -420,18 +410,17 @@ class TimeTrackerApp:
         self.notebook.add(company_frame, text="Company Info")
 
         # Company form
-        company_form = ttk.LabelFrame(company_frame, text="Company Information")
-        company_form.pack(fill='x', padx=10, pady=10)
+        company_form = ttk.LabelFrame(company_frame, text="Company Information (For Invoices)")
+        company_form.pack(fill='both', expand=True, padx=10, pady=10)
 
         form_frame = ttk.Frame(company_form)
-        form_frame.pack(fill='x', padx=10, pady=10)
+        form_frame.pack(fill='both', expand=True, padx=10, pady=10)
 
-        # Company form fields
         ttk.Label(form_frame, text="Company Name:").grid(row=0, column=0, sticky='w', pady=2)
         self.company_name_entry = ttk.Entry(form_frame)
         self.company_name_entry.grid(row=0, column=1, sticky='ew', padx=5, pady=2)
 
-        ttk.Label(form_frame, text="Address:").grid(row=1, column=0, sticky='w', pady=2)
+        ttk.Label(form_frame, text="Address:").grid(row=1, column=0, sticky='nw', pady=2)
         self.company_address_text = tk.Text(form_frame, height=3)
         self.company_address_text.grid(row=1, column=1, sticky='ew', padx=5, pady=2)
 
@@ -443,53 +432,55 @@ class TimeTrackerApp:
         self.company_email_entry = ttk.Entry(form_frame)
         self.company_email_entry.grid(row=3, column=1, sticky='ew', padx=5, pady=2)
 
-        # Logo selection
+        ttk.Label(form_frame, text="Logo:").grid(row=4, column=0, sticky='w', pady=2)
         logo_frame = ttk.Frame(form_frame)
         logo_frame.grid(row=4, column=1, sticky='ew', padx=5, pady=2)
 
         self.logo_path_var = tk.StringVar()
-        ttk.Label(logo_frame, textvariable=self.logo_path_var).pack(side='left', fill='x', expand=True)
-        ttk.Button(logo_frame, text="Browse Logo", command=self.browse_logo).pack(side='right')
+        ttk.Entry(logo_frame, textvariable=self.logo_path_var, state='readonly').pack(side='left', fill='x',
+                                                                                      expand=True)
+        ttk.Button(logo_frame, text="Browse", command=self.browse_logo).pack(side='left', padx=5)
 
         form_frame.columnconfigure(1, weight=1)
 
-        # Save button
-        ttk.Button(company_form, text="Save Company Info", command=self.save_company_info).pack(pady=10)
+        # Company buttons
+        button_frame = ttk.Frame(company_form)
+        button_frame.pack(fill='x', padx=10, pady=10)
 
-        # Load existing company info
-        self.load_company_info()
+        ttk.Button(button_frame, text="Save Company Info", command=self.save_company_info).pack(side='left', padx=5)
+        ttk.Button(button_frame, text="Load Current Info", command=self.load_company_info).pack(side='left', padx=5)
 
     def create_invoice_tab(self):
         # Invoice tab
         invoice_frame = ttk.Frame(self.notebook)
-        self.notebook.add(invoice_frame, text="Invoicing")
+        self.notebook.add(invoice_frame, text="Invoices")
 
-        # Invoice generation section
+        # Invoice generation form
         invoice_gen_frame = ttk.LabelFrame(invoice_frame, text="Generate Invoice")
         invoice_gen_frame.pack(fill='x', padx=10, pady=10)
 
         form_frame = ttk.Frame(invoice_gen_frame)
         form_frame.pack(fill='x', padx=10, pady=10)
 
-        # Invoice form fields
+        # Client selection
         ttk.Label(form_frame, text="Client:").grid(row=0, column=0, sticky='w', pady=2)
         self.invoice_client_combo = ttk.Combobox(form_frame, state='readonly')
         self.invoice_client_combo.grid(row=0, column=1, sticky='ew', padx=5, pady=2)
-        self.invoice_client_combo.bind('<<ComboboxSelected>>', self.on_invoice_client_select)
 
+        # Date range
         ttk.Label(form_frame, text="Date Range:").grid(row=1, column=0, sticky='w', pady=2)
         date_frame = ttk.Frame(form_frame)
         date_frame.grid(row=1, column=1, sticky='ew', padx=5, pady=2)
 
         self.invoice_start_date = ttk.Entry(date_frame, width=12)
         self.invoice_start_date.pack(side='left')
-        self.invoice_start_date.insert(0, (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d"))
+        self.invoice_start_date.insert(0, (datetime.now() - timedelta(days=30)).strftime("%m/%d/%y"))
 
         ttk.Label(date_frame, text=" to ").pack(side='left')
 
         self.invoice_end_date = ttk.Entry(date_frame, width=12)
         self.invoice_end_date.pack(side='left')
-        self.invoice_end_date.insert(0, datetime.now().strftime("%Y-%m-%d"))
+        self.invoice_end_date.insert(0, datetime.now().strftime("%m/%d/%y"))
 
         # Grouping option
         ttk.Label(form_frame, text="Group by:").grid(row=2, column=0, sticky='w', pady=2)
@@ -547,28 +538,55 @@ class TimeTrackerApp:
             return
 
         if not self.timer_project_combo.get():
-            messagebox.showerror("Error", "Please select a project")
+            messagebox.showerror("Error", "Please select a project first")
             return
 
-        if not self.task_combo.get():
-            messagebox.showerror("Error", "Please select a task")
+        if not self.timer_task_combo.get():
+            messagebox.showerror("Error", "Please select a task first")
             return
 
-        task_id = self.get_selected_task_id()
-        if task_id:
+        # Get task ID from the selected display text
+        task_text = self.timer_task_combo.get()
+        client_name = self.timer_client_combo.get()
+        project_name = self.timer_project_combo.get()
+
+        # Extract just the task name from "Client - Project - Task" format
+        # The format is: client_name - project_name - task_name
+        parts = task_text.split(' - ')
+        if len(parts) >= 3:
+            task_name = ' - '.join(parts[2:])  # In case task name has dashes
+        else:
+            messagebox.showerror("Error", "Invalid task format")
+            return
+
+        # Find the task by matching client, project, and task names
+        tasks = self.task_model.get_all()
+        self.current_task_id = None
+
+        for task in tasks:
+            if task[9] == client_name and task[8] == project_name and task[2] == task_name:
+                self.current_task_id = task[0]
+                break
+
+        if not self.current_task_id:
+            messagebox.showerror("Error", f"Could not find task: {task_name}")
+            return
+
+        try:
+            # Start the timer
             self.timer_running = True
             self.timer_start_time = datetime.now()
-            self.current_task_id = task_id
-
-            # Create time entry in database
-            self.time_entry_model.start_timer(task_id, self.timer_desc_entry.get())
+            self.time_entry_model.start_timer(self.current_task_id)
 
             # Update UI
             self.start_button.config(state='disabled')
             self.stop_button.config(state='normal')
-            self.timer_client_combo.config(state='disabled')
-            self.timer_project_combo.config(state='disabled')
-            self.task_combo.config(state='disabled')
+
+            # Start timer thread
+            self.update_timer_display()
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to start timer: {str(e)}")
+            self.timer_running = False
 
     def stop_timer(self):
         if self.timer_running:
@@ -578,58 +596,20 @@ class TimeTrackerApp:
             # Update UI
             self.start_button.config(state='normal')
             self.stop_button.config(state='disabled')
-            self.timer_client_combo.config(state='readonly')
-            self.timer_project_combo.config(state='readonly')
-            self.task_combo.config(state='readonly')
+            self.timer_label.config(text="00:00:00")
 
-            # Clear fields
-            self.timer_desc_entry.delete(0, 'end')
-
-            # Refresh data
             self.refresh_time_entries()
+            messagebox.showinfo("Success", "Timer stopped and time entry saved")
 
     def update_timer_display(self):
         if self.timer_running and self.timer_start_time:
             elapsed = datetime.now() - self.timer_start_time
             hours, remainder = divmod(int(elapsed.total_seconds()), 3600)
             minutes, seconds = divmod(remainder, 60)
-            time_str = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
-            self.timer_label.config(text=time_str)
+            self.timer_label.config(text=f"{hours:02d}:{minutes:02d}:{seconds:02d}")
+            self.root.after(1000, self.update_timer_display)
 
-        # Schedule next update
-        self.root.after(1000, self.update_timer_display)
-
-    def add_manual_entry(self):
-        try:
-            task_id = self.get_selected_manual_task_id()
-            if not task_id:
-                messagebox.showerror("Error", "Please select a client, project, and task")
-                return
-
-            start_time = datetime.strptime(self.start_time_entry.get(), "%Y-%m-%d %H:%M:%S")
-            end_time = datetime.strptime(self.end_time_entry.get(), "%Y-%m-%d %H:%M:%S")
-            description = self.manual_desc_entry.get()
-
-            if end_time <= start_time:
-                messagebox.showerror("Error", "End time must be after start time")
-                return
-
-            self.time_entry_model.add_manual_entry(task_id, start_time, end_time, description)
-
-            # Clear form
-            self.manual_desc_entry.delete(0, 'end')
-
-            # Refresh data
-            self.refresh_time_entries()
-
-            messagebox.showinfo("Success", "Manual time entry added successfully")
-
-        except ValueError as e:
-            messagebox.showerror("Error", f"Invalid date format. Use YYYY-MM-DD HH:MM:SS\n{str(e)}")
-
-    # New timer selection methods
     def on_timer_client_select(self, event):
-        """When client is selected in timer, populate projects for that client"""
         client_name = self.timer_client_combo.get()
         if client_name:
             # Get client ID
@@ -641,36 +621,35 @@ class TimeTrackerApp:
                     break
 
             if client_id:
-                # Get projects for this client
-                self.populate_projects_for_client(client_id, self.timer_project_combo)
-
-            # Clear project and task selections when client changes
-            self.timer_project_combo.set("")
-            self.task_combo.set("")
-            self.task_combo['values'] = []
+                # Load projects for this client
+                projects = self.project_model.get_by_client(client_id)
+                self.timer_project_combo['values'] = [p[2] for p in projects]
+                self.timer_project_combo.set('')
+                self.timer_task_combo.set('')
 
     def on_timer_project_select(self, event):
-        """When project is selected in timer, populate tasks for that project"""
         project_name = self.timer_project_combo.get()
-        if project_name:
+        client_name = self.timer_client_combo.get()
+
+        if project_name and client_name:
             # Get project ID
             projects = self.project_model.get_all()
             project_id = None
             for project in projects:
-                if project[2] == project_name:  # project name is at index 2
+                if project[2] == project_name and project[7] == client_name:
                     project_id = project[0]
                     break
 
             if project_id:
-                # Get tasks for this project
-                self.populate_tasks_for_project(project_id, self.task_combo)
+                # Load tasks for this project
+                tasks = self.task_model.get_by_project(project_id)
+                task_displays = [f"{client_name} - {project_name} - {t[2]}" for t in tasks]
+                self.timer_task_combo['values'] = task_displays
+                self.timer_task_combo.set('')
 
-            # Clear task selection when project changes
-            self.task_combo.set("")
-
-    def on_manual_client_select(self, event):
-        """When client is selected in manual entry, populate projects for that client"""
-        client_name = self.manual_client_combo.get()
+    def on_task_client_select(self, event):
+        """When client is selected in tasks tab, populate projects"""
+        client_name = self.task_client_combo.get()
         if client_name:
             # Get client ID
             clients = self.client_model.get_all()
@@ -681,99 +660,80 @@ class TimeTrackerApp:
                     break
 
             if client_id:
-                # Get projects for this client
-                self.populate_projects_for_client(client_id, self.manual_project_combo)
+                # Load projects for this client
+                projects = self.project_model.get_by_client(client_id)
+                self.task_project_combo['values'] = [p[2] for p in projects]
+                self.task_project_combo.set('')
 
-            # Clear project and task selections when client changes
-            self.manual_project_combo.set("")
-            self.manual_task_combo.set("")
-            self.manual_task_combo['values'] = []
+    def add_manual_entry(self):
+        task_text = self.manual_task_combo.get()
+        date_str = self.manual_date_entry.get().strip()
+        start_str = self.manual_start_entry.get().strip()
+        end_str = self.manual_end_entry.get().strip()
+        description = self.manual_desc_text.get("1.0", tk.END).strip()
 
-    def on_manual_project_select(self, event):
-        """When project is selected in manual entry, populate tasks for that project"""
-        project_name = self.manual_project_combo.get()
-        if project_name:
-            # Get project ID
-            projects = self.project_model.get_all()
-            project_id = None
-            for project in projects:
-                if project[2] == project_name:  # project name is at index 2
-                    project_id = project[0]
-                    break
+        if not task_text:
+            messagebox.showerror("Error", "Please select a task")
+            return
 
-            if project_id:
-                # Get tasks for this project
-                self.populate_tasks_for_project(project_id, self.manual_task_combo)
+        try:
+            # Parse date MM/DD/YY
+            date_obj = datetime.strptime(date_str, "%m/%d/%y")
 
-            # Clear task selection when project changes
-            self.manual_task_combo.set("")
+            # Parse times HH:MM AM/PM
+            start_time_obj = datetime.strptime(f"{date_str} {start_str}", "%m/%d/%y %I:%M %p")
+            end_time_obj = datetime.strptime(f"{date_str} {end_str}", "%m/%d/%y %I:%M %p")
 
-    def populate_projects_for_client(self, client_id, project_combo):
-        """Populate project combo with projects for the specified client"""
-        projects = self.project_model.get_by_client(client_id)
-        project_names = [project[2] for project in projects]  # project name is at index 2
-        project_combo['values'] = project_names
+            if end_time_obj <= start_time_obj:
+                messagebox.showerror("Error", "End time must be after start time")
+                return
 
-    def populate_tasks_for_project(self, project_id, task_combo):
-        """Populate task combo with tasks for the specified project"""
-        tasks = self.task_model.get_by_project(project_id)
-        task_names = [task[2] for task in tasks]  # task name is at index 2
-        task_combo['values'] = task_names
+        except ValueError as e:
+            messagebox.showerror("Error",
+                                 f"Invalid date/time format.\nUse MM/DD/YY for date and HH:MM AM/PM for time.\nError: {str(e)}")
+            return
 
-    # Helper methods
-    def get_selected_task_id(self):
-        task_name = self.task_combo.get()
-        project_name = self.timer_project_combo.get()
+        # Get task ID
+        tasks = self.task_model.get_all()
+        task_id = None
+        for task in tasks:
+            client_name = task[9]
+            project_name = task[8]
+            task_display = f"{client_name} - {project_name} - {task[2]}"
+            if task_display == task_text:
+                task_id = task[0]
+                break
 
-        if task_name and project_name:
-            # Get project ID first
-            projects = self.project_model.get_all()
-            project_id = None
-            for project in projects:
-                if project[2] == project_name:
-                    project_id = project[0]
-                    break
+        if not task_id:
+            messagebox.showerror("Error", "Invalid task selected")
+            return
 
-            if project_id:
-                # Get task ID for this project
-                tasks = self.task_model.get_by_project(project_id)
-                for task in tasks:
-                    if task[2] == task_name:  # task name is at index 2
-                        return task[0]  # return task ID
-        return None
+        self.time_entry_model.add_manual_entry(task_id, start_time_obj, end_time_obj, description)
+        self.refresh_time_entries()
+        self.clear_manual_entry_form()
+        messagebox.showinfo("Success", "Time entry added successfully")
 
-    def get_selected_manual_task_id(self):
-        task_name = self.manual_task_combo.get()
-        project_name = self.manual_project_combo.get()
-
-        if task_name and project_name:
-            # Get project ID first
-            projects = self.project_model.get_all()
-            project_id = None
-            for project in projects:
-                if project[2] == project_name:
-                    project_id = project[0]
-                    break
-
-            if project_id:
-                # Get task ID for this project
-                tasks = self.task_model.get_by_project(project_id)
-                for task in tasks:
-                    if task[2] == task_name:  # task name is at index 2
-                        return task[0]  # return task ID
-        return None
+    def clear_manual_entry_form(self):
+        self.manual_date_entry.delete(0, tk.END)
+        self.manual_date_entry.insert(0, datetime.now().strftime("%m/%d/%y"))
+        self.manual_start_entry.delete(0, tk.END)
+        self.manual_start_entry.insert(0, "09:00 AM")
+        self.manual_end_entry.delete(0, tk.END)
+        self.manual_end_entry.insert(0, "05:00 PM")
+        self.manual_task_combo.set('')
+        self.manual_desc_text.delete("1.0", tk.END)
 
     # Client methods
     def add_client(self):
         name = self.client_name_entry.get().strip()
-        if not name:
-            messagebox.showerror("Error", "Client name is required")
-            return
-
         company = self.client_company_entry.get().strip()
         email = self.client_email_entry.get().strip()
         phone = self.client_phone_entry.get().strip()
         address = self.client_address_text.get("1.0", tk.END).strip()
+
+        if not name:
+            messagebox.showerror("Error", "Client name is required")
+            return
 
         self.client_model.create(name, company, email, phone, address)
         self.clear_client_form()
@@ -789,15 +749,14 @@ class TimeTrackerApp:
 
         client_id = self.client_tree.item(selection[0])['values'][0]
         name = self.client_name_entry.get().strip()
-
-        if not name:
-            messagebox.showerror("Error", "Client name is required")
-            return
-
         company = self.client_company_entry.get().strip()
         email = self.client_email_entry.get().strip()
         phone = self.client_phone_entry.get().strip()
         address = self.client_address_text.get("1.0", tk.END).strip()
+
+        if not name:
+            messagebox.showerror("Error", "Client name is required")
+            return
 
         self.client_model.update(client_id, name, company, email, phone, address)
         self.clear_client_form()
@@ -811,7 +770,8 @@ class TimeTrackerApp:
             messagebox.showerror("Error", "Please select a client to delete")
             return
 
-        if messagebox.askyesno("Confirm", "Are you sure you want to delete this client?"):
+        if messagebox.askyesno("Confirm",
+                               "Delete this client? This will also delete all associated projects, tasks, and time entries."):
             client_id = self.client_tree.item(selection[0])['values'][0]
             self.client_model.delete(client_id)
             self.refresh_clients()
@@ -850,12 +810,13 @@ class TimeTrackerApp:
     def add_project(self):
         client_text = self.project_client_combo.get()
         name = self.project_name_entry.get().strip()
+        description = self.project_desc_text.get("1.0", tk.END).strip()
 
         if not client_text or not name:
             messagebox.showerror("Error", "Client and project name are required")
             return
 
-        # Get client ID
+        # Get client ID by name
         clients = self.client_model.get_all()
         client_id = None
         for client in clients:
@@ -867,7 +828,6 @@ class TimeTrackerApp:
             messagebox.showerror("Error", "Invalid client selected")
             return
 
-        description = self.project_desc_text.get("1.0", tk.END).strip()
         rate = float(self.project_rate_entry.get() or 0)
         is_lump_sum = self.project_billing_var.get() == "lump_sum"
 
@@ -888,20 +848,33 @@ class TimeTrackerApp:
             return
 
         project_id = self.project_tree.item(selection[0])['values'][0]
+        client_text = self.project_client_combo.get()
         name = self.project_name_entry.get().strip()
+        description = self.project_desc_text.get("1.0", tk.END).strip()
 
-        if not name:
-            messagebox.showerror("Error", "Project name is required")
+        if not client_text or not name:
+            messagebox.showerror("Error", "Client and project name are required")
             return
 
-        description = self.project_desc_text.get("1.0", tk.END).strip()
+        # Get client ID by name
+        clients = self.client_model.get_all()
+        client_id = None
+        for client in clients:
+            if client[1] == client_text:
+                client_id = client[0]
+                break
+
+        if not client_id:
+            messagebox.showerror("Error", "Invalid client selected")
+            return
+
         rate = float(self.project_rate_entry.get() or 0)
         is_lump_sum = self.project_billing_var.get() == "lump_sum"
 
         if is_lump_sum:
-            self.project_model.update(project_id, name, description, 0, True, rate)
+            self.project_model.update(project_id, client_id, name, description, 0, True, rate)
         else:
-            self.project_model.update(project_id, name, description, rate, False, 0)
+            self.project_model.update(project_id, client_id, name, description, rate, False, 0)
 
         self.clear_project_form()
         self.refresh_projects()
@@ -914,7 +887,8 @@ class TimeTrackerApp:
             messagebox.showerror("Error", "Please select a project to delete")
             return
 
-        if messagebox.askyesno("Confirm", "Are you sure you want to delete this project?"):
+        if messagebox.askyesno("Confirm",
+                               "Delete this project? This will also delete all associated tasks and time entries."):
             project_id = self.project_tree.item(selection[0])['values'][0]
             self.project_model.delete(project_id)
             self.refresh_projects()
@@ -960,22 +934,20 @@ class TimeTrackerApp:
 
     # Task methods
     def add_task(self):
+        client_text = self.task_client_combo.get()
         project_text = self.task_project_combo.get()
         name = self.task_name_entry.get().strip()
 
-        if not project_text or not name:
-            messagebox.showerror("Error", "Project and task name are required")
+        if not client_text or not project_text or not name:
+            messagebox.showerror("Error", "Client, project, and task name are required")
             return
 
-        # Get project ID by matching the display format
+        # Get project ID by matching client and project names
         projects = self.project_model.get_all()
         project_id = None
         for project in projects:
-            client_id = project[1]  # client_id is at index 1
-            client = self.client_model.get_by_id(client_id)
-            client_name = client[1] if client else "Unknown Client"
-            project_display = f"{client_name} - {project[2]}"
-            if project_display == project_text:
+            client_name = project[9] if len(project) > 9 else None
+            if client_name == client_text and project[2] == project_text:
                 project_id = project[0]
                 break
 
@@ -1005,12 +977,12 @@ class TimeTrackerApp:
 
         task_id = self.task_tree.item(selection[0])['values'][0]
         name = self.task_name_entry.get().strip()
+        description = self.task_desc_text.get("1.0", tk.END).strip()
 
         if not name:
             messagebox.showerror("Error", "Task name is required")
             return
 
-        description = self.task_desc_text.get("1.0", tk.END).strip()
         rate = float(self.task_rate_entry.get() or 0)
         is_lump_sum = self.task_billing_var.get() == "lump_sum"
 
@@ -1030,7 +1002,7 @@ class TimeTrackerApp:
             messagebox.showerror("Error", "Please select a task to delete")
             return
 
-        if messagebox.askyesno("Confirm", "Are you sure you want to delete this task?"):
+        if messagebox.askyesno("Confirm", "Delete this task? This will also delete all associated time entries."):
             task_id = self.task_tree.item(selection[0])['values'][0]
             self.task_model.delete(task_id)
             self.refresh_tasks()
@@ -1038,6 +1010,7 @@ class TimeTrackerApp:
             messagebox.showinfo("Success", "Task deleted successfully")
 
     def clear_task_form(self):
+        self.task_client_combo.set("")
         self.task_project_combo.set("")
         self.task_name_entry.delete(0, tk.END)
         self.task_desc_text.delete("1.0", tk.END)
@@ -1050,13 +1023,20 @@ class TimeTrackerApp:
             task_id = self.task_tree.item(selection[0])['values'][0]
             task = self.task_model.get_by_id(task_id)
             if task:
-                # Set project
+                # Set project and client
                 project = self.project_model.get_by_id(task[1])
                 if project:
                     client = self.client_model.get_by_id(project[1])
                     if client:
-                        project_display = f"{client[1]} - {project[2]}"
-                        self.task_project_combo.set(project_display)
+                        self.task_client_combo.set(client[1])
+                        # Trigger the client selection to populate projects
+                        clients = self.client_model.get_all()
+                        for c in clients:
+                            if c[1] == client[1]:
+                                projects = self.project_model.get_by_client(c[0])
+                                self.task_project_combo['values'] = [p[2] for p in projects]
+                                break
+                        self.task_project_combo.set(project[2])
 
                 # Set task details
                 self.task_name_entry.delete(0, tk.END)
@@ -1077,37 +1057,22 @@ class TimeTrackerApp:
     def toggle_task_billing(self):
         pass
 
-    # Time entry methods
-    def edit_entry(self):
+    # Time Entry methods
+    def edit_time_entry(self):
         selection = self.entries_tree.selection()
         if not selection:
             messagebox.showerror("Error", "Please select a time entry to edit")
             return
 
         entry_id = self.entries_tree.item(selection[0])['values'][0]
-        self.open_edit_entry_dialog(entry_id)
+        self.open_edit_time_entry_dialog(entry_id)
 
-    def delete_entry(self):
-        selection = self.entries_tree.selection()
-        if not selection:
-            messagebox.showerror("Error", "Please select a time entry to delete")
-            return
-
-        if messagebox.askyesno("Confirm", "Are you sure you want to delete this time entry?"):
-            entry_id = self.entries_tree.item(selection[0])['values'][0]
-            self.time_entry_model.delete(entry_id)
-            self.refresh_time_entries()
-            messagebox.showinfo("Success", "Time entry deleted successfully")
-
-    def on_entry_select(self, event):
-        pass
-
-    def open_edit_entry_dialog(self, entry_id):
+    def open_edit_time_entry_dialog(self, entry_id):
         edit_window = tk.Toplevel(self.root)
         edit_window.title("Edit Time Entry")
         edit_window.geometry("400x300")
 
-        # Get current entry data
+        # Get the entry details
         with self.db.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute('''
@@ -1116,8 +1081,7 @@ class TimeTrackerApp:
                                     JOIN tasks t ON te.task_id = t.id
                                     JOIN projects p ON t.project_id = p.id
                                     JOIN clients c ON p.client_id = c.id
-                           WHERE te.id = ?
-                           ''', (entry_id,))
+                           WHERE te.id = ?''', (entry_id,))
             entry = cursor.fetchone()
 
         if not entry:
@@ -1129,23 +1093,32 @@ class TimeTrackerApp:
         form_frame = ttk.Frame(edit_window)
         form_frame.pack(fill='both', expand=True, padx=10, pady=10)
 
-        ttk.Label(form_frame, text=f"Task: {entry[10]} - {entry[9]} - {entry[8]}").grid(row=0, column=0, columnspan=2,
-                                                                                        sticky='w', pady=5)
+        # Try to get task/project/client names from proper positions
+        try:
+            task_name = entry[-3] if len(entry) > 3 else "Unknown"
+            project_name = entry[-2] if len(entry) > 2 else "Unknown"
+            client_name = entry[-1] if len(entry) > 1 else "Unknown"
+        except:
+            task_name = project_name = client_name = "Unknown"
+
+        ttk.Label(form_frame, text=f"Task: {task_name} - {project_name} - {client_name}").grid(row=0, column=0,
+                                                                                               columnspan=2,
+                                                                                               sticky='w', pady=5)
 
         ttk.Label(form_frame, text="Start Time:").grid(row=1, column=0, sticky='w', pady=2)
         start_entry = ttk.Entry(form_frame, width=20)
         start_entry.grid(row=1, column=1, sticky='ew', padx=5, pady=2)
-        start_entry.insert(0, entry[2] if entry[2] else "")
+        start_entry.insert(0, entry[9] if len(entry) > 9 and entry[9] else "")
 
         ttk.Label(form_frame, text="End Time:").grid(row=2, column=0, sticky='w', pady=2)
         end_entry = ttk.Entry(form_frame, width=20)
         end_entry.grid(row=2, column=1, sticky='ew', padx=5, pady=2)
-        end_entry.insert(0, entry[3] if entry[3] else "")
+        end_entry.insert(0, entry[10] if len(entry) > 10 and entry[10] else "")
 
         ttk.Label(form_frame, text="Description:").grid(row=3, column=0, sticky='w', pady=2)
         desc_entry = ttk.Entry(form_frame)
         desc_entry.grid(row=3, column=1, sticky='ew', padx=5, pady=2)
-        desc_entry.insert(0, entry[5] if entry[5] else "")
+        desc_entry.insert(0, entry[13] if len(entry) > 13 and entry[13] else "")
 
         form_frame.columnconfigure(1, weight=1)
 
@@ -1174,6 +1147,18 @@ class TimeTrackerApp:
         ttk.Button(button_frame, text="Save", command=save_changes).pack(side='right', padx=5)
         ttk.Button(button_frame, text="Cancel", command=edit_window.destroy).pack(side='right')
 
+    def delete_time_entry(self):
+        selection = self.entries_tree.selection()
+        if not selection:
+            messagebox.showerror("Error", "Please select a time entry to delete")
+            return
+
+        if messagebox.askyesno("Confirm", "Delete this time entry?"):
+            entry_id = self.entries_tree.item(selection[0])['values'][0]
+            self.time_entry_model.delete(entry_id)
+            self.refresh_time_entries()
+            messagebox.showinfo("Success", "Time entry deleted successfully")
+
     # Company info methods
     def browse_logo(self):
         filename = filedialog.askopenfilename(
@@ -1185,14 +1170,14 @@ class TimeTrackerApp:
 
     def save_company_info(self):
         name = self.company_name_entry.get().strip()
-        if not name:
-            messagebox.showerror("Error", "Company name is required")
-            return
-
         address = self.company_address_text.get("1.0", tk.END).strip()
         phone = self.company_phone_entry.get().strip()
         email = self.company_email_entry.get().strip()
         logo_path = self.logo_path_var.get()
+
+        if not name:
+            messagebox.showerror("Error", "Company name is required")
+            return
 
         self.company_model.save(name, address, phone, email, logo_path)
         messagebox.showinfo("Success", "Company information saved successfully")
@@ -1212,14 +1197,13 @@ class TimeTrackerApp:
             self.company_email_entry.delete(0, tk.END)
             self.company_email_entry.insert(0, company[4] or "")
 
-            self.logo_path_var.set(company[5] or "")
+            if len(company) > 5 and company[5]:
+                self.logo_path_var.set(company[5])
 
     # Invoice methods
-    def on_invoice_client_select(self, event):
-        pass
-
     def generate_invoice(self):
         client_text = self.invoice_client_combo.get()
+
         if not client_text:
             messagebox.showerror("Error", "Please select a client")
             return
@@ -1237,10 +1221,10 @@ class TimeTrackerApp:
             return
 
         try:
-            start_date = datetime.strptime(self.invoice_start_date.get(), "%Y-%m-%d")
-            end_date = datetime.strptime(self.invoice_end_date.get(), "%Y-%m-%d")
+            start_date = datetime.strptime(self.invoice_start_date.get(), "%m/%d/%y")
+            end_date = datetime.strptime(self.invoice_end_date.get(), "%m/%d/%y")
         except ValueError:
-            messagebox.showerror("Error", "Invalid date format. Use YYYY-MM-DD")
+            messagebox.showerror("Error", "Invalid date format. Use MM/DD/YY")
             return
 
         # Generate invoice data
@@ -1248,102 +1232,46 @@ class TimeTrackerApp:
         self.display_invoice_preview()
 
     def generate_invoice_data(self, client_id, start_date, end_date):
-        # Get time entries for the client within date range
-        with self.db.get_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute('''
-                           SELECT te.*,
-                                  t.name            as task_name,
-                                  t.hourly_rate     as task_rate,
-                                  t.is_lump_sum     as task_lump_sum,
-                                  t.lump_sum_amount as task_lump_sum_amount,
-                                  p.name            as project_name,
-                                  p.hourly_rate     as project_rate,
-                                  p.is_lump_sum     as project_lump_sum,
-                                  p.lump_sum_amount as project_lump_sum_amount,
-                                  c.name            as client_name
-                           FROM time_entries te
-                                    JOIN tasks t ON te.task_id = t.id
-                                    JOIN projects p ON t.project_id = p.id
-                                    JOIN clients c ON p.client_id = c.id
-                           WHERE c.id = ? AND DATE (te.start_time) BETWEEN ? AND ?
-                           ORDER BY te.start_time
-                           ''', (client_id, start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d")))
-            entries = cursor.fetchall()
+        conn = self.db.get_connection()
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
 
-        # Group entries based on user preference
+        cursor.execute('''
+                       SELECT *
+                       FROM invoice_view
+                       WHERE client_id = ?
+                         AND DATE (start_time) BETWEEN ?
+                         AND ?
+                         AND (is_billed = 0
+                          OR is_billed IS NULL)
+                       ''', (client_id, start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d")))
+
+        entries = cursor.fetchall()
+        conn.row_factory = None
+
+        if not entries:
+            messagebox.showinfo("No Unbilled Hours", "No unbilled hours found for the selected client and date range.")
+            return None
+
+        self.pending_entry_ids = [row['entry_id'] for row in entries]
         invoice_items = []
-        group_by = self.invoice_group_var.get()
 
-        if group_by == "project":
-            # Group by project
-            project_groups = {}
-            for entry in entries:
-                project_name = entry[12]
-                if project_name not in project_groups:
-                    project_groups[project_name] = {
-                        'entries': [],
-                        'total_minutes': 0,
-                        'project_rate': entry[13],
-                        'is_lump_sum': entry[14],
-                        'lump_sum_amount': entry[15]
-                    }
-                project_groups[project_name]['entries'].append(entry)
-                project_groups[project_name]['total_minutes'] += entry[4] or 0
+        # Simple task grouping
+        tasks = {}
+        for row in entries:
+            key = f"{row['project_name']} - {row['task_name']}"
+            if key not in tasks:
+                tasks[key] = {'minutes': 0, 'rate': row['task_rate'] or row['project_rate']}
+            tasks[key]['minutes'] += row['duration_minutes'] or 0
 
-            for project_name, data in project_groups.items():
-                total_hours = data['total_minutes'] / 60.0
-                if data['is_lump_sum']:
-                    amount = data['lump_sum_amount']
-                    rate_display = f"${amount:.2f}"
-                    qty_display = "1"
-                else:
-                    rate = data['project_rate']
-                    amount = total_hours * rate
-                    rate_display = f"${rate:.2f}/hr"
-                    qty_display = f"{total_hours:.2f}"
-
-                invoice_items.append({
-                    'description': f"Project: {project_name}",
-                    'quantity': qty_display,
-                    'rate': rate_display,
-                    'amount': amount
-                })
-
-        else:  # Group by task
-            task_groups = {}
-            for entry in entries:
-                task_name = entry[7]
-                if task_name not in task_groups:
-                    task_groups[task_name] = {
-                        'entries': [],
-                        'total_minutes': 0,
-                        'task_rate': entry[8],
-                        'is_lump_sum': entry[9],
-                        'lump_sum_amount': entry[10],
-                        'project_name': entry[12]
-                    }
-                task_groups[task_name]['entries'].append(entry)
-                task_groups[task_name]['total_minutes'] += entry[4] or 0
-
-            for task_name, data in task_groups.items():
-                total_hours = data['total_minutes'] / 60.0
-                if data['is_lump_sum']:
-                    amount = data['lump_sum_amount']
-                    rate_display = f"${amount:.2f}"
-                    qty_display = "1"
-                else:
-                    rate = data['task_rate']
-                    amount = total_hours * rate
-                    rate_display = f"${rate:.2f}/hr"
-                    qty_display = f"{total_hours:.2f}"
-
-                invoice_items.append({
-                    'description': f"{data['project_name']} - {task_name}",
-                    'quantity': qty_display,
-                    'rate': rate_display,
-                    'amount': amount
-                })
+        for task_name, data in tasks.items():
+            hours = data['minutes'] / 60.0
+            invoice_items.append({
+                'description': task_name,
+                'quantity': f"{hours:.2f} hrs",
+                'rate': f"${data['rate']:.2f}/hr",
+                'amount': hours * data['rate']
+            })
 
         return {
             'client_id': client_id,
@@ -1357,6 +1285,11 @@ class TimeTrackerApp:
         # Clear existing items
         for item in self.invoice_tree.get_children():
             self.invoice_tree.delete(item)
+
+        # Check if invoice data exists
+        if not self.current_invoice_data:
+            self.invoice_total_label.config(text="Total: $0.00")
+            return
 
         # Add invoice items
         for item in self.current_invoice_data['items']:
@@ -1375,9 +1308,13 @@ class TimeTrackerApp:
             messagebox.showerror("Error", "Please generate an invoice first")
             return
 
+        if not self.current_invoice_data:
+            messagebox.showerror("Error", "No invoice data available")
+            return
+
         # Generate invoice number based on date
         invoice_date = datetime.now()
-        invoice_number = invoice_date.strftime("%Y%m%d")
+        invoice_number = f"INV-{invoice_date.strftime('%Y%m%d-%H%M%S')}"
 
         filename = filedialog.asksaveasfilename(
             defaultextension=".pdf",
@@ -1386,10 +1323,40 @@ class TimeTrackerApp:
         )
 
         if filename:
-            from invoice_generator import InvoiceGenerator
-            generator = InvoiceGenerator(self.db)
-            generator.generate_pdf(self.current_invoice_data, filename, invoice_number)
-            messagebox.showinfo("Success", f"Invoice saved as {filename}")
+            try:
+                from invoice_generator import InvoiceGenerator
+                generator = InvoiceGenerator(self.db)
+                generator.generate_pdf(self.current_invoice_data, filename, invoice_number)
+
+                # Mark time entries as billed
+                if hasattr(self, 'pending_entry_ids') and self.pending_entry_ids:
+                    self.db.mark_entries_billed(self.pending_entry_ids, invoice_number)
+
+                    # Save to billing history
+                    self.db.save_billing_history(self.current_invoice_data, invoice_number, filename)
+
+                    # Clear pending entries
+                    self.pending_entry_ids = []
+
+                    messagebox.showinfo("Success",
+                                        f"Invoice saved as {filename}\n\n"
+                                        f"Time entries have been marked as billed and will not appear in future invoices.")
+                else:
+                    messagebox.showinfo("Success", f"Invoice saved as {filename}")
+
+                # Clear current invoice data
+                self.current_invoice_data = None
+
+                # Clear the preview
+                for item in self.invoice_tree.get_children():
+                    self.invoice_tree.delete(item)
+                self.invoice_total_label.config(text="Total: $0.00")
+
+                # Refresh time entries to show billed status
+                self.refresh_time_entries()
+
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to save invoice: {str(e)}")
 
     def edit_invoice_item(self):
         selection = self.invoice_tree.selection()
@@ -1428,36 +1395,27 @@ class TimeTrackerApp:
         button_frame = ttk.Frame(edit_window)
         button_frame.pack(fill='x', padx=10, pady=10)
 
-        def save_item_changes():
-            desc = desc_entry.get()
-            qty = qty_entry.get()
-            rate = rate_entry.get()
+        def save_changes():
+            # Update the tree item
+            self.invoice_tree.item(item_id, values=(
+                desc_entry.get(),
+                qty_entry.get(),
+                rate_entry.get(),
+                item_values[3]
+            ))
 
-            try:
-                qty_num = float(qty)
-                rate_num = float(rate.replace('$', '').replace('/hr', ''))
-                amount = qty_num * rate_num
+            # Recalculate if needed
+            if hasattr(self, 'current_invoice_data'):
+                for item in self.current_invoice_data['items']:
+                    if item['description'] == item_values[0]:
+                        item['description'] = desc_entry.get()
+                        item['quantity'] = qty_entry.get()
+                        item['rate'] = rate_entry.get()
+                        break
 
-                self.invoice_tree.item(item_id, values=(desc, qty, rate, f"${amount:.2f}"))
+            edit_window.destroy()
 
-                item_index = self.invoice_tree.index(item_id)
-                self.current_invoice_data['items'][item_index] = {
-                    'description': desc,
-                    'quantity': qty,
-                    'rate': rate,
-                    'amount': amount
-                }
-
-                total = sum(item['amount'] for item in self.current_invoice_data['items'])
-                self.current_invoice_data['total'] = total
-                self.invoice_total_label.config(text=f"Total: ${total:.2f}")
-
-                edit_window.destroy()
-
-            except ValueError:
-                messagebox.showerror("Error", "Invalid quantity or rate format")
-
-        ttk.Button(button_frame, text="Save", command=save_item_changes).pack(side='right', padx=5)
+        ttk.Button(button_frame, text="Save", command=save_changes).pack(side='right', padx=5)
         ttk.Button(button_frame, text="Cancel", command=edit_window.destroy).pack(side='right')
 
     def remove_invoice_item(self):
@@ -1466,103 +1424,210 @@ class TimeTrackerApp:
             messagebox.showerror("Error", "Please select an item to remove")
             return
 
-        if messagebox.askyesno("Confirm", "Remove this item from the invoice?"):
-            item_index = self.invoice_tree.index(selection[0])
-            self.invoice_tree.delete(selection[0])
+        # Get item description before removing
+        item_values = self.invoice_tree.item(selection[0])['values']
 
-            del self.current_invoice_data['items'][item_index]
+        # Remove from tree
+        self.invoice_tree.delete(selection[0])
 
-            total = sum(item['amount'] for item in self.current_invoice_data['items'])
-            self.current_invoice_data['total'] = total
-            self.invoice_total_label.config(text=f"Total: ${total:.2f}")
+        # Update invoice data if it exists
+        if hasattr(self, 'current_invoice_data'):
+            self.current_invoice_data['items'] = [
+                item for item in self.current_invoice_data['items']
+                if item['description'] != item_values[0]
+            ]
 
-    # Data refresh methods
+            # Recalculate total
+            self.current_invoice_data['total'] = sum(
+                item['amount'] for item in self.current_invoice_data['items']
+            )
+            self.invoice_total_label.config(
+                text=f"Total: ${self.current_invoice_data['total']:.2f}"
+            )
+
+    # Refresh methods
+    def refresh_clients(self):
+        # Clear tree
+        for item in self.client_tree.get_children():
+            self.client_tree.delete(item)
+
+        # Add clients
+        clients = self.client_model.get_all()
+        for client in clients:
+            self.client_tree.insert('', 'end', values=(
+                client[0],  # ID
+                client[1],  # Name
+                client[2] or "",  # Company
+                client[3] or "",  # Email
+                client[4] or ""  # Phone
+            ))
+
+    def refresh_projects(self):
+        # Clear tree
+        for item in self.project_tree.get_children():
+            self.project_tree.delete(item)
+
+        # Add projects
+        projects = self.project_model.get_all()
+        for project in projects:
+            # Project structure from models.py get_all():
+            # 0: id, 1: client_id, 2: name, 3: description,
+            # 4: hourly_rate, 5: is_lump_sum, 6: lump_sum_amount,
+            # 7: created_at, 8: updated_at, 9: client_name (from JOIN)
+
+            billing_type = "Lump Sum" if project[5] else "Hourly"
+            rate = f"${project[6]:.2f}" if project[5] else f"${project[4]:.2f}/hr"
+            client_name = project[9] if len(project) > 9 else "Unknown Client"
+
+            self.project_tree.insert('', 'end', values=(
+                project[0],  # ID
+                client_name,  # Client name (was project[7], should be project[9])
+                project[2],  # Project name
+                billing_type,
+                rate
+            ))
+
+    def refresh_tasks(self):
+        # Clear tree
+        for item in self.task_tree.get_children():
+            self.task_tree.delete(item)
+
+        # Add tasks
+        tasks = self.task_model.get_all()
+        for task in tasks:
+            # Task structure from models.py get_all():
+            # 0: id, 1: project_id, 2: name, 3: description,
+            # 4: hourly_rate, 5: is_lump_sum, 6: lump_sum_amount, 7: created_at
+            # 8: project_name, 9: client_name
+
+            billing_type = "Lump Sum" if task[5] else "Hourly"
+            rate = f"${task[6]:.2f}" if task[5] else f"${task[4]:.2f}/hr"
+
+            # Verify we have project and client names
+            project_name = task[8] if len(task) > 8 and task[8] else "Unknown Project"
+            client_name = task[9] if len(task) > 9 and task[9] else "Unknown Client"
+
+            self.task_tree.insert('', 'end', values=(
+                task[0],  # ID
+                project_name,  # Project name
+                client_name,  # Client name
+                task[2],  # Task name
+                billing_type,
+                rate
+            ))
+
+    def refresh_time_entries(self):
+        # Clear tree
+        for item in self.entries_tree.get_children():
+            self.entries_tree.delete(item)
+
+        # Add time entries
+        entries = self.time_entry_model.get_all()
+        for entry in entries:
+            duration_minutes = entry[6] if entry[6] else 0
+            duration_hours = duration_minutes / 60.0
+
+            # Format start time nicely
+            start_time = entry[4]
+            try:
+                dt = datetime.fromisoformat(start_time)
+                start_display = dt.strftime("%m/%d/%y %I:%M %p")
+            except:
+                start_display = start_time
+
+            # Add billed indicator
+            is_billed = entry[8]
+            billed_indicator = " [BILLED]" if is_billed else ""
+
+            self.entries_tree.insert('', 'end', values=(
+                entry[0],  # ID
+                entry[1],  # Client name
+                entry[2],  # Project name
+                entry[3] + billed_indicator,  # Task name with billed indicator
+                start_display,  # Start time formatted
+                f"{duration_hours:.2f}",  # Duration in hours
+                entry[7] or ""  # Description
+            ))
+
+    def refresh_combos(self):
+        # Refresh timer combos
+        clients = self.client_model.get_all()
+        client_names = [c[1] for c in clients]
+        self.timer_client_combo['values'] = client_names
+
+        # Refresh project combo
+        self.project_client_combo['values'] = client_names
+
+        # Refresh task client combo
+        self.task_client_combo['values'] = client_names
+
+        # Refresh task combo for manual entry
+        tasks = self.task_model.get_all()
+        task_displays = []
+        for task in tasks:
+            client_name = task[9] if len(task) > 9 else "Unknown"
+            project_name = task[8] if len(task) > 8 else "Unknown"
+            task_displays.append(f"{client_name} - {project_name} - {task[2]}")
+        self.manual_task_combo['values'] = task_displays
+
+        # Refresh invoice client combo
+        self.invoice_client_combo['values'] = client_names
+
+    def generate_invoice_data(self, client_id, start_date, end_date):
+        # Get connection directly (not using context manager for row_factory)
+        conn = self.db.conn
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+
+        cursor.execute('''
+                       SELECT *
+                       FROM invoice_view
+                       WHERE client_id = ?
+                         AND DATE (start_time) BETWEEN ?
+                         AND ?
+                         AND (is_billed = 0
+                          OR is_billed IS NULL)
+                       ''', (client_id, start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d")))
+
+        entries = cursor.fetchall()
+        conn.row_factory = None  # Reset to default
+
+        if not entries:
+            messagebox.showinfo("No Unbilled Hours", "No unbilled hours found for the selected client and date range.")
+            return None
+
+        self.pending_entry_ids = [row['entry_id'] for row in entries]
+        invoice_items = []
+
+        # Simple task grouping
+        tasks = {}
+        for row in entries:
+            key = f"{row['project_name']} - {row['task_name']}"
+            if key not in tasks:
+                tasks[key] = {'minutes': 0, 'rate': row['task_rate'] or row['project_rate']}
+            tasks[key]['minutes'] += row['duration_minutes'] or 0
+
+        for task_name, data in tasks.items():
+            hours = data['minutes'] / 60.0
+            invoice_items.append({
+                'description': task_name,
+                'quantity': f"{hours:.2f} hrs",
+                'rate': f"${data['rate']:.2f}/hr",
+                'amount': hours * data['rate']
+            })
+
+        return {
+            'client_id': client_id,
+            'start_date': start_date,
+            'end_date': end_date,
+            'items': invoice_items,
+            'total': sum(item['amount'] for item in invoice_items)
+        }
+
     def refresh_all_data(self):
         self.refresh_clients()
         self.refresh_projects()
         self.refresh_tasks()
         self.refresh_time_entries()
         self.refresh_combos()
-
-    def refresh_clients(self):
-        for item in self.client_tree.get_children():
-            self.client_tree.delete(item)
-
-        clients = self.client_model.get_all()
-        for client in clients:
-            self.client_tree.insert('', 'end', values=(
-                client[0], client[1], client[2] or '', client[3] or '', client[4] or ''
-            ))
-
-    def refresh_projects(self):
-        for item in self.project_tree.get_children():
-            self.project_tree.delete(item)
-
-        projects = self.project_model.get_all()
-        for project in projects:
-            billing_type = "Lump Sum" if project[5] else "Hourly"
-            rate_amount = project[6] if project[5] else project[4]
-            client_name = project[7] if len(project) > 7 else "Unknown Client"
-
-            self.project_tree.insert('', 'end', values=(
-                project[0], client_name, project[2], billing_type, f"${rate_amount:.2f}"
-            ))
-
-    def refresh_tasks(self):
-        for item in self.task_tree.get_children():
-            self.task_tree.delete(item)
-
-        tasks = self.task_model.get_all()
-        for task in tasks:
-            # New column structure: id, name, project_name, client_name, project_id, client_id, description, hourly_rate, is_lump_sum, lump_sum_amount, created_at, updated_at
-            billing_type = "Lump Sum" if task[8] else "Hourly"  # is_lump_sum is now at index 8
-            rate_amount = task[9] if task[8] else task[7]  # lump_sum_amount at 9, hourly_rate at 7
-            project_name = task[2] if len(task) > 2 else "Unknown Project"  # project_name at index 2
-            client_name = task[3] if len(task) > 3 else "Unknown Client"  # client_name at index 3
-
-            self.task_tree.insert('', 'end', values=(
-                task[0], project_name, client_name, task[1], billing_type, f"${rate_amount:.2f}"
-            ))
-
-    def refresh_time_entries(self):
-        for item in self.entries_tree.get_children():
-            self.entries_tree.delete(item)
-
-        entries = self.time_entry_model.get_all()
-        for entry in entries:
-            duration_display = f"{entry[4] or 0} min" if entry[4] else "N/A"
-            start_time_display = entry[2][:16] if entry[2] else "N/A"
-            client_name = entry[10] if len(entry) > 10 else "Unknown"
-            project_name = entry[9] if len(entry) > 9 else "Unknown"
-            task_name = entry[8] if len(entry) > 8 else "Unknown"
-
-            self.entries_tree.insert('', 'end', values=(
-                entry[0], client_name, project_name, task_name, start_time_display, duration_display, entry[5] or ''
-            ))
-
-    def refresh_combos(self):
-        # Refresh client combos
-        clients = self.client_model.get_all()
-        client_names = [client[1] for client in clients]
-
-        self.project_client_combo['values'] = client_names
-        self.invoice_client_combo['values'] = client_names
-        self.timer_client_combo['values'] = client_names
-        self.manual_client_combo['values'] = client_names
-
-        # Clear the dependent combos since they now depend on selections
-        self.timer_project_combo['values'] = []
-        self.manual_project_combo['values'] = []
-        self.task_combo['values'] = []
-        self.manual_task_combo['values'] = []
-
-        # Refresh project combos for the Tasks tab (unchanged)
-        projects = self.project_model.get_all()
-        if projects:
-            project_displays = []
-            for project in projects:
-                client_id = project[1]  # client_id is at index 1
-                client = self.client_model.get_by_id(client_id)
-                client_name = client[1] if client else "Unknown Client"
-                project_displays.append(f"{client_name} - {project[2]}")
-            self.task_project_combo['values'] = project_displays
+        self.load_company_info()
