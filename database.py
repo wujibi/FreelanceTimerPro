@@ -2,17 +2,23 @@
 Database Manager for Time Tracking App
 Handles all database operations including time entries, clients, projects, and billing
 """
-
-import sqlite3
 import os
+import sqlite3
+
 from datetime import datetime, timedelta
 from pathlib import Path
 from contextlib import contextmanager
 
 
 class DatabaseManager:
+    # In database.py __init__ method
     def __init__(self, db_path="data/time_tracker.db"):
         """Initialize database manager and create data directory if needed"""
+        # Convert to absolute path based on script location
+        if not os.path.isabs(db_path):
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            db_path = os.path.join(script_dir, db_path)
+
         self.db_path = db_path
 
         # Create data directory if it doesn't exist
@@ -20,7 +26,7 @@ class DatabaseManager:
         data_dir.mkdir(exist_ok=True)
 
         self.conn = sqlite3.connect(db_path, check_same_thread=False)
-        self.conn.execute("PRAGMA foreign_keys = ON")  # Enable foreign key constraints
+        self.conn.execute("PRAGMA foreign_keys = ON")
 
         # Comprehensive database setup
         self.setup_database()
@@ -34,10 +40,18 @@ class DatabaseManager:
         """Comprehensive database setup with validation and migration"""
         print("Setting up database...")
 
-        # Create all base tables
+        # Check if database is new or existing
+        db_is_new = not os.path.exists(self.db_path) or os.path.getsize(self.db_path) == 0
+
+        if db_is_new:
+            print("Creating new database...")
+        else:
+            print(f"Using existing database at: {self.db_path}")
+
+        # Create all base tables (uses IF NOT EXISTS, so safe)
         self.create_all_tables()
 
-        # Validate and fix schema
+        # Validate and fix schema (only adds missing columns, doesn't drop data)
         self.validate_and_fix_schema()
 
         # Debug output

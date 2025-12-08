@@ -14,6 +14,7 @@ class Client:
                            INSERT INTO clients (name, company, email, phone, address)
                            VALUES (?, ?, ?, ?, ?)
                            ''', (name, company, email, phone, address))
+            conn.commit()  # ADDED
             return cursor.lastrowid
 
     def get_all(self):
@@ -40,11 +41,13 @@ class Client:
                                address=?
                            WHERE id = ?
                            ''', (name, company, email, phone, address, client_id))
+            conn.commit()  # ADDED
 
     def delete(self, client_id):
         with self.db.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute('DELETE FROM clients WHERE id=?', (client_id,))
+            conn.commit()  # ADDED
 
 
 class Project:
@@ -59,6 +62,7 @@ class Project:
                                                  lump_sum_amount)
                            VALUES (?, ?, ?, ?, ?, ?)
                            ''', (client_id, name, description, hourly_rate, is_lump_sum, lump_sum_amount))
+            conn.commit()  # ADDED
             return cursor.lastrowid
 
     def get_by_client(self, client_id):
@@ -103,11 +107,13 @@ class Project:
                                lump_sum_amount=?
                            WHERE id = ?
                            ''', (client_id, name, description, hourly_rate, is_lump_sum, lump_sum_amount, project_id))
+            conn.commit()  # ADDED
 
     def delete(self, project_id):
         with self.db.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute('DELETE FROM projects WHERE id=?', (project_id,))
+            conn.commit()  # ADDED
 
 
 class Task:
@@ -121,6 +127,7 @@ class Task:
                            INSERT INTO tasks (project_id, name, description, hourly_rate, is_lump_sum, lump_sum_amount)
                            VALUES (?, ?, ?, ?, ?, ?)
                            ''', (project_id, name, description, hourly_rate, is_lump_sum, lump_sum_amount))
+            conn.commit()  # ADDED
             return cursor.lastrowid
 
     def get_by_project(self, project_id):
@@ -166,11 +173,13 @@ class Task:
                                lump_sum_amount=?
                            WHERE id = ?
                            ''', (name, description, hourly_rate, is_lump_sum, lump_sum_amount, task_id))
+            conn.commit()  # ADDED
 
     def delete(self, task_id):
         with self.db.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute('DELETE FROM tasks WHERE id=?', (task_id,))
+            conn.commit()  # ADDED
 
 
 class TimeEntry:
@@ -210,6 +219,7 @@ class TimeEntry:
                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0)
                            ''', (task_id, task_name, project_id, project_name,
                                  client_id, client_name, date_str, start_time.isoformat(), description))
+            conn.commit()  # ADDED
             self.current_entry = cursor.lastrowid
             return self.current_entry
 
@@ -232,6 +242,7 @@ class TimeEntry:
                                        duration=?
                                    WHERE id = ?
                                    ''', (end_time.isoformat(), duration_minutes, duration_hours, self.current_entry))
+                    conn.commit()  # ADDED
             self.current_entry = None
 
     def add_manual_entry(self, task_id, start_time, end_time, description=""):
@@ -267,6 +278,7 @@ class TimeEntry:
                            ''', (task_id, task_name, project_id, project_name,
                                  client_id, client_name, date_str, start_time.isoformat(), end_time.isoformat(),
                                  duration_minutes, duration_hours, description))
+            conn.commit()  # ADDED
             return cursor.lastrowid
 
     def get_by_task(self, task_id):
@@ -320,11 +332,13 @@ class TimeEntry:
                            ''',
                            (start_time.isoformat(), end_time.isoformat(), duration_minutes, duration_hours, description,
                             entry_id))
+            conn.commit()  # ADDED
 
     def delete(self, entry_id):
         with self.db.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute('DELETE FROM time_entries WHERE id=?', (entry_id,))
+            conn.commit()  # ADDED
 
 
 class CompanyInfo:
@@ -338,6 +352,7 @@ class CompanyInfo:
                 INSERT OR REPLACE INTO company_info (id, name, address, phone, email, logo_path)
                 VALUES (1, ?, ?, ?, ?, ?)
             ''', (name, address, phone, email, logo_path))
+            conn.commit()  # ADDED
 
     def get(self):
         with self.db.get_connection() as conn:

@@ -107,6 +107,7 @@ def launch_app():
     print("All checks passed! Launching Time Tracker App...")
     print("=" * 50)
     print()
+    print(f"Database location: {os.path.abspath('data/time_tracker.db')}")
 
     try:
         # Launch main application

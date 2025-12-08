@@ -378,7 +378,7 @@ class TimeTrackerApp:
         list_frame.pack(fill='both', expand=True, padx=10, pady=10)
 
         self.entries_tree = ttk.Treeview(list_frame, columns=('ID', 'Client', 'Project', 'Task', 'Start', 'Duration',
-                                                              'Description'), show='headings')
+                                                              'Description'), show='headings', selectmode='extended')
         self.entries_tree.heading('ID', text='ID')
         self.entries_tree.heading('Client', text='Client')
         self.entries_tree.heading('Project', text='Project')
@@ -401,8 +401,12 @@ class TimeTrackerApp:
         entry_button_frame = ttk.Frame(list_frame)
         entry_button_frame.pack(fill='x', padx=10, pady=5)
 
-        ttk.Button(entry_button_frame, text="Edit Entry", command=self.edit_time_entry).pack(side='left', padx=5)
-        ttk.Button(entry_button_frame, text="Delete Entry", command=self.delete_time_entry).pack(side='left', padx=5)
+        ttk.Button(entry_button_frame, text="Invoice Selected",
+                   command=self.invoice_selected_entries).pack(side='left', padx=5)
+        ttk.Button(entry_button_frame, text="Edit Entry",
+                   command=self.edit_time_entry).pack(side='left', padx=5)
+        ttk.Button(entry_button_frame, text="Delete Entry",
+                   command=self.delete_time_entry).pack(side='left', padx=5)
 
     def create_company_tab(self):
         # Company info tab
@@ -632,19 +636,26 @@ class TimeTrackerApp:
         client_name = self.timer_client_combo.get()
 
         if project_name and client_name:
-            # Get project ID
+            # Get project ID by matching client and project names
             projects = self.project_model.get_all()
             project_id = None
             for project in projects:
-                if project[2] == project_name and project[7] == client_name:
+                # project structure: [0:id, 1:client_id, 2:name, ..., 9:client_name]
+                proj_client_name = project[9] if len(project) > 9 else None
+                if proj_client_name == client_name and project[2] == project_name:
                     project_id = project[0]
                     break
 
             if project_id:
                 # Load tasks for this project
                 tasks = self.task_model.get_by_project(project_id)
+                # Task display format: "Client - Project - Task Name"
                 task_displays = [f"{client_name} - {project_name} - {t[2]}" for t in tasks]
                 self.timer_task_combo['values'] = task_displays
+                self.timer_task_combo.set('')
+            else:
+                # No project found, clear tasks
+                self.timer_task_combo['values'] = []
                 self.timer_task_combo.set('')
 
     def on_task_client_select(self, event):
@@ -734,6 +745,13 @@ class TimeTrackerApp:
         if not name:
             messagebox.showerror("Error", "Client name is required")
             return
+
+        # CHECK FOR DUPLICATE CLIENT NAME
+        existing_clients = self.client_model.get_all()
+        for client in existing_clients:
+            if client[1].lower() == name.lower():  # Case-insensitive comparison
+                messagebox.showerror("Error", f"Client '{name}' already exists")
+                return
 
         self.client_model.create(name, company, email, phone, address)
         self.clear_client_form()
@@ -827,6 +845,13 @@ class TimeTrackerApp:
         if not client_id:
             messagebox.showerror("Error", "Invalid client selected")
             return
+
+        # CHECK FOR DUPLICATE PROJECT NAME UNDER SAME CLIENT
+        existing_projects = self.project_model.get_by_client(client_id)
+        for proj in existing_projects:
+            if proj[2].lower() == name.lower():  # Case-insensitive comparison
+                messagebox.showerror("Error", f"Project '{name}' already exists for this client")
+                return
 
         rate = float(self.project_rate_entry.get() or 0)
         is_lump_sum = self.project_billing_var.get() == "lump_sum"
@@ -954,6 +979,13 @@ class TimeTrackerApp:
         if not project_id:
             messagebox.showerror("Error", "Invalid project selected")
             return
+
+        # CHECK FOR DUPLICATE TASK NAME UNDER SAME PROJECT
+        existing_tasks = self.task_model.get_by_project(project_id)
+        for task in existing_tasks:
+            if task[2].lower() == name.lower():  # Case-insensitive comparison
+                messagebox.showerror("Error", f"Task '{name}' already exists for this project")
+                return
 
         description = self.task_desc_text.get("1.0", tk.END).strip()
         rate = float(self.task_rate_entry.get() or 0)
@@ -1158,6 +1190,173 @@ class TimeTrackerApp:
             self.time_entry_model.delete(entry_id)
             self.refresh_time_entries()
             messagebox.showinfo("Success", "Time entry deleted successfully")
+
+    def invoice_selected_entries(self):
+        """Generate invoice from selected time entries"""
+        selection = self.entries_tree.selection()
+        if not selection:
+            messagebox.showerror("Error", "Please select one or more time entries to invoice")
+            return
+
+        # Get selected entry IDs and check if any are already billed
+        entry_ids = []
+        billed_entries = []
+        client_id = None
+        client_name = None
+
+        for item in selection:
+            entry_id = self.entries_tree.item(item)['values'][0]
+            entry_client = self.entries_tree.item(item)['values'][1]
+            entry_task = self.entries_tree.item(item)['values'][3]
+
+            # Check if already billed
+            if '[BILLED]' in entry_task:
+                billed_entries.append(entry_id)
+                continue
+
+            entry_ids.append(entry_id)
+
+            # Get client_id from first entry
+            if client_id is None:
+                client_name = entry_client
+                # Find client ID
+                clients = self.client_model.get_all()
+                for client in clients:
+                    if client[1] == entry_client:
+                        client_id = client[0]
+                        break
+
+        # Warn about billed entries
+        if billed_entries:
+            messagebox.showwarning("Already Billed",
+                                   f"{len(billed_entries)} selected entry(ies) already billed and will be skipped.")
+
+        if not entry_ids:
+            messagebox.showerror("Error", "No unbilled entries selected")
+            return
+
+        if not client_id:
+            messagebox.showerror("Error", "Could not determine client for selected entries")
+            return
+
+        # Verify all entries are from same client
+        for item in selection:
+            if self.entries_tree.item(item)['values'][1] != client_name:
+                messagebox.showerror("Error",
+                                     "All selected entries must be from the same client.\n"
+                                     "Please select entries from one client only.")
+                return
+
+        # Confirm before generating invoice
+        if not messagebox.askyesno("Confirm Invoice",
+                                   f"Generate invoice for {len(entry_ids)} time entry(ies) from {client_name}?"):
+            return
+
+        # Generate invoice from selected entries
+        self.generate_invoice_from_entries(client_id, client_name, entry_ids)
+
+    def generate_invoice_from_entries(self, client_id, client_name, entry_ids):
+        """Generate invoice data from specific entry IDs"""
+        import sqlite3
+
+        # Get entry details
+        conn = self.db.conn
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+
+        placeholders = ','.join(['?' for _ in entry_ids])
+        cursor.execute(f'''
+            SELECT * FROM invoice_view
+            WHERE entry_id IN ({placeholders})
+            AND (is_billed = 0 OR is_billed IS NULL)
+        ''', entry_ids)
+
+        entries = cursor.fetchall()
+        conn.row_factory = None
+
+        if not entries:
+            messagebox.showinfo("No Entries", "Selected entries are already billed or not found.")
+            return
+
+        self.pending_entry_ids = [row['entry_id'] for row in entries]
+        invoice_items = []
+
+        # Group by task
+        tasks = {}
+        for row in entries:
+            key = f"{row['project_name']} - {row['task_name']}"
+            if key not in tasks:
+                # Check if it's a lump sum task
+                if row['task_lump_sum']:
+                    tasks[key] = {
+                        'minutes': 0,
+                        'rate': 0,
+                        'is_lump_sum': True,
+                        'lump_sum_amount': row['task_lump_amount']
+                    }
+                elif row['project_lump_sum']:
+                    tasks[key] = {
+                        'minutes': 0,
+                        'rate': 0,
+                        'is_lump_sum': True,
+                        'lump_sum_amount': row['project_lump_amount']
+                    }
+                else:
+                    tasks[key] = {
+                        'minutes': 0,
+                        'rate': row['task_rate'] or row['project_rate'],
+                        'is_lump_sum': False,
+                        'lump_sum_amount': 0
+                    }
+
+            tasks[key]['minutes'] += row['duration_minutes'] or 0
+
+        # Build invoice items
+        for task_name, data in tasks.items():
+            hours = data['minutes'] / 60.0
+
+            if data['is_lump_sum']:
+                invoice_items.append({
+                    'description': task_name,
+                    'quantity': '1',
+                    'rate': f"${data['lump_sum_amount']:.2f}",
+                    'amount': data['lump_sum_amount']
+                })
+            else:
+                invoice_items.append({
+                    'description': task_name,
+                    'quantity': f"{hours:.2f} hrs",
+                    'rate': f"${data['rate']:.2f}/hr",
+                    'amount': hours * data['rate']
+                })
+
+        # Get earliest and latest dates from selected entries
+        start_date = None
+        end_date = None
+        for row in entries:
+            entry_date = datetime.fromisoformat(row['start_time']).date()
+            if start_date is None or entry_date < start_date:
+                start_date = entry_date
+            if end_date is None or entry_date > end_date:
+                end_date = entry_date
+
+        # Create invoice data
+        self.current_invoice_data = {
+            'client_id': client_id,
+            'start_date': datetime.combine(start_date, datetime.min.time()),
+            'end_date': datetime.combine(end_date, datetime.max.time()),
+            'items': invoice_items,
+            'total': sum(item['amount'] for item in invoice_items)
+        }
+
+        # Switch to Invoices tab and display preview
+        self.notebook.select(6)  # Invoices tab is index 6
+        self.display_invoice_preview()
+
+        messagebox.showinfo("Invoice Generated",
+                            f"Invoice preview ready for {client_name}\n"
+                            f"Total: ${self.current_invoice_data['total']:.2f}\n\n"
+                            "Review and click 'Save as PDF' to finalize.")
 
     # Company info methods
     def browse_logo(self):
