@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 from datetime import datetime, timedelta
-from database import DatabaseManager
+from db_manager import DatabaseManager
 from models import Client, Project, Task, TimeEntry, CompanyInfo
 import sqlite3
 import threading
@@ -9,26 +9,63 @@ import time
 
 
 class TimeTrackerApp:
-    def __init__(self, root):
-        self.root = root
-        self.root.title("Time Tracker Pro")
-        self.root.geometry("1200x800")
+    def __init__(self, root, db_path=None):
+        """Initialize the Time Tracker application.
 
-        # Initialize database and models
-        self.db = DatabaseManager()
-        self.client_model = Client(self.db)
-        self.project_model = Project(self.db)
-        self.task_model = Task(self.db)
-        self.time_entry_model = TimeEntry(self.db)
-        self.company_model = CompanyInfo(self.db)
+        Args:
+            root: The tkinter root window
+            db_path: Path to the database file (optional, defaults to 'time_tracker.db')
+        """
+        try:
+            print("[DEBUG] TimeTrackerApp.__init__ starting...")
+            self.root = root
+            self.root.title("Time Tracker Pro")
+            self.root.geometry("1200x800")
 
-        # Timer variables
-        self.timer_running = False
-        self.timer_start_time = None
-        self.current_task_id = None
+            # Initialize database with the provided path
+            if db_path:
+                print(f"[DEBUG] Initializing DatabaseManager with path: {db_path}")
+                self.db = DatabaseManager(db_path)
+            else:
+                print(f"[DEBUG] Initializing DatabaseManager with default path")
+                self.db = DatabaseManager()
 
-        self.create_widgets()
-        self.refresh_all_data()
+            print(f"[DEBUG] DatabaseManager initialized successfully")
+
+            # Initialize models
+            print("[DEBUG] Initializing models...")
+            self.client_model = Client(self.db)
+            self.project_model = Project(self.db)
+            self.task_model = Task(self.db)
+            self.time_entry_model = TimeEntry(self.db)
+            self.company_model = CompanyInfo(self.db)
+            print("[DEBUG] Models initialized")
+
+            # Timer variables
+            self.timer_running = False
+            self.timer_start_time = None
+            self.current_task_id = None
+            print("[DEBUG] Timer variables initialized")
+
+            print("[DEBUG] Creating widgets...")
+            self.create_widgets()
+            print("[DEBUG] Widgets created")
+
+            print("[DEBUG] Refreshing data...")
+            self.refresh_all_data()
+            print("[DEBUG] Data refreshed")
+
+            print("[DEBUG] TimeTrackerApp initialization complete!")
+
+        except Exception as e:
+            print(f"\n{'=' * 60}")
+            print(f"ERROR IN TimeTrackerApp.__init__:")
+            print(f"{'=' * 60}")
+            print(f"{e}")
+            import traceback
+            traceback.print_exc()
+            print(f"{'=' * 60}\n")
+            raise
 
     def create_widgets(self):
         # Create notebook for tabs

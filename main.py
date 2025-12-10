@@ -1,20 +1,17 @@
 import os
 print(f"Current working directory: {os.getcwd()}")
 print(f"Script location: {os.path.dirname(os.path.abspath(__file__))}")
-print(f"Database will be at: {os.path.abspath('data/time_tracker.db')}")
 
+# Import database path from config
+from config import DB_PATH
 
 import tkinter as tk
 from gui import TimeTrackerApp
 
 def main():
-    # Create main window
+    print(f"[DEBUG] Using database: {DB_PATH}")
     root = tk.Tk()
-    
-    # Create and run the application
-    app = TimeTrackerApp(root)
-    
-    # Start the GUI event loop
+    app = TimeTrackerApp(root, db_path=DB_PATH)
     root.mainloop()
 
 if __name__ == "__main__":
