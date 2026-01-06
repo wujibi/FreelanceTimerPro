@@ -1,501 +1,273 @@
-# Project Summary & Next Steps
+# Time Tracker Pro - Project Status
 
-## Summary Document for Repository
+**Last Updated:** January 6, 2026 - 2:00 PM
 
-**File: PROJECT_STATUS.md**
+---
 
-```markdown
-# Time Tracker Pro - Project Status & Documentation
-
-## ✅ COMPLETED FEATURES (As of Dec 8, 2025)
+## ✅ COMPLETED FEATURES
 
 ### Core Functionality
-- ✅ Client Management (Add, Edit, Delete, View)
+- ✅ Client Management (CRUD operations)
 - ✅ Project Management (Hourly & Lump Sum billing)
-- ✅ Task Management (Linked to Projects)
-- ✅ Time Entry Tracking (Manual & Timer-based)
+- ✅ Task Management
+- ✅ Time Entry Tracking (Timer + Manual entry)
+- ✅ Decimal hours entry mode (e.g., 1.5 hours)
 - ✅ Invoice Generation with PDF export
-- ✅ **Billing Prevention System** - No double-billing
-- ✅ Company Information management (for invoices)
+- ✅ Billing Prevention System (no double-billing)
+- ✅ **NEW: Billed Invoices Tracking Tab**
+- ✅ **NEW: Payment Status Management (Paid/Unpaid)**
+- ✅ **NEW: Desktop & Start Menu Launcher with Custom Icon**
+- ✅ Company Information management
 
-### Billing Prevention System
-- Time entries marked as billed after invoice generation
-- Billed entries excluded from future invoices
-- Visual "[BILLED]" indicator on Time Entries tab
-- Billing history stored in database
+### Billing & Payment System
+- Time entries marked as billed after invoice creation
+- Billed entries excluded from future invoices  
+- Visual "[BILLED]" indicator on entries
+- **Payment tracking with paid/unpaid status**
+- **Date paid recording**
+- **Undo payment feature (mark as unpaid)**
+- **Separate views for Paid/Unpaid/All invoices**
 - Invoice number tracking for audit trail
+- Billing history stored in database
 
-### Database Schema
-**Tables:**
+---
+
+## 📁 DATABASE SCHEMA
+
+### Tables
 - `clients` - Client information
-- `projects` - Projects linked to clients
+- `projects` - Projects (hourly or lump sum)
 - `tasks` - Tasks linked to projects
 - `time_entries` - Time tracking with billing status
 - `company_info` - Company details for invoices
-- `billing_history` - Invoice records
+- `billing_history` - Invoice records **+ payment tracking**
 - `billing_entry_link` - Links invoices to time entries
-- `billing_records` - Legacy billing data
-- `invoice_view` - Database view for simplified queries
+- `invoice_view` - Simplified query view
 
-**Key Columns:**
-- `time_entries.is_billed` - Tracks billing status (0=unbilled, 1=billed)
+### Key Columns (Recently Added)
+- `billing_history.is_paid` - Payment status (0=unpaid, 1=paid)
+- `billing_history.date_paid` - Date payment received
+- `time_entries.is_billed` - Billing status
 - `time_entries.invoice_number` - Links to invoice
-- `time_entries.billing_date` - When entry was billed
-
-### User Interface
-- 7 Main Tabs: Timer, Clients, Projects, Tasks, Time Entries, Company Info, Invoices
-- Date format: MM/DD/YY throughout
-- Time format: HH:MM AM/PM
-- Hierarchical selection: Client → Project → Task
 
 ---
 
-## 📋 CURRENT FILE STRUCTURE
+## 🎨 USER INTERFACE
 
+### 8 Main Tabs
+1. **Timer** - Active timer + manual entry + daily totals
+2. **Clients** - Client CRUD
+3. **Projects** - Project CRUD
+4. **Tasks** - Task CRUD  
+5. **Time Entries** - View all entries hierarchically
+6. **Company Info** - Invoice header info
+7. **Invoices** - Generate new invoices
+8. **💰 Billed Invoices** - NEW! Track payment status
+
+### Billed Invoices Tab Features
+- View filters: Unpaid / Paid / All
+- Display: Invoice #, Client, Date, Amount, Status, Date Paid
+- Actions:
+  - Mark as PAID (with date picker)
+  - Mark as UNPAID (undo)
+  - View invoice details
+- Summary: Count + Total amount display
+
+---
+
+## 🎯 APPLICATION LAUNCHER
+
+### Desktop & Start Menu Integration
+- ✅ Custom blue clock icon (`timetracker.ico`)
+- ✅ Desktop shortcut created
+- ✅ Start Menu shortcut created
+- ✅ Pin to taskbar enabled
+- ✅ No console window on launch
+
+### Launcher Files
+- `timetracker.ico` - Custom icon (256x256 multi-size)
+- `create_icon.py` - Icon generator script
+- `create_desktop_shortcut.vbs` - Desktop shortcut creator
+- `create_start_menu_shortcut.vbs` - Start Menu installer
+- `launcher.pyw` - No-console Python launcher
+- `launch_timetracker.bat` - Batch file alternative
+
+---
+
+## 🔧 RECENT CHANGES (Jan 6, 2026)
+
+### Database Migration
+✅ Added `is_paid` column to `billing_history`  
+✅ Added `date_paid` column to `billing_history`  
+✅ Migration script: `add_payment_tracking.py`
+
+### New Database Methods
+```python
+db.mark_invoice_paid(invoice_number, date_paid)
+db.mark_invoice_unpaid(invoice_number)
+db.get_invoice_by_number(invoice_number)
+db.get_billing_history(paid_status=0/1/None)
 ```
-TimeTrackerApp/
-├── main.py                  # Application entry point
-├── launcher.py              # Pre-flight checks and launcher
-├── database.py              # Database manager with billing methods
-├── models.py                # Data models (Client, Project, Task, TimeEntry, CompanyInfo)
-├── gui.py                   # Main GUI application (largest file)
-├── invoice_generator.py     # PDF invoice generation using reportlab
-├── requirements.txt         # Python dependencies
-├── data/
-│   └── time_tracker.db      # SQLite database
-└── migration scripts/       # (Keep for reference)
-    ├── db_migration_billing.py
-    ├── fix_foreign_keys.py
-    ├── fix_time_entries.py
-    └── final_fix.py
-```
+
+### GUI Updates
+- Created `create_billed_invoices_tab()` method
+- Added `refresh_billed_invoices()` method
+- Added `mark_invoices_paid_dialog()` method
+- Added `mark_invoices_unpaid()` method
+- Updated `refresh_all_data()` to include billed invoices
+
+### Launcher Integration
+- Created custom icon with Pillow
+- VBS scripts for automated shortcut creation
+- Multi-size .ico file for all Windows contexts
 
 ---
 
-## 🎯 PRIORITY ENHANCEMENTS (Next Phase)
+## 🎯 TESTING CHECKLIST
 
-### High Priority
-1. **UI/UX Improvements**
-   - Modern color scheme (currently default tkinter gray)
-   - Better fonts and spacing
-   - Icons for buttons
-   - Status bar at bottom
-   - Tooltips for guidance
-
-2. **Invoice Customization**
-   - Editable invoice template/messaging
-   - Custom invoice footer text
-   - Multiple invoice templates
-   - Invoice notes field
-   - Payment terms field
-
-3. **Reporting Dashboard**
-   - Unbilled hours by client
-   - Revenue reports (billed vs unbilled)
-   - Time worked by project/task
-   - Weekly/monthly summaries
-   - Export reports to CSV/Excel
-
-### Medium Priority
-4. **Billing History Viewer**
-   - New tab showing all past invoices
-   - Filter by client/date range
-   - View which time entries were on each invoice
-   - Re-generate/print past invoices
-   - Edit/void invoice capability
-
-5. **Data Management**
-   - Backup/restore functionality
-   - Export all data to CSV
-   - Import time entries from CSV
-   - Database optimization tools
-
-6. **Enhanced Time Tracking**
-   - Pause/resume timer
-   - Daily time entry summary
-   - Notifications/reminders
-   - Bulk edit time entries
-
-### Low Priority
-7. **Advanced Features**
-   - Email integration (send invoices)
-   - Recurring invoices
-   - Payment tracking (paid/unpaid status)
-   - Multi-currency support
-   - Tax calculations
-
----
-
-## 🐛 KNOWN ISSUES / CONSIDERATIONS
-
-### None Critical Currently
-- App works with fresh database
-- All CRUD operations functional
-- Billing prevention working as expected
-
-### Future Monitoring
-- Performance with large datasets (1000+ entries)
-- Database query optimization may be needed
-- Consider indexes on frequently queried columns
-
----
-
-## 🔧 TESTING CHECKLIST (For Real-World Use)
-
-### Basic Workflow
-- [ ] Add multiple clients
-- [ ] Add multiple projects per client
-- [ ] Add multiple tasks per project
-- [ ] Use timer to track time
-- [ ] Add manual time entries
-- [ ] Edit time entries
-- [ ] Delete time entries
-
-### Billing Workflow
-- [ ] Generate invoice for client
-- [ ] Verify only unbilled hours appear
-- [ ] Save invoice as PDF
-- [ ] Verify entries marked as [BILLED]
-- [ ] Try to generate invoice again (should show "no unbilled hours")
-- [ ] Verify PDF looks professional
+### Payment Workflow
+- [ ] Generate invoice and save PDF
+- [ ] Verify invoice appears in "Unpaid" view
+- [ ] Select invoice and mark as PAID with date
+- [ ] Verify invoice moves to "Paid" view
+- [ ] Test "Mark as UNPAID" (undo feature)
+- [ ] Verify date paid is cleared after undo
 
 ### Edge Cases
-- [ ] Client with no projects
-- [ ] Project with no tasks
-- [ ] Invoice with zero hours
-- [ ] Very long descriptions
-- [ ] Special characters in names
-- [ ] Multiple invoices for same client (different date ranges)
+- [ ] Multiple invoices paid on same date
+- [ ] Invalid date format handling
+- [ ] No selection when clicking buttons
+- [ ] Filter switching (Paid/Unpaid/All)
 
 ---
 
-## 💾 FOR NEXT CHAT SESSION
+## 📋 KNOWN LIMITATIONS
 
-### What to Provide Me
+### Current
+- No email integration for sending invoices
+- No PDF re-generation for past invoices
+- No invoice editing after creation
+- No payment method tracking (check/card/etc)
 
-**1. Context Block (Copy/Paste this):**
-```
-PROJECT: Time Tracker Pro - Billing Prevention Complete
-
-CURRENT STATUS:
-- Core functionality working (Clients, Projects, Tasks, Time Entries)
-- Billing prevention implemented and tested
-- Invoice PDF generation working
-- Date format: MM/DD/YY
-- Database schema stable
-
-FILES IN KNOWLEDGE BASE:
-- database.py (with billing methods)
-- models.py (clean column queries)
-- gui.py (complete UI with billing flow)
-- invoice_generator.py
-- main.py, launcher.py
-- requirements.txt
-
-NEXT OBJECTIVE:
-[State what you want to work on, e.g., "Add billing history viewer tab" or "Improve UI styling"]
-
-ISSUES FOUND (if any):
-[Describe any bugs or problems]
-```
-
-**2. If Reporting Bugs:**
-- Exact steps to reproduce
-- Expected behavior vs actual behavior
-- Any error messages from console
-- Screenshots if UI-related
-
-**3. If Requesting Features:**
-- Clear description of desired functionality
-- How you envision it working
-- Which tab/section it belongs in
-- Any mockups or examples (optional)
-
-### Files to Keep in Knowledge Base
-**Upload these as .txt files:**
-- `database.py` → `database.py.txt`
-- `models.py` → `models.py.txt`
-- `gui.py` → `gui.py.txt`
-- `invoice_generator.py` → `invoice_generator.py.txt`
-- This `PROJECT_STATUS.md` → `PROJECT_STATUS.md.txt`
-
-**Can Remove (unless needed for reference):**
-- Old versions of files
-- Migration scripts (keep locally, not in KB)
+### Performance
+- App tested with ~100 entries, works well
+- Performance with 1000+ entries not tested yet
 
 ---
 
-## 🚀 QUICK DEVELOPMENT TIPS
+## 🚀 FUTURE ENHANCEMENTS
 
-### Adding New Features
-1. **Database First** - Add columns/tables if needed
-2. **Models Second** - Add methods to interact with data
-3. **GUI Last** - Add UI elements and wire them up
+### High Priority
+1. **Reporting Dashboard**
+   - Unpaid invoices summary
+   - Revenue reports (paid vs unpaid)
+   - Aging report (overdue invoices)
 
-### Code Style Guidelines
-- Follow existing patterns in the codebase
-- Use descriptive variable names
-- Add docstrings to new methods
-- Test incrementally (one change at a time)
+2. **Invoice Management**
+   - View invoice PDF from Billed Invoices tab
+   - Re-print past invoices
+   - Invoice notes/memo field
 
-### Git Workflow (If Using Version Control)
-```bash
-# Commit working version before changes
-git add .
-git commit -m "Working version - billing prevention complete"
+3. **Payment Details**
+   - Payment method dropdown (Check, Credit Card, ACH, etc)
+   - Payment reference/confirmation number
+   - Partial payments support
 
-# Create feature branch
-git checkout -b feature/billing-history-viewer
+### Medium Priority
+4. **UI Improvements**
+   - Modern color scheme (already applied)
+   - Better icons and buttons
+   - Status indicators (colored tags)
 
-# After testing new feature
-git commit -m "Added billing history viewer"
-git checkout main
-git merge feature/billing-history-viewer
+5. **Data Export**
+   - Export paid invoices to CSV/Excel
+   - Export payment history
+   - Accounting software integration prep
+
+---
+
+## 📦 FILE STRUCTURE
+
+```
+TimeTrackerProV2/
+├── main.py                              # Entry point
+├── gui.py                               # Main GUI (includes new tab)
+├── db_manager.py                        # Database with payment methods
+├── models.py                            # Data models
+├── invoice_generator.py                 # PDF generation
+├── launcher.pyw                         # Pre-flight launcher
+├── launch_timetracker.bat               # Batch launcher
+├── timetracker.ico                      # Custom app icon ⭐ NEW
+├── create_icon.py                       # Icon generator ⭐ NEW
+├── create_desktop_shortcut.vbs          # Desktop shortcut ⭐ NEW
+├── create_start_menu_shortcut.vbs       # Start Menu installer ⭐ NEW
+├── add_payment_tracking.py              # Migration script
+├── data/
+│   └── time_tracker.db                 # Database (with new columns)
+├── requirements.txt
+└── Project Status.md                   # This file
 ```
 
 ---
 
-## 📦 DEPENDENCIES
+## 🔐 DATA BACKUP
 
-**Current Requirements:**
-```
-reportlab>=4.0.0    # PDF generation
-```
+**Database Location:**  
+`C:\Users\briah\My Drive\TimeTrackerApp\data\time_tracker.db`
 
-**Python Built-ins Used:**
-- tkinter (GUI framework)
-- sqlite3 (Database)
-- datetime (Date/time handling)
-- json (Data serialization)
-- pathlib (File paths)
-
-**Future Additions May Need:**
-- `openpyxl` or `pandas` - Excel export
-- `pillow` - Image handling for logos
-- `pyinstaller` - Create executable
-- `schedule` - Automated tasks/reminders
+**Backup Strategy:**
+- Database synced via Google Drive
+- Manual backups recommended before major changes
+- Migration scripts kept for reference
 
 ---
 
-## 🎨 UI IMPROVEMENT IDEAS
+## 💡 FOR NEXT SESSION
 
-### Color Scheme Suggestions
-**Professional Blue:**
-- Primary: #2C3E50 (Dark Blue-Gray)
-- Secondary: #3498DB (Bright Blue)
-- Accent: #E74C3C (Red for important actions)
-- Success: #27AE60 (Green)
-- Background: #ECF0F1 (Light Gray)
+### Quick Start Context
 
-**Modern Purple:**
-- Primary: #5D3FD3 (Purple)
-- Secondary: #9B7EBD (Light Purple)
-- Accent: #FF6B6B (Coral)
-- Success: #4ECDC4 (Teal)
-- Background: #F8F9FA (Off-White)
+```
+PROJECT: Time Tracker Pro
+STATUS: Payment tracking + Desktop launcher completed (Jan 6, 2026)
 
-### Font Improvements
-```python
-# In gui.py, add at top of __init__
-self.title_font = ("Segoe UI", 14, "bold")
-self.heading_font = ("Segoe UI", 12, "bold")
-self.normal_font = ("Segoe UI", 10)
-self.small_font = ("Segoe UI", 9)
+NEW FEATURES:
+- Billed Invoices tab with Paid/Unpaid views
+- Mark invoices as paid with date
+- Undo payment feature
+- Payment status filtering
+- Desktop & Start Menu launcher with custom icon
+
+CURRENT FOCUS:
+[State what you want to work on]
+
+FILES UPDATED:
+- db_manager.py (added payment methods)
+- gui.py (added Billed Invoices tab)
+- Database (added is_paid, date_paid columns)
+- Added launcher icon and shortcut creators
 ```
 
-### Button Icons (Future)
-- ▶ Start Timer
-- ⏸ Pause Timer
-- ⏹ Stop Timer
-- 💾 Save
-- 🗑 Delete
-- ✏ Edit
-- 📄 Generate Invoice
+### If Issues Found
+- Describe the bug/problem
+- Steps to reproduce
+- Expected vs actual behavior
+- Console error messages (if any)
 
 ---
 
-## 📊 REPORTING IDEAS
+## ✨ SUCCESS METRICS
 
-### Dashboard Tab (Future)
-**Widgets to Include:**
-1. **Summary Cards**
-   - Total unbilled hours
-   - Total unbilled revenue
-   - Active projects count
-   - This week's hours
-
-2. **Charts** (using matplotlib or plotly)
-   - Time worked by client (pie chart)
-   - Weekly hours trend (line chart)
-   - Revenue by project (bar chart)
-
-3. **Quick Actions**
-   - Generate invoice for top unbilled client
-   - View this week's time entries
-   - Export all data
-
-### Report Types
-1. **Time Summary Report**
-   - Group by: Client/Project/Task/Date
-   - Show: Total hours, billable amount
-   - Filter: Date range, client, billable status
-
-2. **Revenue Report**
-   - Total billed vs unbilled
-   - By month/quarter/year
-   - By client comparison
-
-3. **Productivity Report**
-   - Hours per day/week
-   - Most time spent on which projects
-   - Utilization rate
-
----
-
-## 🔐 DATA BACKUP STRATEGY
-
-### Recommended Approach
-**Manual Backup:**
-```python
-# Add to GUI - "Backup Database" button
-def backup_database(self):
-    from shutil import copy2
-    from datetime import datetime
-    
-    backup_name = f"time_tracker_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.db"
-    backup_path = filedialog.asksaveasfilename(
-        defaultextension=".db",
-        initialfile=backup_name,
-        filetypes=[("Database files", "*.db")]
-    )
-    if backup_path:
-        copy2("data/time_tracker.db", backup_path)
-        messagebox.showinfo("Success", f"Backup saved to {backup_path}")
-```
-
-**Auto-Backup (Future):**
-- Daily backup to configured location
-- Keep last 7 days of backups
-- Option to backup to cloud (Dropbox, Google Drive)
-
----
-
-## 🎓 LEARNING RESOURCES
-
-### If You Want to Customize Further
-
-**Tkinter GUI:**
-- https://docs.python.org/3/library/tkinter.html
-- https://tkdocs.com/tutorial/
-- https://realpython.com/python-gui-tkinter/
-
-**SQLite Database:**
-- https://www.sqlite.org/docs.html
-- https://realpython.com/python-sqlite-sqlalchemy/
-
-**ReportLab (PDFs):**
-- https://www.reportlab.com/docs/reportlab-userguide.pdf
-- https://realpython.com/creating-modifying-pdf/
-
-**Python Packaging:**
-- PyInstaller (create .exe): https://pyinstaller.org/
-
----
-
-## 🏁 CONCLUSION
-
-You now have a fully functional time tracking and billing system with:
+You now have:
+- ✅ Complete time tracking system
+- ✅ Professional invoice generation
 - ✅ No double-billing protection
-- ✅ Professional PDF invoices
-- ✅ Complete audit trail
-- ✅ Clean, maintainable codebase
+- ✅ Payment status tracking
+- ✅ Audit trail for all transactions
+- ✅ Undo capability for mistakes
+- ✅ Professional desktop launcher with custom icon
 
-**Next Steps:**
-1. Test with real-world data this week
-2. Identify any issues or desired improvements
-3. Start new chat with context block above
-4. Prioritize enhancements based on your workflow
-
-**You're Ready to Track Time and Bill Clients! 🚀**
-```
+**Ready for production use!** 🎉
 
 ---
 
-## Additional Files to Create
-
-**File: requirements.txt** (Update this)
-
-```
-reportlab>=4.0.0
-```
-
-**File: README.md** (For your repository)
-
-```markdown
-# Time Tracker Pro
-
-A professional time tracking and invoicing application built with Python and Tkinter.
-
-## Features
-
-- Client, Project, and Task management
-- Time tracking (timer and manual entry)
-- Invoice generation with PDF export
-- Billing prevention (no double-billing)
-- Company information management
-
-## Installation
-
-1. Clone the repository
-2. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-3. Run the application:
-   ```bash
-   python launcher.py
-   ```
-
-## Usage
-
-1. **Add Clients** - Start by adding your clients
-2. **Create Projects** - Add projects under each client
-3. **Add Tasks** - Create tasks for each project
-4. **Track Time** - Use the timer or add manual entries
-5. **Generate Invoices** - Create PDF invoices for unbilled hours
-6. **Company Info** - Set up your company details for invoices
-
-## Database
-
-SQLite database stored in `data/time_tracker.db`
-
-## Requirements
-
-- Python 3.8+
-- tkinter (included with Python)
-- reportlab 4.0+
-
-## License
-
-[Your License Here]
-
-## Author
-
-[Brian Hood]
-```
-
----
-
-## For Your Next Chat, Simply Say:
-
-```
-I'm working on Time Tracker Pro. The PROJECT_STATUS.md file is in the knowledge base.
-
-Current objective: [What you want to work on]
-
-[Any issues or questions]
-```
-
-**That's it! Keep the PROJECT_STATUS.md updated as you add features, and you'll always have a clear reference for where the project stands.**
-
-Good luck with your real-world testing! 🎉
+**Questions? Start new chat with context block above.**

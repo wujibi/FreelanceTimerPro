@@ -1,9 +1,5 @@
 @echo off
-title Time Tracker App Launcher
-echo ================================================
-echo          Time Tracker App Launcher
-echo ================================================
-echo.
+:: Time Tracker App - No Console Window Launcher
 
 :: Check if Python is available
 python --version >nul 2>&1
@@ -25,14 +21,8 @@ if not exist "main.py" (
     exit /b 1
 )
 
-:: Launch the application
-echo Starting Time Tracker App...
-echo.
-python main.py
+:: Launch the application WITHOUT console window
+start "" pythonw main.py
 
-:: Keep window open if there's an error
-if errorlevel 1 (
-    echo.
-    echo Application exited with an error
-    pause
-)
+:: Exit immediately (no console window persists)
+exit

@@ -419,11 +419,17 @@ class DatabaseManager:
                 total_hours REAL NOT NULL,
                 invoice_items TEXT NOT NULL,
                 pdf_path TEXT,
+                is_paid INTEGER DEFAULT 0,
+                date_paid TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (client_id) REFERENCES clients (id)
             )
             '''
             self.execute_query(query)
+        
+        # Add payment tracking columns if missing (for existing databases)
+        self.add_column_if_missing('billing_history', 'is_paid', 'INTEGER DEFAULT 0')
+        self.add_column_if_missing('billing_history', 'date_paid', 'TEXT')
 
         # Create billing_entry_link table if doesn't exist
         if not self.table_exists('billing_entry_link'):
@@ -576,8 +582,13 @@ class DatabaseManager:
         ]
         return self.execute_query(query, params)
 
-    def get_billing_history(self, client_id=None):
-        """Get billing history with optional client filter"""
+    def get_billing_history(self, client_id=None, paid_status=None):
+        """Get billing history with optional client and payment status filter
+        
+        Args:
+            client_id: Optional client ID to filter by
+            paid_status: Optional payment status filter (0=unpaid, 1=paid, None=all)
+        """
         query = '''
         SELECT * FROM billing_history
         WHERE 1=1
@@ -586,8 +597,52 @@ class DatabaseManager:
         if client_id:
             query += ' AND client_id = ?'
             params.append(client_id)
+        if paid_status is not None:
+            query += ' AND is_paid = ?'
+            params.append(paid_status)
         query += ' ORDER BY invoice_date DESC'
         return self.fetch_all(query, params)
+    
+    def mark_invoice_paid(self, invoice_number, date_paid):
+        """Mark an invoice as paid with the payment date
+        
+        Args:
+            invoice_number: The invoice number to mark as paid
+            date_paid: The date payment was received (YYYY-MM-DD format)
+        """
+        query = '''
+        UPDATE billing_history
+        SET is_paid = 1,
+            date_paid = ?
+        WHERE invoice_number = ?
+        '''
+        return self.execute_query(query, [date_paid, invoice_number])
+    
+    def mark_invoice_unpaid(self, invoice_number):
+        """Mark an invoice as unpaid (undo payment)
+        
+        Args:
+            invoice_number: The invoice number to mark as unpaid
+        """
+        query = '''
+        UPDATE billing_history
+        SET is_paid = 0,
+            date_paid = NULL
+        WHERE invoice_number = ?
+        '''
+        return self.execute_query(query, [invoice_number])
+    
+    def get_invoice_by_number(self, invoice_number):
+        """Get a specific invoice by invoice number
+        
+        Args:
+            invoice_number: The invoice number to retrieve
+        """
+        query = '''
+        SELECT * FROM billing_history
+        WHERE invoice_number = ?
+        '''
+        return self.fetch_one(query, [invoice_number])
 
     def close(self):
         """Close the database connection"""
