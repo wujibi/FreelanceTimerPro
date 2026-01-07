@@ -1,18 +1,1 @@
-Set objShell = CreateObject("WScript.Shell")
-Set objFSO = CreateObject("Scripting.FileSystemObject")
-
-' Get script location
-strScriptPath = objFSO.GetParentFolderName(WScript.ScriptFullName)
-
-' Get desktop path
-strDesktop = objShell.SpecialFolders("Desktop")
-
-' Create shortcut
-Set objShortcut = objShell.CreateShortcut(strDesktop & "\TimeTracker Pro.lnk")
-objShortcut.TargetPath = "pythonw.exe"
-objShortcut.Arguments = Chr(34) & strScriptPath & "\main.py" & Chr(34)
-objShortcut.WorkingDirectory = strScriptPath
-objShortcut.Description = "TimeTracker Pro - Payment Tracking"
-objShortcut.Save
-
-MsgBox "Desktop shortcut created successfully!", vbInformation, "TimeTracker Pro"
+Set objShell = CreateObject("WScript.Shell")\nSet objFSO = CreateObject("Scripting.FileSystemObject")\n\n' Get script location\nstrScriptPath = objFSO.GetParentFolderName(WScript.ScriptFullName)\n\n' Get desktop path\nstrDesktop = objShell.SpecialFolders("Desktop")\n\n' Create shortcut\nSet objShortcut = objShell.CreateShortcut(strDesktop & "\\TimeTracker Pro.lnk")\nobjShortcut.TargetPath = "pythonw.exe"\nobjShortcut.Arguments = Chr(34) & strScriptPath & "\\main.py" & Chr(34)\nobjShortcut.WorkingDirectory = strScriptPath\nobjShortcut.Description = "TimeTracker Pro - Payment Tracking"\nobjShortcut.Save\n\nMsgBox "Desktop shortcut created successfully!", vbInformation, "TimeTracker Pro"
