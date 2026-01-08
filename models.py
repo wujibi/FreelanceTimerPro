@@ -120,14 +120,38 @@ class Task:
     def __init__(self, db_manager):
         self.db = db_manager
 
-    def create(self, project_id, name, description="", hourly_rate=0, is_lump_sum=False, lump_sum_amount=0):
+    def get_global_tasks(self):
+        """Get all global tasks (not tied to any project)"""
         with self.db.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute('''
-                           INSERT INTO tasks (project_id, name, description, hourly_rate, is_lump_sum, lump_sum_amount)
-                           VALUES (?, ?, ?, ?, ?, ?)
-                           ''', (project_id, name, description, hourly_rate, is_lump_sum, lump_sum_amount))
-            conn.commit()  # ADDED
+                SELECT id, project_id, name, description, hourly_rate, is_lump_sum, lump_sum_amount, is_global
+                FROM tasks
+                WHERE is_global = 1
+                ORDER BY name
+            ''')
+            return cursor.fetchall()
+
+    def get_all_for_project(self, project_id):
+        """Get all tasks for a project including global tasks"""
+        with self.db.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT id, project_id, name, description, hourly_rate, is_lump_sum, lump_sum_amount, is_global
+                FROM tasks
+                WHERE project_id = ? OR is_global = 1
+                ORDER BY is_global DESC, name
+            ''', (project_id,))
+            return cursor.fetchall()
+
+    def create(self, name, description="", hourly_rate=0, is_lump_sum=False, lump_sum_amount=0, project_id=None, is_global=False):
+        with self.db.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                           INSERT INTO tasks (project_id, name, description, hourly_rate, is_lump_sum, lump_sum_amount, is_global)
+                           VALUES (?, ?, ?, ?, ?, ?, ?)
+                           ''', (project_id, name, description, hourly_rate, is_lump_sum, lump_sum_amount, is_global))
+            conn.commit()
             return cursor.lastrowid
 
     def get_by_project(self, project_id):
@@ -187,7 +211,8 @@ class TimeEntry:
         self.db = db_manager
         self.current_entry = None
 
-    def start_timer(self, task_id, description=""):
+    def start_timer(self, task_id, description="", project_id_override=None):
+        """Start a timer for a task. Handles both project-specific and global tasks."""
         # Stop any existing timer first
         if self.current_entry:
             self.stop_timer()
@@ -195,14 +220,34 @@ class TimeEntry:
         with self.db.get_connection() as conn:
             cursor = conn.cursor()
 
-            # Get task, project, and client info for the entry
-            cursor.execute('''
-                           SELECT t.name, p.id, p.name, c.id, c.name
-                           FROM tasks t
-                                    JOIN projects p ON t.project_id = p.id
-                                    JOIN clients c ON p.client_id = c.id
-                           WHERE t.id = ?
-                           ''', (task_id,))
+            # First check if task is global
+            cursor.execute('SELECT is_global FROM tasks WHERE id = ?', (task_id,))
+            task_result = cursor.fetchone()
+            if not task_result:
+                raise ValueError("Task not found")
+
+            is_global = task_result[0]
+
+            if is_global:
+                # For global tasks, use the provided project_id_override
+                if not project_id_override:
+                    raise ValueError("Global tasks require a project context")
+
+                cursor.execute('''
+                               SELECT t.name, p.id, p.name, c.id, c.name
+                               FROM tasks t, projects p
+                               JOIN clients c ON p.client_id = c.id
+                               WHERE t.id = ? AND p.id = ?
+                               ''', (task_id, project_id_override))
+            else:
+                # Regular project-specific task
+                cursor.execute('''
+                               SELECT t.name, p.id, p.name, c.id, c.name
+                               FROM tasks t
+                               JOIN projects p ON t.project_id = p.id
+                               JOIN clients c ON p.client_id = c.id
+                               WHERE t.id = ?
+                               ''', (task_id,))
 
             task_info = cursor.fetchone()
             if not task_info:
@@ -219,7 +264,7 @@ class TimeEntry:
                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0)
                            ''', (task_id, task_name, project_id, project_name,
                                  client_id, client_name, date_str, start_time.isoformat(), description))
-            conn.commit()  # ADDED
+            conn.commit()
             self.current_entry = cursor.lastrowid
             return self.current_entry
 

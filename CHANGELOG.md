@@ -1,6 +1,24 @@
-# Changelog
+# Changelog - Time Tracker Pro
 
 All notable changes to Time Tracker Pro will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
+
+---
+
+## [1.1.1] - 2026-01-08
+
+### Added
+- **Hierarchical Task Display**: Tasks tab now shows tasks grouped by Client → Project → Task
+  - Collapsible tree structure similar to Time Entries tab
+  - Global tasks displayed in separate [GLOBAL TASKS] section
+  - Visual indicators: 📁 Clients, 📂 Projects, ⚙️ Tasks
+
+### Changed
+- Improved task list readability with hierarchical organization
+- Global tasks now clearly separated at bottom of list
+
+---
 
 ## [1.1.0] - 2026-01-07
 
@@ -25,13 +43,37 @@ All notable changes to Time Tracker Pro will be documented in this file.
 - Database schema: Added `is_global` BOOLEAN column to `tasks` table
 - Updated `Task.get_global_tasks()` and `Task.get_all_for_project()` methods
 
-## [1.0.0] - 2025-12-05
+---
 
-### Initial Release
-- Client management
-- Project tracking with hourly/lump sum billing
-- Task management per project
-- Time entry tracking (manual and timer-based)
+## [1.0.0] - 2025-12-10
+
+### Major Release - Google Drive Sync Edition
+
+### Added
+- **Google Drive Sync** - Automatic database synchronization across multiple computers
+- **Configuration System** - Centralized config.py for easy path management
+- Complete time tracking functionality
+- Client, Project, and Task management
+- Manual and automatic time entry
 - Invoice generation with PDF export
 - Company information management
-- Daily time totals tracking
+- Billing history tracking
+
+### Changed
+- **BREAKING:** Renamed database.py to db_manager.py
+- **BREAKING:** DatabaseManager.__init__() now requires db_path parameter
+- Updated all imports from database to db_manager
+
+### Fixed
+- Fixed nested class declarations causing initialization failures
+- Fixed duplicate method definitions
+- Fixed context manager protocol implementation
+- Fixed database path handling with spaces
+
+---
+
+## Contributors
+- Brian Hood (@wujibi) - Lead Developer
+
+## License
+Proprietary - All Rights Reserved

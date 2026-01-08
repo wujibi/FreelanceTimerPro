@@ -1,0 +1,40 @@
+GLOBAL TASKS IMPLEMENTATION GUIDE
+==================================
+
+STEP 1: Run Migration
+----------------------
+python add_global_tasks.py
+
+STEP 2: Update models.py - Task class
+--------------------------------------
+In Task.create() method, change:
+def create(self, project_id, name, description="", hourly_rate=0, is_lump_sum=False, lump_sum_amount=0):
+TO:
+def create(self, name, description="", hourly_rate=0, is_lump_sum=False, lump_sum_amount=0, project_id=None, is_global=False):
+
+Update INSERT query to include is_global field.
+
+STEP 3: Update GUI - Tasks Tab
+-------------------------------
+In create_tasks_tab():
+1. Add checkbox: "Global Task (available for all projects)"
+2. When global=True, disable project selection dropdown
+3. Update create/update task methods to handle project_id=None
+
+STEP 4: Update Timer Tab
+-------------------------
+In create_timer_tab():
+1. Task dropdown should show: GLOBAL TASKS + project-specific tasks
+2. Query: SELECT * FROM tasks WHERE is_global=1 OR project_id=?
+
+STEP 5: Test
+------------
+1. Create global task "Meeting"
+2. Verify appears for all projects
+3. Test timer with global task
+4. Generate invoice with global task entries
+
+FILES TO MODIFY:
+- models.py (Task class)
+- gui.py (create_tasks_tab, create_timer_tab, refresh methods)
+- db_manager.py (add get_global_tasks() method)

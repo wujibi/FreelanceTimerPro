@@ -564,22 +564,10 @@ class TimeTrackerApp:
         ttk.Label(form_frame, text="Description:").grid(row=3, column=0, sticky='nw', pady=2)
         self.task_desc_text = tk.Text(form_frame, height=3)
         self.task_desc_text.grid(row=3, column=1, sticky='ew', padx=5, pady=2)
-        
-        # Global task checkbox
-        global_frame = ttk.Frame(form_frame)
-        global_frame.grid(row=4, column=0, columnspan=2, sticky='w', pady=10)
-
-        self.task_global_var = tk.BooleanVar(value=False)
-        ttk.Checkbutton(
-            global_frame,
-            text="[GLOBAL] Make this available for all projects",
-            variable=self.task_global_var,
-            command=self.toggle_task_project_field
-        ).pack(side='left')
 
         # Task billing options
         billing_frame = ttk.Frame(form_frame)
-        billing_frame.grid(row=5, column=1, sticky='ew', padx=5, pady=2)
+        billing_frame.grid(row=4, column=1, sticky='ew', padx=5, pady=2)
 
         self.task_billing_var = tk.StringVar(value="hourly")
         ttk.Radiobutton(billing_frame, text="Hourly Rate", variable=self.task_billing_var,
@@ -587,9 +575,9 @@ class TimeTrackerApp:
         ttk.Radiobutton(billing_frame, text="Lump Sum", variable=self.task_billing_var,
                         value="lump_sum", command=self.toggle_task_billing).pack(side='left', padx=10)
 
-        ttk.Label(form_frame, text="Rate/Amount:").grid(row=6, column=0, sticky='w', pady=2)
+        ttk.Label(form_frame, text="Rate/Amount:").grid(row=5, column=0, sticky='w', pady=2)
         self.task_rate_entry = ttk.Entry(form_frame)
-        self.task_rate_entry.grid(row=6, column=1, sticky='ew', padx=5, pady=2)
+        self.task_rate_entry.grid(row=5, column=1, sticky='ew', padx=5, pady=2)
 
         form_frame.columnconfigure(1, weight=1)
 
@@ -605,19 +593,20 @@ class TimeTrackerApp:
         list_frame = ttk.LabelFrame(tasks_frame, text="Tasks")
         list_frame.pack(fill='both', expand=True, padx=10, pady=10)
 
-        self.task_tree = ttk.Treeview(list_frame, columns=('Type', 'ID', 'Extra', 'Billing', 'Rate'))
-        self.task_tree.heading('#0', text='Hierarchy')
-        self.task_tree.heading('Type', text='Type')
+        self.task_tree = ttk.Treeview(list_frame, columns=('ID', 'Project', 'Client', 'Name', 'Type', 'Rate'),
+                                      show='headings')
         self.task_tree.heading('ID', text='ID')
-        self.task_tree.heading('Extra', text='')
-        self.task_tree.heading('Billing', text='Billing Type')
+        self.task_tree.heading('Project', text='Project')
+        self.task_tree.heading('Client', text='Client')
+        self.task_tree.heading('Name', text='Task')
+        self.task_tree.heading('Type', text='Billing Type')
         self.task_tree.heading('Rate', text='Rate/Amount')
 
-        self.task_tree.column('#0', width=300)
-        self.task_tree.column('Type', width=100)
         self.task_tree.column('ID', width=50)
-        self.task_tree.column('Extra', width=100)
-        self.task_tree.column('Billing', width=100)
+        self.task_tree.column('Project', width=150)
+        self.task_tree.column('Client', width=100)
+        self.task_tree.column('Name', width=150)
+        self.task_tree.column('Type', width=100)
         self.task_tree.column('Rate', width=100)
 
         self.task_tree.pack(fill='both', expand=True, padx=10, pady=10)
@@ -1046,37 +1035,23 @@ class TimeTrackerApp:
         client_name = self.timer_client_combo.get()
         project_name = self.timer_project_combo.get()
 
-        # Check if it's a global task
-        if task_text.startswith('[GLOBAL] '):
-            # Extract task name from "[GLOBAL] TaskName"
-            task_name = task_text.replace('[GLOBAL] ', '')
-
-            # Find the global task
-            global_tasks = self.task_model.get_global_tasks()
-            self.current_task_id = None
-
-            for task in global_tasks:
-                if task[2] == task_name:
-                    self.current_task_id = task[0]
-                    break
+        # Extract just the task name from "Client - Project - Task" format
+        # The format is: client_name - project_name - task_name
+        parts = task_text.split(' - ')
+        if len(parts) >= 3:
+            task_name = ' - '.join(parts[2:])  # In case task name has dashes
         else:
-            # Regular project-specific task
-            # Extract task name from "Client - Project - Task" format
-            parts = task_text.split(' - ')
-            if len(parts) >= 3:
-                task_name = ' - '.join(parts[2:])
-            else:
-                messagebox.showerror("Error", "Invalid task format")
-                return
+            messagebox.showerror("Error", "Invalid task format")
+            return
 
-            # Find the task by matching client, project, and task names
-            tasks = self.task_model.get_all()
-            self.current_task_id = None
+        # Find the task by matching client, project, and task names
+        tasks = self.task_model.get_all()
+        self.current_task_id = None
 
-            for task in tasks:
-                if task[9] == client_name and task[8] == project_name and task[2] == task_name:
-                    self.current_task_id = task[0]
-                    break
+        for task in tasks:
+            if task[9] == client_name and task[8] == project_name and task[2] == task_name:
+                self.current_task_id = task[0]
+                break
 
         if not self.current_task_id:
             messagebox.showerror("Error", f"Could not find task: {task_name}")
@@ -1086,10 +1061,7 @@ class TimeTrackerApp:
             # Start the timer
             self.timer_running = True
             self.timer_start_time = datetime.now()
-
-            # Get current project ID for global tasks
-            project_id = self.get_current_timer_project_id()
-            self.time_entry_model.start_timer(self.current_task_id, project_id_override=project_id)
+            self.time_entry_model.start_timer(self.current_task_id)
 
             # Update UI
             self.start_button.config(state='disabled')
@@ -1200,33 +1172,23 @@ class TimeTrackerApp:
             projects = self.project_model.get_all()
             project_id = None
             for project in projects:
+                # project structure: [0:id, 1:client_id, 2:name, ..., 9:client_name]
                 proj_client_name = project[9] if len(project) > 9 else None
                 if proj_client_name == client_name and project[2] == project_name:
                     project_id = project[0]
                     break
 
             if project_id:
-                # Load tasks for this project AND global tasks
-                project_tasks = self.task_model.get_by_project(project_id)
-                global_tasks = self.task_model.get_global_tasks()
-
-                # Combine both lists
-                all_tasks = list(global_tasks) + list(project_tasks)
-
-                # Format task displays
-                task_displays = []
-                for t in all_tasks:
-                    if t[1] is None:  # project_id is None means it's global
-                        task_displays.append(f"[GLOBAL] {t[2]}")
-                    else:
-                        task_displays.append(f"{client_name} - {project_name} - {t[2]}")
-
+                # Load tasks for this project
+                tasks = self.task_model.get_by_project(project_id)
+                # Task display format: "Client - Project - Task Name"
+                task_displays = [f"{client_name} - {project_name} - {t[2]}" for t in tasks]
                 self.timer_task_combo['values'] = task_displays
                 self.timer_task_combo.set('')
             else:
+                # No project found, clear tasks
                 self.timer_task_combo['values'] = []
                 self.timer_task_combo.set('')
-
 
     def get_current_timer_client_id(self):
         """Get the client ID for the currently selected timer task"""
@@ -1784,68 +1746,47 @@ class TimeTrackerApp:
 
     # Task methods
     def add_task(self):
+        client_text = self.task_client_combo.get()
+        project_text = self.task_project_combo.get()
         name = self.task_name_entry.get().strip()
-        description = self.task_desc_text.get("1.0", tk.END).strip()
-        is_global = self.task_global_var.get()
 
-        if not name:
-            messagebox.showerror("Error", "Please enter a task name")
+        if not client_text or not project_text or not name:
+            messagebox.showerror("Error", "Client, project, and task name are required")
             return
 
-        if is_global:
-            # Create global task (project_id will be None)
-            rate = float(self.task_rate_entry.get() or 0)
-            is_lump_sum_flag = self.task_billing_var.get() == "lump_sum"
+        # Get project ID by matching client and project names
+        projects = self.project_model.get_all()
+        project_id = None
+        for project in projects:
+            client_name = project[9] if len(project) > 9 else None
+            if client_name == client_text and project[2] == project_text:
+                project_id = project[0]
+                break
 
-            if is_lump_sum_flag:
-                self.task_model.create(name, description, 0, True, rate, None, True)
-            else:
-                self.task_model.create(name, description, rate, False, 0, None, True)
+        if not project_id:
+            messagebox.showerror("Error", "Invalid project selected")
+            return
 
-            messagebox.showinfo("Success", f"Global task '{name}' created!")
+        # CHECK FOR DUPLICATE TASK NAME UNDER SAME PROJECT
+        existing_tasks = self.task_model.get_by_project(project_id)
+        for task in existing_tasks:
+            if task[2].lower() == name.lower():  # Case-insensitive comparison
+                messagebox.showerror("Error", f"Task '{name}' already exists for this project")
+                return
+
+        description = self.task_desc_text.get("1.0", tk.END).strip()
+        rate = float(self.task_rate_entry.get() or 0)
+        is_lump_sum = self.task_billing_var.get() == "lump_sum"
+
+        if is_lump_sum:
+            self.task_model.create(project_id, name, description, 0, True, rate)
         else:
-            # Create project-specific task
-            client_text = self.task_client_combo.get()
-            project_text = self.task_project_combo.get()
-
-            if not client_text or not project_text:
-                messagebox.showerror("Error", "Please select a client and project for non-global tasks")
-                return
-
-            # Get project ID by matching client and project names
-            projects = self.project_model.get_all()
-            project_id = None
-            for project in projects:
-                client_name = project[9] if len(project) > 9 else None
-                if client_name == client_text and project[2] == project_text:
-                    project_id = project[0]
-                    break
-
-            if not project_id:
-                messagebox.showerror("Error", "Invalid project selected")
-                return
-
-            # CHECK FOR DUPLICATE TASK NAME UNDER SAME PROJECT
-            existing_tasks = self.task_model.get_by_project(project_id)
-            for task in existing_tasks:
-                if task[2].lower() == name.lower():
-                    messagebox.showerror("Error", f"Task '{name}' already exists for this project")
-                    return
-
-            rate = float(self.task_rate_entry.get() or 0)
-            is_lump_sum_flag = self.task_billing_var.get() == "lump_sum"
-
-            if is_lump_sum_flag:
-                self.task_model.create(name, description, 0, True, rate, project_id, False)
-            else:
-                self.task_model.create(name, description, rate, False, 0, project_id, False)
-
-            messagebox.showinfo("Success", f"Task '{name}' created!")
+            self.task_model.create(project_id, name, description, rate, False, 0)
 
         self.clear_task_form()
         self.refresh_tasks()
         self.refresh_combos()
-
+        messagebox.showinfo("Success", "Task added successfully")
 
     def update_task(self):
         selection = self.task_tree.selection()
@@ -1934,19 +1875,6 @@ class TimeTrackerApp:
 
     def toggle_task_billing(self):
         pass
-
-    
-    def toggle_task_project_field(self):
-        """Enable or disable project selection based on global checkbox"""
-        is_global = self.task_global_var.get()
-        if is_global:
-            self.task_client_combo.set('')
-            self.task_client_combo.config(state='disabled')
-            self.task_project_combo.set('')
-            self.task_project_combo.config(state='disabled')
-        else:
-            self.task_client_combo.config(state='readonly')
-            self.task_project_combo.config(state='readonly')
 
     # Time Entry methods
     def edit_time_entry(self):
@@ -2763,71 +2691,29 @@ class TimeTrackerApp:
         for item in self.task_tree.get_children():
             self.task_tree.delete(item)
 
-        # Get all tasks and organize hierarchically
+        # Add tasks
         tasks = self.task_model.get_all()
-        global_tasks = self.task_model.get_global_tasks()
-        
-        # Build hierarchy: {client_name: {project_name: [tasks]}}
-        hierarchy = {}
-        
         for task in tasks:
-            client_name = task[9] if len(task) > 9 and task[9] else "Unknown Client"
-            project_name = task[8] if len(task) > 8 and task[8] else "Unknown Project"
-            
-            if client_name not in hierarchy:
-                hierarchy[client_name] = {}
-            if project_name not in hierarchy[client_name]:
-                hierarchy[client_name][project_name] = []
-            
-            hierarchy[client_name][project_name].append(task)
-        
-        # Display hierarchy
-        for client_name in sorted(hierarchy.keys()):
-            # Insert client node
-            client_id = self.task_tree.insert('', 'end',
-                text=f"📁 {client_name}",
-                values=('Client', '', '', '', ''),
-                tags=('client',))
-            
-            for project_name in sorted(hierarchy[client_name].keys()):
-                # Insert project node
-                project_id = self.task_tree.insert(client_id, 'end',
-                    text=f"  📂 {project_name}",
-                    values=('Project', '', '', '', ''),
-                    tags=('project',))
-                
-                # Insert tasks under project
-                for task in hierarchy[client_name][project_name]:
-                    billing_type = "Lump Sum" if task[5] else "Hourly"
-                    rate = f"${task[6]:.2f}" if task[5] else f"${task[4]:.2f}/hr"
-                    
-                    self.task_tree.insert(project_id, 'end',
-                        text=f"    ⚙️ {task[2]}",
-                        values=('Task', task[0], '', billing_type, rate),
-                        tags=('task', f'task_id_{task[0]}'))
-        
-        # Add global tasks section if any exist
-        if global_tasks:
-            global_node = self.task_tree.insert('', 'end',
-                text="📁 [GLOBAL TASKS]",
-                values=('Global', '', '', '', ''),
-                tags=('global',))
-            
-            for task in global_tasks:
-                billing_type = "Lump Sum" if task[5] else "Hourly"
-                rate = f"${task[6]:.2f}" if task[5] else f"${task[4]:.2f}/hr"
-                
-                self.task_tree.insert(global_node, 'end',
-                    text=f"  ⚙️ {task[2]}",
-                    values=('Global Task', task[0], '', billing_type, rate),
-                    tags=('task', f'task_id_{task[0]}'))
-        
-        # Configure tag colors
-        self.task_tree.tag_configure('client', font=('Arial', 10, 'bold'))
-        self.task_tree.tag_configure('project', font=('Arial', 9, 'bold'))
-        self.task_tree.tag_configure('task', font=('Arial', 9))
-        self.task_tree.tag_configure('global', font=('Arial', 10, 'bold'), foreground='#10b981')
+            # Task structure from models.py get_all():
+            # 0: id, 1: project_id, 2: name, 3: description,
+            # 4: hourly_rate, 5: is_lump_sum, 6: lump_sum_amount, 7: created_at
+            # 8: project_name, 9: client_name
 
+            billing_type = "Lump Sum" if task[5] else "Hourly"
+            rate = f"${task[6]:.2f}" if task[5] else f"${task[4]:.2f}/hr"
+
+            # Verify we have project and client names
+            project_name = task[8] if len(task) > 8 and task[8] else "Unknown Project"
+            client_name = task[9] if len(task) > 9 and task[9] else "Unknown Client"
+
+            self.task_tree.insert('', 'end', values=(
+                task[0],  # ID
+                project_name,  # Project name
+                client_name,  # Client name
+                task[2],  # Task name
+                billing_type,
+                rate
+            ))
 
     def refresh_time_entries(self):
         # Clear tree

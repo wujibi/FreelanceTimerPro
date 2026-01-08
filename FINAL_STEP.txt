@@ -1,0 +1,62 @@
+FINAL STEP - Add Global Task Checkbox to GUI
+=============================================
+
+✅ COMPLETED:
+- Migration script run
+- Database updated with is_global column
+- models.py updated with global task methods
+- create_task() method patched
+
+⏳ REMAINING: Add checkbox to Tasks tab form
+
+MANUAL EDIT NEEDED in gui.py:
+==============================
+
+1. Search for: "def create_tasks_tab(self):"
+
+2. Find this line (around line 2633):
+   self.task_desc_text.grid(row=3, column=1, sticky='ew', padx=5, pady=2)
+
+3. ADD these lines RIGHT AFTER IT:
+
+        # Global task checkbox - NEW CODE
+        global_frame = ttk.Frame(form_frame)
+        global_frame.grid(row=4, column=0, columnspan=2, sticky='w', pady=10)
+        
+        self.task_global_var = tk.BooleanVar(value=False)
+        ttk.Checkbutton(
+            global_frame,
+            text="[GLOBAL] Make this available for all projects",
+            variable=self.task_global_var,
+            command=self.toggle_task_project_field
+        ).pack(side='left')
+
+4. Update the next grid row numbers (add 1 to each):
+   - billing_frame.grid(row=4, ...) becomes row=5
+   - task_rate_entry.grid(row=5, ...) becomes row=6
+
+5. Add this NEW METHOD anywhere in the TimeTrackerApp class:
+
+    def toggle_task_project_field(self):
+        '''Enable/disable project selection based on global checkbox'''
+        is_global = self.task_global_var.get()
+        if is_global:
+            self.task_client_combo.set('')
+            self.task_client_combo.config(state='disabled')
+            self.task_project_combo.set('')
+            self.task_project_combo.config(state='disabled')
+        else:
+            self.task_client_combo.config(state='readonly')
+            self.task_project_combo.config(state='readonly')
+
+TESTING:
+========
+1. Launch app
+2. Go to Tasks tab
+3. Check the "[GLOBAL]" checkbox
+4. Client and Project dropdowns should disable
+5. Enter task name and create
+6. Verify it shows [GLOBAL] in tasks list
+7. Go to Timer, select any project - global task should appear
+
+DONE!
