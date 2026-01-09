@@ -20,7 +20,7 @@ class TimeTrackerApp:
         try:
             print("[DEBUG] TimeTrackerApp.__init__ starting...")
             self.root = root
-            self.root.title("Time Tracker Pro v2.0 - Professional Time & Invoice Management")
+            self.root.title("Time Tracker Pro V2.0 - Professional Time & Invoice Management")
             
             # Modern window setup
             self.root.geometry("1200x800")
