@@ -6,6 +6,45 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.0.1] - 2026-01-10
+
+### Added
+- **Excel Export Feature**: Export time entries to .xlsx spreadsheet files
+  - Export all entries based on current filter (Unbilled/Billed/All)
+  - Export selected entries only (multi-select support)
+  - Professional formatting with blue headers and auto-sized columns
+  - Columns: Date, Client, Project, Task, Start Time, End Time, Duration (hrs), Description, Billed Status, Invoice #
+  - Option to open file immediately after export
+  - Automatic filename generation with date stamp
+- Added `openpyxl` library dependency for Excel file generation
+
+### Changed
+- Updated app title to "Time Tracker Pro v2.0"
+- Improved time entries selection UX messaging
+
+### Fixed
+- PyCharm virtual environment configuration for consistent package installation
+- Cache invalidation for reliable code updates during development
+
+---
+
+## [2.0.0] - 2026-01-10
+
+### Added
+- **New Clock Icon**: Updated application icon from feather to clock design
+  - Applied to desktop shortcut, start menu, taskbar, and title bar
+- **Time Entries Filter**: Radio button filters for time entries view
+  - ✅ Unbilled Only (default) - Hide invoiced entries
+  - 💰 Billed Only - Show only invoiced entries
+  - 📋 All Entries - Show everything
+  - Filter persists when refreshing entries
+
+### Changed
+- Version number bumped to v2.0 to reflect major feature additions
+- Icon asset updated in `assets/icon.ico`
+
+---
+
 ## [1.1.1] - 2026-01-08
 
 ### Added

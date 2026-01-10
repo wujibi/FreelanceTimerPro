@@ -674,6 +674,8 @@ class TimeTrackerApp:
                    command=self.edit_time_entry).pack(side='left', padx=5)
         ttk.Button(entry_button_frame, text="Delete Entry",
                    command=self.delete_time_entry).pack(side='left', padx=5)
+        ttk.Button(entry_button_frame, text="📊 Export to Excel",
+                   command=self.export_time_entries_to_excel).pack(side='left', padx=5)
         
         # Create a frame for tree and scrollbar IMMEDIATELY after buttons
         tree_container = ttk.Frame(list_frame)
@@ -2218,6 +2220,164 @@ class TimeTrackerApp:
             self.time_entry_model.delete(entry_id)
             self.refresh_time_entries()
             messagebox.showinfo("Success", "Time entry deleted successfully")
+
+    def export_time_entries_to_excel(self):
+        """Export time entries to Excel file, respecting current filter or selection"""
+        try:
+            from openpyxl import Workbook
+            from openpyxl.styles import Font, PatternFill, Alignment
+        except ImportError as e:
+            messagebox.showerror("Error",
+                                 f"openpyxl library not installed.\n\nError: {e}\n\nInstall with: pip install openpyxl")
+            return
+
+        try:
+            # Check if user has selected specific entries
+            selected_items = self.entries_tree.selection()
+
+
+            if selected_items:
+                # Export only selected entries
+                selected_ids = []
+                for item in selected_items:
+                    item_data = self.entries_tree.item(item)
+                    tags = item_data['tags']
+                    # Entry ID is stored in tags like 'entry_id_123'
+                    if tags:
+                        for tag in tags:
+                            if tag.startswith('entry_id_'):
+                                try:
+                                    entry_id = int(tag.replace('entry_id_', ''))
+                                    selected_ids.append(entry_id)
+                                    break
+                                except (ValueError, TypeError):
+                                    pass
+
+                if not selected_ids:
+                    messagebox.showinfo("No Selection", "Please select time entries (not group headers) to export.")
+                    return
+
+                with self.db.get_connection() as conn:
+                    cursor = conn.cursor()
+                    placeholders = ','.join('?' * len(selected_ids))
+                    cursor.execute(f'''
+                        SELECT te.id, te.client_name, te.project_name, te.task_name,
+                               te.start_time, te.end_time, te.duration_minutes, te.description,
+                               te.is_billed, te.invoice_number, te.date
+                        FROM time_entries te
+                        WHERE te.id IN ({placeholders})
+                        ORDER BY te.date DESC, te.start_time DESC
+                    ''', selected_ids)
+                    entries = cursor.fetchall()
+
+                export_scope = "Selected"
+            else:
+                filter_val = self.time_entries_filter_var.get() if hasattr(self,
+                                                                           'time_entries_filter_var') else 'unbilled'
+
+                where_clause = ""
+                if filter_val == "unbilled":
+                    where_clause = "WHERE te.is_billed = 0"
+                elif filter_val == "billed":
+                    where_clause = "WHERE te.is_billed = 1"
+
+                with self.db.get_connection() as conn:
+                    cursor = conn.cursor()
+                    cursor.execute(f'''
+                        SELECT te.id, te.client_name, te.project_name, te.task_name,
+                               te.start_time, te.end_time, te.duration_minutes, te.description,
+                               te.is_billed, te.invoice_number, te.date
+                        FROM time_entries te
+                        {where_clause}
+                        ORDER BY te.date DESC, te.start_time DESC
+                    ''')
+                    entries = cursor.fetchall()
+
+                export_scope = filter_val.capitalize()
+
+            if not entries:
+                messagebox.showinfo("No Data", "No time entries found to export.")
+                return
+
+            filename = filedialog.asksaveasfilename(
+                defaultextension=".xlsx",
+                filetypes=[("Excel files", "*.xlsx")],
+                initialfile=f"TimeEntries_{export_scope}_{datetime.now().strftime('%Y%m%d')}.xlsx"
+            )
+
+            if not filename:
+                return
+
+            wb = Workbook()
+            ws = wb.active
+            ws.title = f"Time Entries ({export_scope})"
+
+            headers = ['Date', 'Client', 'Project', 'Task', 'Start Time', 'End Time', 'Duration (hrs)', 'Description',
+                       'Billed', 'Invoice #']
+            ws.append(headers)
+
+            header_fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
+            header_font = Font(bold=True, color="FFFFFF")
+            for cell in ws[1]:
+                cell.fill = header_fill
+                cell.font = header_font
+                cell.alignment = Alignment(horizontal="center")
+
+            for entry in entries:
+                entry_id, client, project, task, start_time, end_time, duration_mins, description, is_billed, invoice_num, date = entry
+
+                try:
+                    start_dt = datetime.fromisoformat(start_time)
+                    start_display = start_dt.strftime("%I:%M %p")
+                except:
+                    start_display = start_time
+
+                try:
+                    end_dt = datetime.fromisoformat(end_time)
+                    end_display = end_dt.strftime("%I:%M %p")
+                except:
+                    end_display = end_time
+
+                duration_hours = (duration_mins / 60.0) if duration_mins else 0
+                billed_status = "Yes" if is_billed else "No"
+
+                ws.append([
+                    date,
+                    client,
+                    project,
+                    task,
+                    start_display,
+                    end_display,
+                    round(duration_hours, 2),
+                    description or "",
+                    billed_status,
+                    invoice_num or ""
+                ])
+
+            for column in ws.columns:
+                max_length = 0
+                column_letter = column[0].column_letter
+                for cell in column:
+                    try:
+                        if len(str(cell.value)) > max_length:
+                            max_length = len(str(cell.value))
+                    except:
+                        pass
+                adjusted_width = min(max_length + 2, 50)
+                ws.column_dimensions[column_letter].width = adjusted_width
+
+            wb.save(filename)
+            messagebox.showinfo("Success", f"Exported {len(entries)} time entries to:\n\n{filename}")
+
+            if messagebox.askyesno("Open File?", "Would you like to open the exported file now?"):
+                import os
+                os.startfile(filename)
+
+        except Exception as e:
+            messagebox.showerror("Export Error", f"Failed to export time entries:\n\n{e}\n\n{type(e).__name__}")
+            import traceback
+            traceback.print_exc()
+
 
     def invoice_selected_entries(self):
         """Generate invoice from selected time entries"""
