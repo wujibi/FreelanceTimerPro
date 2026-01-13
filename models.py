@@ -290,27 +290,68 @@ class TimeEntry:
                     conn.commit()  # ADDED
             self.current_entry = None
 
-    def add_manual_entry(self, task_id, start_time, end_time, description=""):
+    def add_manual_entry(self, task_id, start_time, end_time, description="", project_id_override=None):
+        """Add a manual time entry. Handles both project-specific and global tasks.
+        
+        Args:
+            task_id: ID of the task
+            start_time: Start datetime
+            end_time: End datetime
+            description: Optional description
+            project_id_override: Required for global tasks to specify which project context
+        """
         duration_minutes = int((end_time - start_time).total_seconds() / 60)
         duration_hours = duration_minutes / 60.0
 
         with self.db.get_connection() as conn:
             cursor = conn.cursor()
 
-            # Get task, project, and client info
-            cursor.execute('''
-                           SELECT t.name, p.id, p.name, c.id, c.name
-                           FROM tasks t
-                                    JOIN projects p ON t.project_id = p.id
-                                    JOIN clients c ON p.client_id = c.id
-                           WHERE t.id = ?
-                           ''', (task_id,))
-
-            task_info = cursor.fetchone()
-            if not task_info:
+            # First check if task is global
+            cursor.execute('SELECT is_global, project_id FROM tasks WHERE id = ?', (task_id,))
+            task_result = cursor.fetchone()
+            if not task_result:
                 raise ValueError("Task not found")
 
-            task_name, project_id, project_name, client_id, client_name = task_info
+            is_global = task_result[0]
+            task_project_id = task_result[1]
+
+            if is_global:
+                # For global tasks, we MUST have a project_id_override
+                if not project_id_override:
+                    raise ValueError("Global tasks require a project context (project_id_override)")
+
+                # Get task name and project/client info separately
+                cursor.execute('SELECT name FROM tasks WHERE id = ?', (task_id,))
+                task_name_result = cursor.fetchone()
+                task_name = task_name_result[0] if task_name_result else "Unknown Task"
+
+                cursor.execute('''
+                               SELECT p.id, p.name, c.id, c.name
+                               FROM projects p
+                               JOIN clients c ON p.client_id = c.id
+                               WHERE p.id = ?
+                               ''', (project_id_override,))
+                project_info = cursor.fetchone()
+                
+                if not project_info:
+                    raise ValueError(f"Project {project_id_override} not found")
+                
+                project_id, project_name, client_id, client_name = project_info
+            else:
+                # Regular project-specific task
+                cursor.execute('''
+                               SELECT t.name, p.id, p.name, c.id, c.name
+                               FROM tasks t
+                               JOIN projects p ON t.project_id = p.id
+                               JOIN clients c ON p.client_id = c.id
+                               WHERE t.id = ?
+                               ''', (task_id,))
+
+                task_info = cursor.fetchone()
+                if not task_info:
+                    raise ValueError("Task not found or has no associated project")
+
+                task_name, project_id, project_name, client_id, client_name = task_info
 
             # Extract date from start_time
             date_str = start_time.strftime('%Y-%m-%d')
@@ -323,7 +364,7 @@ class TimeEntry:
                            ''', (task_id, task_name, project_id, project_name,
                                  client_id, client_name, date_str, start_time.isoformat(), end_time.isoformat(),
                                  duration_minutes, duration_hours, description))
-            conn.commit()  # ADDED
+            conn.commit()
             return cursor.lastrowid
 
     def get_by_task(self, task_id):

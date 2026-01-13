@@ -28,10 +28,13 @@ class TimeTrackerApp:
             
             # Try to set custom icon (if exists)
             try:
-                icon_path = "assets/icon.ico"
+                # Get absolute path to icon file relative to this script
+                script_dir = os.path.dirname(os.path.abspath(__file__))
+                icon_path = os.path.join(script_dir, "assets", "icon.ico")
                 if os.path.exists(icon_path):
                     self.root.iconbitmap(icon_path)
-            except:
+            except Exception as e:
+                print(f"[DEBUG] Could not set icon: {e}")  # Debug
                 pass  # Use default icon if custom not available
             
             # Modern color scheme
@@ -345,15 +348,27 @@ class TimeTrackerApp:
         self.manual_decimal_help.grid(row=5, column=1, sticky='w', padx=5)
         self.manual_decimal_help.grid_remove()  # Hide initially
 
+        # CLIENT SELECTION (for global tasks)
+        ttk.Label(form_frame, text="Client:").grid(row=6, column=0, sticky='w', pady=2)
+        self.manual_client_combo = ttk.Combobox(form_frame, state='readonly')
+        self.manual_client_combo.grid(row=6, column=1, sticky='ew', padx=5, pady=2)
+        self.manual_client_combo.bind('<<ComboboxSelected>>', self.on_manual_client_select)
+
+        # PROJECT SELECTION (for global tasks)
+        ttk.Label(form_frame, text="Project:").grid(row=7, column=0, sticky='w', pady=2)
+        self.manual_project_combo = ttk.Combobox(form_frame, state='readonly')
+        self.manual_project_combo.grid(row=7, column=1, sticky='ew', padx=5, pady=2)
+        self.manual_project_combo.bind('<<ComboboxSelected>>', self.on_manual_project_select)
+
         # Task
-        ttk.Label(form_frame, text="Task:").grid(row=6, column=0, sticky='w', pady=2)
+        ttk.Label(form_frame, text="Task:").grid(row=8, column=0, sticky='w', pady=2)
         self.manual_task_combo = ttk.Combobox(form_frame, state='readonly')
-        self.manual_task_combo.grid(row=6, column=1, sticky='ew', padx=5, pady=2)
+        self.manual_task_combo.grid(row=8, column=1, sticky='ew', padx=5, pady=2)
 
         # Description
-        ttk.Label(form_frame, text="Description:").grid(row=7, column=0, sticky='nw', pady=2)
+        ttk.Label(form_frame, text="Description:").grid(row=9, column=0, sticky='nw', pady=2)
         self.manual_desc_text = tk.Text(form_frame, height=3)
-        self.manual_desc_text.grid(row=7, column=1, sticky='ew', padx=5, pady=2)
+        self.manual_desc_text.grid(row=9, column=1, sticky='ew', padx=5, pady=2)
 
         form_frame.columnconfigure(1, weight=1)
 
@@ -1428,7 +1443,7 @@ class TimeTrackerApp:
             self.manual_decimal_label.grid()
             self.manual_decimal_entry.grid()
             self.manual_decimal_help.grid()
-    
+
     def add_manual_entry(self):
         task_text = self.manual_task_combo.get()
         date_str = self.manual_date_entry.get().strip()
@@ -1442,12 +1457,12 @@ class TimeTrackerApp:
         try:
             # Parse date MM/DD/YY
             date_obj = datetime.strptime(date_str, "%m/%d/%y")
-            
+
             if mode == "time_range":
                 # Original time range mode
                 start_str = self.manual_start_entry.get().strip()
                 end_str = self.manual_end_entry.get().strip()
-                
+
                 # Parse times HH:MM AM/PM
                 start_time_obj = datetime.strptime(f"{date_str} {start_str}", "%m/%d/%y %I:%M %p")
                 end_time_obj = datetime.strptime(f"{date_str} {end_str}", "%m/%d/%y %I:%M %p")
@@ -1455,36 +1470,36 @@ class TimeTrackerApp:
                 if end_time_obj <= start_time_obj:
                     messagebox.showerror("Error", "End time must be after start time")
                     return
-            
+
             else:  # decimal mode
                 # Parse decimal hours
                 decimal_str = self.manual_decimal_entry.get().strip()
-                
+
                 if not decimal_str:
                     messagebox.showerror("Error", "Please enter hours in decimal format")
                     return
-                
+
                 try:
                     decimal_hours = float(decimal_str)
-                    
+
                     if decimal_hours <= 0:
                         messagebox.showerror("Error", "Hours must be greater than 0")
                         return
-                    
+
                     if decimal_hours > 24:
                         messagebox.showerror("Error", "Hours cannot exceed 24 in a single entry")
                         return
-                    
+
                 except ValueError:
-                    messagebox.showerror("Error", 
-                                       f"Invalid decimal format: '{decimal_str}'\n\n" +
-                                       "Examples: 1.5, 0.75, 2.25")
+                    messagebox.showerror("Error",
+                                         f"Invalid decimal format: '{decimal_str}'\n\n" +
+                                         "Examples: 1.5, 0.75, 2.25")
                     return
-                
+
                 # Calculate start and end times from decimal hours
                 # Use 9 AM as default start time for decimal entries
                 start_time_obj = datetime.strptime(f"{date_str} 09:00 AM", "%m/%d/%y %I:%M %p")
-                
+
                 # Calculate end time by adding decimal hours
                 duration = timedelta(hours=decimal_hours)
                 end_time_obj = start_time_obj + duration
@@ -1494,84 +1509,174 @@ class TimeTrackerApp:
                                  f"Invalid date/time format.\nUse MM/DD/YY for date and HH:MM AM/PM for time.\nError: {str(e)}")
             return
 
-        # Get task ID
-        tasks = self.task_model.get_all()
+        # Get task ID (handle both global and regular tasks)
         task_id = None
-        for task in tasks:
-            client_name = task[9]
-            project_name = task[8]
-            task_display = f"{client_name} - {project_name} - {task[2]}"
-            if task_display == task_text:
-                task_id = task[0]
-                break
 
-        if not task_id:
-            messagebox.showerror("Error", "Invalid task selected")
-            return
-
-        self.time_entry_model.add_manual_entry(task_id, start_time_obj, end_time_obj, description)
-        self.refresh_time_entries()
-        
-        # Calculate duration for display and daily totals
-        duration = end_time_obj - start_time_obj
-        hours = duration.total_seconds() / 3600
-        duration_seconds = duration.total_seconds()
-        
-        # Update daily totals if entry is for today
-        entry_date = start_time_obj.date()
-        today = datetime.now().date()
-        
-        if entry_date == today:
-            # Get client and project IDs from the task
+        # Check if it's a global task
+        if task_text.startswith('[GLOBAL] '):
+            task_name = task_text.replace('[GLOBAL] ', '')
+            global_tasks = self.task_model.get_global_tasks()
+            for task in global_tasks:
+                if task[2] == task_name:
+                    task_id = task[0]
+                    break
+        else:
+            # Regular project task
             tasks = self.task_model.get_all()
             for task in tasks:
                 client_name = task[9]
                 project_name = task[8]
                 task_display = f"{client_name} - {project_name} - {task[2]}"
                 if task_display == task_text:
-                    project_id = task[1]
-                    # Get client_id from project
-                    projects = self.project_model.get_all()
-                    for project in projects:
-                        if project[0] == project_id:
-                            client_id = project[1]
-                            
-                            # Update client totals
-                            if client_id not in self.daily_client_totals:
-                                self.daily_client_totals[client_id] = 0
-                            self.daily_client_totals[client_id] += duration_seconds
-                            
-                            # Update project totals
-                            key = (client_id, project_id)
-                            if key not in self.daily_project_totals:
-                                self.daily_project_totals[key] = 0
-                            self.daily_project_totals[key] += duration_seconds
-                            
-                            break
+                    task_id = task[0]
                     break
+
+        if not task_id:
+            messagebox.showerror("Error", "Invalid task selected")
+            return
+
+        # Get project_id for global tasks
+        project_id_override = None
+        if task_text.startswith('[GLOBAL] '):
+            project_id_override = self.get_manual_entry_project_id()
             
+        self.time_entry_model.add_manual_entry(task_id, start_time_obj, end_time_obj, description, project_id_override=project_id_override)
+        self.refresh_time_entries()
+
+        # Calculate duration for display and daily totals
+        duration = end_time_obj - start_time_obj
+        hours = duration.total_seconds() / 3600
+        duration_seconds = duration.total_seconds()
+
+        # Update daily totals if entry is for today
+        entry_date = start_time_obj.date()
+        today = datetime.now().date()
+
+        if entry_date == today:
+            # Get client and project IDs from the manual entry form (works for both global and regular tasks)
+            client_id = None
+            project_id = None
+            
+            # Get client ID from manual entry form
+            client_name = self.manual_client_combo.get()
+            if client_name:
+                clients = self.client_model.get_all()
+                for client in clients:
+                    if client[1] == client_name:
+                        client_id = client[0]
+                        break
+            
+            # Get project ID from manual entry form
+            project_name = self.manual_project_combo.get()
+            if project_name and client_id:
+                projects = self.project_model.get_by_client(client_id)
+                for project in projects:
+                    if project[2] == project_name:
+                        project_id = project[0]
+                        break
+            
+            # Update daily totals if we found both client and project
+            if client_id and project_id:
+                # Update client totals
+                if client_id not in self.daily_client_totals:
+                    self.daily_client_totals[client_id] = 0
+                self.daily_client_totals[client_id] += duration_seconds
+
+                # Update project totals
+                key = (client_id, project_id)
+                if key not in self.daily_project_totals:
+                    self.daily_project_totals[key] = 0
+                self.daily_project_totals[key] += duration_seconds
+
             # Refresh the daily totals display
             self.update_daily_totals_display()
-        
+
         # Show success message with details
         if mode == "decimal":
-            messagebox.showinfo("Success", 
-                              f"Time entry added successfully\n\n" +
-                              f"Duration: {decimal_hours} hours\n" +
-                              f"Date: {date_obj.strftime('%m/%d/%y')}")
+            messagebox.showinfo("Success",
+                                f"Time entry added successfully\n\n" +
+                                f"Duration: {decimal_hours} hours\n" +
+                                f"Date: {date_obj.strftime('%m/%d/%y')}")
         else:
-            messagebox.showinfo("Success", 
-                              f"Time entry added successfully\n\n" +
-                              f"Duration: {hours:.2f} hours\n" +
-                              f"From: {start_time_obj.strftime('%I:%M %p')} to {end_time_obj.strftime('%I:%M %p')}")
-        
+            messagebox.showinfo("Success",
+                                f"Time entry added successfully\n\n" +
+                                f"Duration: {hours:.2f} hours\n" +
+                                f"From: {start_time_obj.strftime('%I:%M %p')} to {end_time_obj.strftime('%I:%M %p')}")
+
         self.clear_manual_entry_form()
+
+    def on_manual_client_select(self, event):
+        """When client is selected in manual entry, populate projects"""
+        client_name = self.manual_client_combo.get()
+        if client_name:
+            # Get client ID
+            clients = self.client_model.get_all()
+            client_id = None
+            for client in clients:
+                if client[1] == client_name:
+                    client_id = client[0]
+                    break
+
+            if client_id:
+                projects = self.project_model.get_by_client(client_id)
+                self.manual_project_combo['values'] = [p[2] for p in projects]
+                self.manual_project_combo.set('')
+                self.manual_task_combo.set('')
+
+    def on_manual_project_select(self, event):
+        """When project is selected in manual entry, populate tasks"""
+        project_name = self.manual_project_combo.get()
+        client_name = self.manual_client_combo.get()
+
+        if project_name and client_name:
+            projects = self.project_model.get_all()
+            project_id = None
+            for project in projects:
+                proj_client_name = project[9] if len(project) > 9 else None
+                if proj_client_name == client_name and project[2] == project_name:
+                    project_id = project[0]
+                    break
+
+            if project_id:
+                project_tasks = self.task_model.get_by_project(project_id)
+                global_tasks = self.task_model.get_global_tasks()
+                all_tasks = list(global_tasks) + list(project_tasks)
+                
+                task_displays = []
+                for t in all_tasks:
+                    if t[1] is None:
+                        task_displays.append(f"[GLOBAL] {t[2]}")
+                    else:
+                        task_displays.append(f"{client_name} - {project_name} - {t[2]}")
+
+                self.manual_task_combo['values'] = task_displays
+                self.manual_task_combo.set('')
+
+    def get_manual_entry_project_id(self):
+        """Get the project ID from manual entry form"""
+        try:
+            client_name = self.manual_client_combo.get()
+            project_name = self.manual_project_combo.get()
+            
+            if not client_name or not project_name:
+                return None
+            
+            projects = self.project_model.get_all()
+            for project in projects:
+                proj_client_name = project[9] if len(project) > 9 else None
+                if proj_client_name == client_name and project[2] == project_name:
+                    return project[0]
+            return None
+        except:
+            return None
 
     def clear_manual_entry_form(self):
         self.manual_date_entry.delete(0, tk.END)
         self.manual_date_entry.insert(0, datetime.now().strftime("%m/%d/%y"))
         self.manual_start_entry.delete(0, tk.END)
         self.manual_start_entry.insert(0, "09:00 AM")
+        self.manual_client_combo.set('')
+        self.manual_project_combo.set('')
         self.manual_end_entry.delete(0, tk.END)
         self.manual_end_entry.insert(0, "05:00 PM")
         self.manual_decimal_entry.delete(0, tk.END)
@@ -3147,17 +3252,29 @@ class TimeTrackerApp:
         # Refresh task client combo
         self.task_client_combo['values'] = client_names
 
-        # Refresh task combo for manual entry
+        # Refresh task combo for manual entry (include global tasks)
         tasks = self.task_model.get_all()
+        global_tasks = self.task_model.get_global_tasks()
+        
         task_displays = []
+        
+        # Add global tasks first with [GLOBAL] prefix
+        for task in global_tasks:
+            task_displays.append(f"[GLOBAL] {task[2]}")
+        
+        # Add regular project tasks
         for task in tasks:
             client_name = task[9] if len(task) > 9 else "Unknown"
             project_name = task[8] if len(task) > 8 else "Unknown"
             task_displays.append(f"{client_name} - {project_name} - {task[2]}")
+        
         self.manual_task_combo['values'] = task_displays
 
         # Refresh invoice client combo
         self.invoice_client_combo['values'] = client_names
+        
+        # Refresh manual entry client combo
+        self.manual_client_combo['values'] = client_names
 
     def generate_invoice_data(self, client_id, start_date, end_date):
         # Get connection directly (not using context manager for row_factory)
