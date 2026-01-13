@@ -26,10 +26,12 @@
 - ✅ Company info management for invoices
 - ✅ Billing prevention (no double-billing)
 
-**Recent Fixes:**
+**Recent Fixes (v2.0.2 - January 13, 2026):**
 - ✅ Manual entry now works with global tasks (requires project_id_override)
 - ✅ Manual entry Client/Project dropdowns properly populated on startup
 - ✅ Manual entries now update daily totals display correctly
+- ✅ Fixed ValueError when adding manual entries with global tasks
+- ✅ Added Client/Project selection to manual entry form
 
 ---
 
@@ -198,6 +200,8 @@ Error (if any): [paste error]
 
 ---
 
-**Last Updated:** January 13, 2026
-**App Version:** V2.0
+**Last Updated:** January 13, 2026 - 5:30 PM
+**App Version:** V2.0.2
 **Status:** ✅ Fully Functional
+**Last Session Cost:** $6 (fixed manual entry bug)
+**Git Commit:** d24d943
