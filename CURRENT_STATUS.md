@@ -1,27 +1,32 @@
-# Time Tracker Pro V2.0.2 - Current Status
+# Time Tracker Pro V2.0.3 - Current Status
 
-**Last Updated:** January 13, 2026 - 5:30 PM  
+**Last Updated:** January 15, 2026 - 4:00 PM  
 **Status:** ✅ **FULLY OPERATIONAL**
 
 ---
 
-## ✅ Recent Session Summary (January 13, 2026)
+## ✅ Recent Session Summary (January 15, 2026)
 
-### Issues Fixed:
-1. ✅ **Manual Entry with Global Tasks** - Fixed `ValueError: Global tasks require a project context`
-2. ✅ **Daily Totals Display** - Manual entries now update "Today's Time by Client" section
-3. ✅ **Combo Population** - Client/Project dropdowns now populate on app startup
+### Issue Fixed:
+1. ✅ **Invoice Tab Loading Bug** - Fixed critical bug where entries with global tasks weren't appearing
+   - Changed SQL JOINs from `tasks.project_id` to `time_entries.project_id`
+   - 5 queries updated across 2 methods
+   - All unbilled entries now load correctly in Invoice tab
+   - Resolves "missing entries" issue when trying to create invoices
 
 ### Files Modified:
-- `gui.py` - Added Client/Project dropdowns, fixed daily totals logic
-- `models.py` - Added `project_id_override` parameter to `add_manual_entry()`
+- `gui.py` - Fixed 5 SQL queries in `load_invoiceable_entries()` and `show_invoice_preview_dialog()`
+- `CHANGELOG.md` - Added v2.0.3 entry
+- `CURRENT_STATUS.md` - Updated status
 
-### Session Cost:
-- **$6** (vs $20 failed session previously)
+### Cleanup:
+- Removed 13 temporary utility scripts and documentation files
+- Deleted backup files from previous fixes
+- Cleaned up development artifacts
 
 ### Git Status:
-- Commit: `d24d943`
-- Pushed to: `https://github.com/wujibi/TimeTrackerApp`
+- Ready to commit and push
+- Version: 2.0.3
 
 ---
 
@@ -90,6 +95,7 @@ Error: [paste error if any]
 
 ## 🎉 Version History
 
+- **v2.0.3** (2026-01-15) - Fixed Invoice tab loading with global tasks
 - **v2.0.2** (2026-01-13) - Fixed manual entry with global tasks
 - **v2.0.1** (2026-01-10) - Added Excel export
 - **v2.0.0** (2026-01-10) - New clock icon, time entries filter
@@ -99,7 +105,7 @@ Error: [paste error if any]
 
 ---
 
-**App Version:** V2.0.2  
+**App Version:** V2.0.3  
 **Status:** 🟢 FULLY OPERATIONAL  
 **Database:** Synced to Google Drive  
 **Git Branch:** master

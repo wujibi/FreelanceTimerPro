@@ -1,0 +1,8 @@
+BACKUP CREATED: 2026-01-15 at 3:00 PM
+This is a backup before fixing the Invoice tab loading bug with global tasks.
+
+Bug: load_invoiceable_entries() was joining time_entries through tasks.project_id,
+which excludes global tasks (where tasks.project_id is NULL).
+
+Fix: Join using time_entries.project_id instead, since that's where the actual project
+context is stored for each entry.

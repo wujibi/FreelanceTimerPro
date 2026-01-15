@@ -6,6 +6,30 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.0.3] - 2026-01-15
+
+### Fixed
+- **Invoice Tab Loading Bug**: Fixed critical bug where Invoice tab was not loading time entries that used global tasks
+  - Changed SQL JOIN from `tasks.project_id` to `time_entries.project_id` in 5 queries
+  - Global tasks have `tasks.project_id = NULL`, causing JOIN failures and missing entries
+  - Affected methods: `load_invoiceable_entries()` and `show_invoice_preview_dialog()`
+  - All unbilled entries now appear in Invoice tab regardless of task type
+  - Fixes issue where only some entries would load when selecting a client
+  - Invoice generation now works correctly for all task types
+
+### Technical Details
+- **Root Cause**: Global tasks store NULL in `tasks.project_id`, but time entries always store a valid `project_id`
+- **Solution**: Join through `time_entries.project_id` instead of `tasks.project_id`
+- **Files Modified**: `gui.py` (lines ~3424, ~3434, ~3453, ~3465, ~3568)
+- **Queries Updated**: 4 in `load_invoiceable_entries()`, 1 in `show_invoice_preview_dialog()`
+- **Impact**: Invoice tab, invoice preview, and PDF generation all work with global task entries
+
+### Removed
+- Cleaned up temporary utility scripts and documentation from development
+- Removed backup files and one-time troubleshooting documents
+
+---
+
 ## [2.0.2] - 2026-01-13
 
 ### Fixed

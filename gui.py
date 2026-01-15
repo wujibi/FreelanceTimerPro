@@ -3422,7 +3422,7 @@ class TimeTrackerApp:
                            p.name as project_name, t.name as task_name
                     FROM time_entries te
                     JOIN tasks t ON te.task_id = t.id
-                    JOIN projects p ON t.project_id = p.id
+                    JOIN projects p ON te.project_id = p.id
                     WHERE p.client_id = ? AND p.id = ? AND (te.is_billed = 0 OR te.is_billed IS NULL)
                     ORDER BY te.start_time DESC
                 ''', (client_id, project_id))
@@ -3432,7 +3432,7 @@ class TimeTrackerApp:
                            p.name as project_name, t.name as task_name
                     FROM time_entries te
                     JOIN tasks t ON te.task_id = t.id
-                    JOIN projects p ON t.project_id = p.id
+                    JOIN projects p ON te.project_id = p.id
                     WHERE p.client_id = ? AND (te.is_billed = 0 OR te.is_billed IS NULL)
                     ORDER BY te.start_time DESC
                 ''', (client_id,))
@@ -3451,7 +3451,7 @@ class TimeTrackerApp:
                            p.name as project_name, t.name as task_name
                     FROM time_entries te
                     JOIN tasks t ON te.task_id = t.id
-                    JOIN projects p ON t.project_id = p.id
+                    JOIN projects p ON te.project_id = p.id
                     WHERE p.client_id = ? AND p.id = ? 
                           AND DATE(te.start_time) BETWEEN ? AND ?
                           AND (te.is_billed = 0 OR te.is_billed IS NULL)
@@ -3463,7 +3463,7 @@ class TimeTrackerApp:
                            p.name as project_name, t.name as task_name
                     FROM time_entries te
                     JOIN tasks t ON te.task_id = t.id
-                    JOIN projects p ON t.project_id = p.id
+                    JOIN projects p ON te.project_id = p.id
                     WHERE p.client_id = ? 
                           AND DATE(te.start_time) BETWEEN ? AND ?
                           AND (te.is_billed = 0 OR te.is_billed IS NULL)
@@ -3566,7 +3566,7 @@ class TimeTrackerApp:
                    t.lump_sum_amount as task_lump_amount
             FROM time_entries te
             JOIN tasks t ON te.task_id = t.id
-            JOIN projects p ON t.project_id = p.id
+            JOIN projects p ON te.project_id = p.id
             WHERE te.id IN ({placeholders})
         ''', entry_ids)
         
