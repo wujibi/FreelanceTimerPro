@@ -189,12 +189,28 @@ class InvoiceGenerator:
         table_data = [['Description', 'Quantity', 'Rate', 'Amount']]
 
         for item in invoice_data['items']:
-            table_data.append([
-                item['description'],
-                item['quantity'],
-                item['rate'],
-                f"${item['amount']:.2f}"
-            ])
+            if item.get('is_header'):
+                # Project header - bold, no values
+                table_data.append([
+                    Paragraph(f"<b>{item['description'].replace('**', '')}</b>", styles['Normal']),
+                    '', '', ''
+                ])
+            elif item.get('is_subtotal'):
+                # Project subtotal - bold, right-aligned amount
+                table_data.append([
+                    Paragraph(f"<b>{item['description']}</b>", styles['Normal']),
+                    '', '',
+                    f"${item['amount']:.2f}"
+                ])
+            else:
+                # Regular task row
+                amount_display = f"${item['amount']:.2f}" if isinstance(item['amount'], (int, float)) else ''
+                table_data.append([
+                    item['description'],
+                    item['quantity'],
+                    item['rate'],
+                    amount_display
+                ])
 
         # Add subtotal and total rows
         table_data.append(['', '', '', ''])  # Blank row

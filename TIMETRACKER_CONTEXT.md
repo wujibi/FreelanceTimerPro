@@ -20,18 +20,20 @@
 - ✅ Global tasks (tasks available across all projects)
 - ✅ Client/Project/Task management (full CRUD)
 - ✅ Time entries tracking (grouped view by Client → Project → Task)
-- ✅ Invoice generation with PDF export
+- ✅ Time entry editing (all entries including global tasks)
+- ✅ Invoice tab with hierarchical grouping (Project → Task → Entries)
+- ✅ Invoice generation with PDF export (grouped by project/task)
 - ✅ Daily time totals tracking by client and project
 - ✅ Google Drive database sync
 - ✅ Company info management for invoices
 - ✅ Billing prevention (no double-billing)
+- ✅ Excel export of time entries
 
-**Recent Fixes (v2.0.2 - January 13, 2026):**
-- ✅ Manual entry now works with global tasks (requires project_id_override)
-- ✅ Manual entry Client/Project dropdowns properly populated on startup
-- ✅ Manual entries now update daily totals display correctly
-- ✅ Fixed ValueError when adding manual entries with global tasks
-- ✅ Added Client/Project selection to manual entry form
+**Recent Fixes (v2.0.4 - January 21, 2026):**
+- ✅ Fixed time entry edit bug (simplified query to use denormalized columns)
+- ✅ Added Invoice tab hierarchical grouping (matches Time Entries and preview)
+- ✅ Fixed Select/Deselect All buttons (auto-expand + recursive selection)
+- ✅ All time entries now editable regardless of task type
 
 ---
 
@@ -200,8 +202,8 @@ Error (if any): [paste error]
 
 ---
 
-**Last Updated:** January 13, 2026 - 5:30 PM
-**App Version:** V2.0.2
+**Last Updated:** January 21, 2026 - 1:00 PM
+**App Version:** V2.0.4
 **Status:** ✅ Fully Functional
-**Last Session Cost:** $6 (fixed manual entry bug)
-**Git Commit:** d24d943
+**Last Session:** Fixed edit bug + Invoice tab grouping
+**Git Status:** Ready to commit

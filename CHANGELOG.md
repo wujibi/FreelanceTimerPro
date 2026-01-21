@@ -6,6 +6,55 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.0.4] - 2026-01-21
+
+### Added
+- **Invoice Tab Hierarchical Grouping**: Invoice tab now displays time entries grouped by Project → Task → Individual Entries
+  - Matches the hierarchy used in Time Entries tab and invoice preview/PDF
+  - Shows subtotals for each project and task
+  - Individual time entries are expandable under their parent task
+  - Visual indicators: 📁 Projects, 📋 Tasks, ⏱️ Individual Entries
+  - Date format includes time: `01/21/26 2:30 PM`
+  - Makes it much easier to see what you're about to bill
+
+### Fixed
+- **Time Entry Edit Bug**: Fixed critical bug where certain time entries couldn't be edited
+  - Root cause: `edit_time_entry()` used complex JOINs that failed on global tasks (where `project_id = NULL`)
+  - Solution: Simplified to query directly from `time_entries` table which contains denormalized data
+  - Fixed column indices to match actual schema
+  - Improved error messages to include entry ID for debugging
+  - All time entries can now be edited regardless of task type
+- **Invoice Tab Select/Deselect Buttons**: Fixed buttons to work with hierarchical structure
+  - Select All now recursively finds and selects only actual time entries (not headers)
+  - Auto-expands all projects/tasks when Select All is clicked (no manual expanding needed)
+  - Deselect All properly clears current selection
+  - Buttons now work correctly with grouped display
+
+### Changed
+- **Invoice Tab Layout**: Completely redesigned entry selection interface
+  - Changed from flat list to hierarchical tree structure
+  - Only individual entries are selectable (not project/task headers)
+  - Entry selection logic updated to handle nested structure
+  - Summary label now shows accurate count of actual entries (not including headers)
+
+### Technical Details
+- **Files Modified**: `gui.py`
+- **Methods Updated**:
+  - `load_invoiceable_entries()` - Added project/task grouping logic with subtotals
+  - `edit_time_entry()` - Simplified query to use denormalized columns
+  - `select_all_invoice_entries()` - Added recursive selection with auto-expand
+  - `deselect_all_invoice_entries()` - Fixed to clear actual selection
+- **No Database Changes**: Uses existing schema with denormalized columns
+- **Lines Modified**: ~1115 (edit fix), ~3467-3543 (invoice grouping), ~3543-3565 (select buttons)
+
+### Removed
+- Cleaned up temporary patch files and update scripts:
+  - `gui_invoice_grouped.patch`
+  - `gui_load_invoiceable_backup.py`
+  - `update_load_invoiceable.py`
+
+---
+
 ## [2.0.3] - 2026-01-15
 
 ### Fixed

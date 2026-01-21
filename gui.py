@@ -2106,20 +2106,14 @@ class TimeTrackerApp:
         edit_window.title("Edit Time Entry")
         edit_window.geometry("500x400")
 
-        # Get the entry details
+        # Get the entry details - simplified query using denormalized columns
         with self.db.get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute('''
-                           SELECT te.*, t.name as task_name, p.name as project_name, c.name as client_name
-                           FROM time_entries te
-                                    JOIN tasks t ON te.task_id = t.id
-                                    JOIN projects p ON t.project_id = p.id
-                                    JOIN clients c ON p.client_id = c.id
-                           WHERE te.id = ?''', (entry_id,))
+            cursor.execute('SELECT * FROM time_entries WHERE id = ?', (entry_id,))
             entry = cursor.fetchone()
 
         if not entry:
-            messagebox.showerror("Error", "Time entry not found")
+            messagebox.showerror("Error", f"Time entry #{entry_id} not found in database")
             edit_window.destroy()
             return
 
@@ -2127,21 +2121,19 @@ class TimeTrackerApp:
         form_frame = ttk.Frame(edit_window)
         form_frame.pack(fill='both', expand=True, padx=15, pady=15)
 
-        # Try to get task/project/client names from proper positions
-        try:
-            task_name = entry[-3] if len(entry) > 3 else "Unknown"
-            project_name = entry[-2] if len(entry) > 2 else "Unknown"
-            client_name = entry[-1] if len(entry) > 1 else "Unknown"
-        except:
-            task_name = project_name = client_name = "Unknown"
+        # Get names from denormalized columns in time_entries
+        # Schema: id, task_id, task_name, project_id, project_name, client_id, client_name, date, start_time...
+        task_name = entry[2] if entry[2] else "Unknown"
+        project_name = entry[4] if entry[4] else "Unknown"
+        client_name = entry[6] if entry[6] else "Unknown"
 
         ttk.Label(form_frame, text=f"Task: {client_name} - {project_name} - {task_name}", 
                  font=('Arial', 9, 'bold')).grid(row=0, column=0, columnspan=2, sticky='w', pady=(0, 10))
 
-        # Get original start and end times
+        # Get original start and end times (columns 8 and 9)
         try:
-            original_start = datetime.fromisoformat(entry[2])  # start_time from DB
-            original_end = datetime.fromisoformat(entry[3])    # end_time from DB
+            original_start = datetime.fromisoformat(entry[8])  # start_time
+            original_end = datetime.fromisoformat(entry[9])    # end_time
             original_duration = (original_end - original_start).total_seconds() / 3600
         except:
             original_start = datetime.now()
@@ -2217,11 +2209,11 @@ class TimeTrackerApp:
         # Start in decimal mode
         toggle_edit_mode()
 
-        # Description
+        # Description (column 12)
         ttk.Label(form_frame, text="Description:").grid(row=7, column=0, sticky='nw', pady=5)
         desc_text = tk.Text(form_frame, height=3, width=30)
         desc_text.grid(row=7, column=1, sticky='ew', padx=5, pady=5)
-        desc_text.insert('1.0', entry[4] if entry[4] else "")  # description from DB
+        desc_text.insert('1.0', entry[12] if entry[12] else "")  # description
 
         form_frame.columnconfigure(1, weight=1)
 
@@ -3476,40 +3468,110 @@ class TimeTrackerApp:
         for item in self.invoice_entries_tree.get_children():
             self.invoice_entries_tree.delete(item)
         
-        # Populate tree
-        total_hours = 0
+        # Group by Project -> Task for better organization
+        project_groups = {}  # {project_name: {task_name: [entries]}}
+        
         for entry in entries:
             entry_id, start_time, description, duration_minutes, project_name, task_name = entry
             
-            # Format date
-            try:
-                dt = datetime.fromisoformat(start_time)
-                date_display = dt.strftime("%m/%d/%y")
-            except:
-                date_display = start_time[:10]
+            if project_name not in project_groups:
+                project_groups[project_name] = {}
+            if task_name not in project_groups[project_name]:
+                project_groups[project_name][task_name] = []
             
-            # Calculate hours
-            hours = (duration_minutes or 0) / 60.0
-            total_hours += hours
+            project_groups[project_name][task_name].append(entry)
+        
+        # Populate tree with hierarchy
+        total_hours = 0
+        total_entries = 0
+        
+        for project_name in sorted(project_groups.keys()):
+            # Calculate project totals
+            project_hours = 0
+            project_entry_count = 0
+            for task_name in project_groups[project_name]:
+                for entry in project_groups[project_name][task_name]:
+                    project_hours += (entry[3] or 0) / 60.0
+                    project_entry_count += 1
             
-            # Insert into tree
-            self.invoice_entries_tree.insert('', 'end', 
-                text='☐',
-                values=(date_display, project_name, task_name, f"{hours:.2f} hrs", description or ''),
-                tags=(f'entry_id_{entry_id}',))
+            # Insert project header
+            project_node = self.invoice_entries_tree.insert('', 'end',
+                text=f'📁 {project_name}',
+                values=('', '', '', f'{project_hours:.2f} hrs', f'{project_entry_count} entries'),
+                tags=('project',))
+            
+            # Add tasks under project
+            for task_name in sorted(project_groups[project_name].keys()):
+                task_entries = project_groups[project_name][task_name]
+                
+                # Calculate task total
+                task_hours = sum((e[3] or 0) / 60.0 for e in task_entries)
+                
+                # Insert task header
+                task_node = self.invoice_entries_tree.insert(project_node, 'end',
+                    text=f'  📋 {task_name}',
+                    values=('', '', '', f'{task_hours:.2f} hrs', f'{len(task_entries)} entries'),
+                    tags=('task',))
+                
+                # Add individual entries under task
+                for entry in task_entries:
+                    entry_id, start_time, description, duration_minutes, _, _ = entry
+                    
+                    # Format date
+                    try:
+                        dt = datetime.fromisoformat(start_time)
+                        date_display = dt.strftime("%m/%d/%y %I:%M %p")
+                    except:
+                        date_display = start_time[:10]
+                    
+                    hours = (duration_minutes or 0) / 60.0
+                    total_hours += hours
+                    total_entries += 1
+                    
+                    # Insert entry (selectable)
+                    self.invoice_entries_tree.insert(task_node, 'end',
+                        text='    ⏱️',
+                        values=(date_display, '', '', f'{hours:.2f} hrs', description or ''),
+                        tags=(f'entry_id_{entry_id}', 'entry'))
+        
+        # Configure tag styles
+        self.invoice_entries_tree.tag_configure('project', font=('Arial', 10, 'bold'))
+        self.invoice_entries_tree.tag_configure('task', font=('Arial', 9, 'bold'))
+        self.invoice_entries_tree.tag_configure('entry', font=('Arial', 9))
         
         # Update summary
         self.invoice_summary_label.config(
-            text=f"📊 {len(entries)} unbilled entries found | Total: {total_hours:.2f} hours")
+            text=f"📊 {total_entries} unbilled entries found | Total: {total_hours:.2f} hours")
     
     def select_all_invoice_entries(self):
-        """Select all entries in the invoice tree"""
-        for item in self.invoice_entries_tree.get_children():
-            self.invoice_entries_tree.selection_add(item)
+        """Select all ACTUAL entries (not project/task headers) in the invoice tree"""
+        # First, expand all nodes so we can select everything
+        def expand_all(parent):
+            for item in self.invoice_entries_tree.get_children(parent):
+                self.invoice_entries_tree.item(item, open=True)
+                expand_all(item)
+        
+        expand_all('')
+        
+        # Now select all actual entries
+        def select_entries_recursive(parent):
+            for item in self.invoice_entries_tree.get_children(parent):
+                tags = self.invoice_entries_tree.item(item)['tags']
+                # Only select items that have entry_id tag (actual time entries)
+                if any(tag.startswith('entry_id_') for tag in tags):
+                    self.invoice_entries_tree.selection_add(item)
+                # Recurse into children
+                select_entries_recursive(item)
+        
+        # Start from root
+        select_entries_recursive('')
     
     def deselect_all_invoice_entries(self):
         """Deselect all entries in the invoice tree"""
-        self.invoice_entries_tree.selection_remove(*self.invoice_entries_tree.get_children())
+        # Get all currently selected items and deselect them
+        selected = self.invoice_entries_tree.selection()
+        if selected:
+            self.invoice_entries_tree.selection_remove(*selected)
     
     def preview_invoice(self):
         """Generate and show invoice preview dialog"""
@@ -3573,44 +3635,76 @@ class TimeTrackerApp:
         entries = cursor.fetchall()
         conn.row_factory = None
         
-        # Group by task and calculate totals
-        task_groups = {}
+        # Group by project -> task with subtotals
+        project_groups = {}  # {project_name: {tasks: {task_name: data}, subtotal: 0}}
+        
         for entry in entries:
-            key = f"{entry['project_name']} - {entry['task_name']}"
-            if key not in task_groups:
-                task_groups[key] = {
+            project_name = entry['project_name']
+            task_name = entry['task_name']
+            
+            if project_name not in project_groups:
+                project_groups[project_name] = {'tasks': {}, 'subtotal': 0}
+            
+            if task_name not in project_groups[project_name]['tasks']:
+                project_groups[project_name]['tasks'][task_name] = {
                     'minutes': 0,
                     'rate': entry['task_rate'] or entry['project_rate'],
                     'is_lump_sum': entry['task_lump_sum'] or entry['project_lump_sum'],
                     'lump_sum_amount': entry['task_lump_amount'] or entry['project_lump_amount']
                 }
-            task_groups[key]['minutes'] += entry['duration_minutes'] or 0
+            
+            project_groups[project_name]['tasks'][task_name]['minutes'] += entry['duration_minutes'] or 0
         
-        # Build invoice items
+        # Build invoice items with project/task hierarchy
         invoice_items = []
         total_amount = 0
         
-        for task_name, data in task_groups.items():
-            hours = data['minutes'] / 60.0
+        for project_name, project_data in project_groups.items():
+            # Add project header
+            invoice_items.append({
+                'description': f'**{project_name}**',
+                'quantity': '',
+                'rate': '',
+                'amount': '',
+                'is_header': True
+            })
             
-            if data['is_lump_sum']:
-                amount = data['lump_sum_amount']
-                invoice_items.append({
-                    'description': task_name,
-                    'quantity': '1',
-                    'rate': f"${amount:.2f}",
-                    'amount': amount
-                })
-            else:
-                amount = hours * data['rate']
-                invoice_items.append({
-                    'description': task_name,
-                    'quantity': f"{hours:.2f} hrs",
-                    'rate': f"${data['rate']:.2f}/hr",
-                    'amount': amount
-                })
+            project_subtotal = 0
             
-            total_amount += amount
+            for task_name, task_data in project_data['tasks'].items():
+                hours = task_data['minutes'] / 60.0
+                
+                if task_data['is_lump_sum']:
+                    amount = task_data['lump_sum_amount']
+                    invoice_items.append({
+                        'description': f'  • {task_name}',
+                        'quantity': '1',
+                        'rate': f"${amount:.2f}",
+                        'amount': amount,
+                        'is_task': True
+                    })
+                else:
+                    amount = hours * task_data['rate']
+                    invoice_items.append({
+                        'description': f'  • {task_name}',
+                        'quantity': f"{hours:.2f} hrs",
+                        'rate': f"${task_data['rate']:.2f}/hr",
+                        'amount': amount,
+                        'is_task': True
+                    })
+                
+                project_subtotal += amount
+            
+            # Add project subtotal
+            invoice_items.append({
+                'description': f'  {project_name} Subtotal',
+                'quantity': '',
+                'rate': '',
+                'amount': project_subtotal,
+                'is_subtotal': True
+            })
+            
+            total_amount += project_subtotal
         
         # Get date range from entries
         start_dates = [datetime.fromisoformat(e['start_time']) for e in entries]
@@ -3658,12 +3752,32 @@ class TimeTrackerApp:
         items_tree.column('Amount', width=100)
         
         for item in invoice_items:
-            items_tree.insert('', 'end', values=(
-                item['description'],
-                item['quantity'],
-                item['rate'],
-                f"${item['amount']:.2f}"
-            ))
+            if item.get('is_header'):
+                # Bold project header
+                items_tree.insert('', 'end', values=(
+                    item['description'].replace('**', ''),
+                    '', '', ''
+                ), tags=('header',))
+            elif item.get('is_subtotal'):
+                # Project subtotal row
+                items_tree.insert('', 'end', values=(
+                    item['description'],
+                    '', '',
+                    f"${item['amount']:.2f}"
+                ), tags=('subtotal',))
+            else:
+                # Regular task row
+                amount_display = f"${item['amount']:.2f}" if isinstance(item['amount'], (int, float)) else ''
+                items_tree.insert('', 'end', values=(
+                    item['description'],
+                    item['quantity'],
+                    item['rate'],
+                    amount_display
+                ))
+        
+        # Configure tags for styling
+        items_tree.tag_configure('header', font=('Arial', 10, 'bold'), background='#e8f4f8')
+        items_tree.tag_configure('subtotal', font=('Arial', 9, 'bold'), background='#f0f0f0')
         
         items_tree.pack(fill='both', expand=True, padx=10, pady=10)
         
