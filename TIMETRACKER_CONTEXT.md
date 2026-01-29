@@ -20,20 +20,28 @@
 - ✅ Global tasks (tasks available across all projects)
 - ✅ Client/Project/Task management (full CRUD)
 - ✅ Time entries tracking (grouped view by Client → Project → Task)
-- ✅ Time entry editing (all entries including global tasks)
+- ✅ Time entry editing (all entries including global tasks, editable from Invoice tab)
 - ✅ Invoice tab with hierarchical grouping (Project → Task → Entries)
 - ✅ Invoice generation with PDF export (grouped by project/task)
+- ✅ **EMAIL INVOICES** - Send invoices directly with PDF attachments 🎉
 - ✅ Daily time totals tracking by client and project
 - ✅ Google Drive database sync
 - ✅ Company info management for invoices
 - ✅ Billing prevention (no double-billing)
 - ✅ Excel export of time entries
+- ✅ Email settings with SMTP configuration (Gmail, Outlook, Custom)
+- ✅ Email templates (5 built-in: Professional, Friendly, Formal, Reminder, Thank You)
+- ✅ Tree expansion state preservation (no more collapsing!)
 
-**Recent Fixes (v2.0.4 - January 21, 2026):**
-- ✅ Fixed time entry edit bug (simplified query to use denormalized columns)
-- ✅ Added Invoice tab hierarchical grouping (matches Time Entries and preview)
-- ✅ Fixed Select/Deselect All buttons (auto-expand + recursive selection)
-- ✅ All time entries now editable regardless of task type
+**Recent Fixes (v2.0.5 - January 29, 2026):**
+- ✅ **EMAIL INVOICE FEATURE** - Complete implementation from SMTP config to PDF attachment
+- ✅ Fixed task edit bug (rates now update correctly)
+- ✅ Fixed tree collapse issue (Tasks, Time Entries, Invoice tabs maintain expansion)
+- ✅ Added edit from Invoice tab (both main tab and preview dialog)
+- ✅ Fixed dialog positioning (modals now appear in front)
+- ✅ Fixed whitespace on startup (removed Timer scrollbar)
+- ✅ Fixed email settings persistence (auto-load on startup)
+- ✅ Added ReportLab dependency for PDF generation
 
 ---
 
@@ -202,8 +210,8 @@ Error (if any): [paste error]
 
 ---
 
-**Last Updated:** January 21, 2026 - 1:00 PM
-**App Version:** V2.0.4
-**Status:** ✅ Fully Functional
-**Last Session:** Fixed edit bug + Invoice tab grouping
-**Git Status:** Ready to commit
+**Last Updated:** January 29, 2026 - 4:00 PM
+**App Version:** V2.0.5
+**Status:** ✅ Fully Functional + Email Invoices!
+**Last Session:** Complete email invoice system + UX improvements
+**Git Status:** Major changes ready to commit

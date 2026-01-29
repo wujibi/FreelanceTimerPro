@@ -98,6 +98,8 @@ class DatabaseManager:
         self.create_time_entries_table()
 
         # Company and billing tables
+        self.create_email_settings_table()
+        self.create_email_templates_table()
         self.create_company_info_table()
         self.create_billing_records_table()
         self.create_billing_time_entries_table()
@@ -430,6 +432,12 @@ class DatabaseManager:
         # Add payment tracking columns if missing (for existing databases)
         self.add_column_if_missing('billing_history', 'is_paid', 'INTEGER DEFAULT 0')
         self.add_column_if_missing('billing_history', 'date_paid', 'TEXT')
+        
+        # Add email tracking columns if missing
+        self.add_column_if_missing('billing_history', 'email_sent_date', 'TEXT')
+        self.add_column_if_missing('billing_history', 'email_sent_to', 'TEXT')
+        self.add_column_if_missing('billing_history', 'email_subject', 'TEXT')
+        self.add_column_if_missing('billing_history', 'email_body', 'TEXT')
 
         # Create billing_entry_link table if doesn't exist
         if not self.table_exists('billing_entry_link'):
@@ -643,6 +651,119 @@ class DatabaseManager:
         WHERE invoice_number = ?
         '''
         return self.fetch_one(query, [invoice_number])
+
+    def create_email_settings_table(self):
+        """Create email settings table for SMTP configuration"""
+        query = '''
+        CREATE TABLE IF NOT EXISTS email_settings (
+            id INTEGER PRIMARY KEY CHECK (id = 1),
+            smtp_server TEXT NOT NULL,
+            smtp_port INTEGER NOT NULL DEFAULT 587,
+            email_address TEXT NOT NULL,
+            email_password TEXT NOT NULL,
+            from_name TEXT,
+            send_copy_to_self INTEGER DEFAULT 1,
+            show_preview_before_send INTEGER DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        '''
+        self.execute_query(query)
+    
+    def create_email_templates_table(self):
+        """Create email templates table"""
+        query = '''
+        CREATE TABLE IF NOT EXISTS email_templates (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL UNIQUE,
+            subject TEXT NOT NULL,
+            body TEXT NOT NULL,
+            is_default INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        '''
+        self.execute_query(query)
+    
+    # Email Settings Methods
+    def get_email_settings(self):
+        """Get email SMTP settings"""
+        query = 'SELECT * FROM email_settings WHERE id = 1'
+        return self.fetch_one(query)
+    
+    def save_email_settings(self, smtp_server, smtp_port, email_address, 
+                           email_password, from_name=None, send_copy_to_self=True,
+                           show_preview_before_send=True):
+        """Save or update email settings"""
+        query = '''
+        INSERT OR REPLACE INTO email_settings
+        (id, smtp_server, smtp_port, email_address, email_password, from_name,
+         send_copy_to_self, show_preview_before_send, updated_at)
+        VALUES (1, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+        '''
+        params = [
+            smtp_server, smtp_port, email_address, email_password, from_name,
+            1 if send_copy_to_self else 0,
+            1 if show_preview_before_send else 0
+        ]
+        return self.execute_query(query, params)
+    
+    # Email Template Methods
+    def get_email_templates(self):
+        """Get all email templates"""
+        query = 'SELECT * FROM email_templates ORDER BY name'
+        return self.fetch_all(query)
+    
+    def get_email_template(self, template_id=None, template_name=None):
+        """Get a specific email template by ID or name"""
+        if template_id:
+            query = 'SELECT * FROM email_templates WHERE id = ?'
+            return self.fetch_one(query, [template_id])
+        elif template_name:
+            query = 'SELECT * FROM email_templates WHERE name = ?'
+            return self.fetch_one(query, [template_name])
+        return None
+    
+    def get_default_template(self):
+        """Get the default email template"""
+        query = 'SELECT * FROM email_templates WHERE is_default = 1 LIMIT 1'
+        return self.fetch_one(query)
+    
+    def save_email_template(self, name, subject, body, is_default=False):
+        """Save or update an email template"""
+        # If setting as default, unset all others first
+        if is_default:
+            self.execute_query('UPDATE email_templates SET is_default = 0')
+        
+        query = '''
+        INSERT INTO email_templates (name, subject, body, is_default, updated_at)
+        VALUES (?, ?, ?, ?, datetime('now'))
+        ON CONFLICT(name) DO UPDATE SET
+            subject = excluded.subject,
+            body = excluded.body,
+            is_default = excluded.is_default,
+            updated_at = datetime('now')
+        '''
+        return self.execute_query(query, [name, subject, body, 1 if is_default else 0])
+    
+    def delete_email_template(self, template_id):
+        """Delete an email template"""
+        query = 'DELETE FROM email_templates WHERE id = ?'
+        return self.execute_query(query, [template_id])
+    
+    def update_invoice_email_sent(self, invoice_number, recipient_email, 
+                                  email_subject, email_body):
+        """Update billing history with email sent information"""
+        query = '''
+        UPDATE billing_history
+        SET email_sent_date = datetime('now'),
+            email_sent_to = ?,
+            email_subject = ?,
+            email_body = ?
+        WHERE invoice_number = ?
+        '''
+        return self.execute_query(query, [recipient_email, email_subject, 
+                                         email_body, invoice_number])
 
     def close(self):
         """Close the database connection"""

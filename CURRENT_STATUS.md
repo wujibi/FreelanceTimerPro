@@ -1,48 +1,84 @@
-# Time Tracker Pro V2.0.4 - Current Status
+# Time Tracker Pro V2.0.5 - Current Status
 
-**Last Updated:** January 21, 2026 - 1:00 PM  
-**Status:** ✅ **FULLY OPERATIONAL**
+**Last Updated:** January 29, 2026 - 4:00 PM  
+**Status:** ✅ **FULLY OPERATIONAL + EMAIL INVOICES!**
 
 ---
 
-## ✅ Recent Session Summary (January 21, 2026)
+## ✅ Recent Session Summary (January 29, 2026)
 
-### Issues Fixed:
-1. ✅ **Time Entry Edit Bug** - Fixed critical bug where some time entries reported "not found" when clicking EDIT
-   - Root cause: Complex JOINs failed on global tasks with NULL project_id
-   - Solution: Query directly from time_entries table (has denormalized data)
-   - All time entries can now be edited regardless of task type
-   
-2. ✅ **Invoice Tab Grouping** - Added hierarchical display to Invoice tab entry selection
-   - Changed from flat list to Project → Task → Entry hierarchy
-   - Shows subtotals for projects and tasks
-   - Matches Time Entries tab and invoice preview layout
-   - Much easier to see what you're about to bill
+### Major Features Added:
+1. 🎉 **EMAIL INVOICE FEATURE** - Complete end-to-end email system
+   - Send invoices directly from app with PDF attachments
+   - Email Settings tab with SMTP configuration (Gmail/Outlook/Custom)
+   - Email Templates tab with 5 built-in templates
+   - Template variables: client info, invoice details, company info
+   - Auto-generates PDF, attaches, sends, cleans up temp files
+   - Optional: Mark entries as billed after sending
+   - Settings persist and auto-load on startup
+   - **Production Tested:** Successfully sent real invoice via Gmail
 
-3. ✅ **Select/Deselect All Buttons** - Fixed to work with new hierarchical structure
-   - Select All now auto-expands all groups and selects only actual entries
-   - No more manual expanding required
-   - Properly handles nested tree structure
+### UX Improvements:
+2. ✅ **Tree Expansion State Preservation** - No more annoying collapse!
+   - Added `save_tree_state()` and `restore_tree_state()` methods
+   - Works on Tasks tab, Time Entries tab, Invoice tab
+   - Trees default to fully expanded on load
+   - State maintained after edits/updates
+
+3. ✅ **Edit from Invoice Tab** - Edit entries before creating invoice
+   - Added "✏️ Edit Entry" button to Invoice tab main screen
+   - Added "✏️ Edit Entries" button to invoice preview dialog
+   - Auto-refreshes list after editing
+   - No premature refresh alerts
+
+4. ✅ **Dialog Positioning Fix** - Modals now appear in front
+   - Applied proper modal behavior: transient, grab_set, lift, focus_force
+   - Dialogs center on parent window
+   - Edit dialogs no longer hidden behind main window
+
+5. ✅ **Whitespace Fix** - Removed 292px blank area on startup
+   - Removed Timer tab scrollbar completely
+   - Cleaner, more professional appearance
+
+### Bug Fixes:
+6. ✅ **Task Edit Bug** - Task rate changes now persist correctly
+   - Issue: `update_task()` extracted task_id from wrong tree column
+   - Solution: Extract from tags (`task_id_123`) instead of values
+   - All task updates (name, rate) now work correctly
+
+7. ✅ **Email Settings Persistence** - Settings now auto-load on startup
+   - Added `load_email_settings_silent()` method (no popup)
+   - Called automatically in `refresh_all_data()`
+   - Auto-detects provider (Gmail/Outlook/Custom) from SMTP server
+   - Settings saved and restored correctly across restarts
+
+8. ✅ **ReportLab Installation** - Fixed missing dependency
+   - Added to requirements.txt
+   - Required for PDF generation in email feature
 
 ### Files Modified:
-- `gui.py` - 3 methods updated:
-  - `edit_time_entry()` - Simplified query logic
-  - `load_invoiceable_entries()` - Added grouping hierarchy
-  - `select_all_invoice_entries()` - Added auto-expand + recursive selection
-  - `deselect_all_invoice_entries()` - Fixed selection clearing
-- `CHANGELOG.md` - Added v2.0.4 entry
-- `CURRENT_STATUS.md` - Updated status (this file)
-- `TIMETRACKER_CONTEXT.md` - Updated recent fixes section
-
-### Cleanup:
-- Removed 3 temporary update files:
-  - `gui_invoice_grouped.patch`
-  - `gui_load_invoiceable_backup.py`
-  - `update_load_invoiceable.py`
+- `gui.py` - Added ~260 new lines for email feature + UX fixes
+  - Email invoice dialog with template rendering
+  - Email settings save/load methods
+  - Email template management methods
+  - Tree state preservation methods
+  - Edit from Invoice tab functionality
+  - Dialog positioning fixes
+- `email_sender.py` - NEW FILE (~350 lines)
+  - EmailSender class (SMTP handling)
+  - EmailTemplate class (template management)
+  - 5 built-in templates
+  - Variable substitution
+- `db_manager.py` - Email methods already existed
+- `requirements.txt` - Added reportlab>=3.6.0
+- `CHANGELOG.md` - Added comprehensive v2.0.5 entry
+- `TIMETRACKER_CONTEXT.md` - Updated status and recent fixes
+- `CURRENT_STATUS.md` - This file
 
 ### Git Status:
-- Ready to commit and push
-- Version: 2.0.4
+- Major changes ready to commit
+- Version: 2.0.5
+- Email feature complete and production-tested
 
 ---
 
@@ -54,51 +90,65 @@
 - Global tasks across all projects
 - Client/Project/Task management (full CRUD)
 - Time entries tracking (grouped hierarchical view)
-- **Time entry editing (all entries including global tasks)**
-- **Invoice tab with hierarchical grouping (NEW!)**
+- Time entry editing (all entries, editable from Invoice tab)
+- Invoice tab with hierarchical grouping
 - Invoice generation with PDF export (grouped by project/task)
+- **📧 EMAIL INVOICES - Send invoices with PDF attachments** 🎉
+- **📧 Email Settings - SMTP configuration with Gmail/Outlook presets**
+- **📧 Email Templates - 5 built-in templates with variable substitution**
 - Daily time totals by client and project
 - Google Drive database sync
 - Company info management
 - Billing prevention (no double-billing)
 - Excel export of time entries
-- **Select/Deselect All in Invoice tab (FIXED!)**
+- Tree expansion state preservation (no more collapsing!)
 
 ### 📊 Known Issues:
-- **None!** App is fully functional.
+- **None!** App is fully functional with complete email system.
 
 ---
 
 ## 🧪 Testing Status
 
-### Last Tested: January 21, 2026
+### Last Tested: January 29, 2026
 
-**Time Entry Edit:**
-- ✅ Can edit entries with project-specific tasks
-- ✅ Can edit entries with global tasks
-- ✅ Edit dialog opens correctly
-- ✅ Changes save to database
-- ✅ Display refreshes after edit
+**Email Invoice Feature:**
+- ✅ Email settings save/load correctly
+- ✅ Settings persist across app restarts
+- ✅ Gmail SMTP connection works
+- ✅ Test connection button works
+- ✅ PDF generation works (ReportLab installed)
+- ✅ Email sends successfully with PDF attachment
+- ✅ Template variables render correctly
+- ✅ "Friendly" template used successfully
+- ✅ Received real invoice via email: INV-20260129-155353 ($26.78)
 
-**Invoice Tab Grouping:**
-- ✅ Entries display in Project → Task hierarchy
-- ✅ Subtotals show correctly
-- ✅ Individual entries are selectable
-- ✅ Select All auto-expands and selects entries
-- ✅ Deselect All clears selection
-- ✅ Invoice preview works with selected entries
+**UX Improvements:**
+- ✅ Trees maintain expansion state after edits
+- ✅ Trees default to fully expanded on load
+- ✅ Edit from Invoice tab works (main screen + preview)
+- ✅ Edit dialog appears in front (not behind)
+- ✅ No whitespace on startup (scrollbar removed)
+
+**Bug Fixes:**
+- ✅ Task rate edits persist to database
+- ✅ Email settings auto-load on startup
+- ✅ No popup on startup (silent load)
 
 **Real-World Testing:**
-- ⏳ In progress (user continuing to test with actual work)
+- ✅ **Production invoice sent successfully!**
+- ⏳ Continuing to use for actual work
 
 ---
 
 ## 📝 Next Steps
 
-1. Continue real-world usage testing
-2. Monitor for any edge cases
-3. Document any new issues in `Current Issue.md`
-4. Update this file if status changes
+1. ✅ **COMMIT CHANGES** - Major update ready
+2. Continue using email feature for real invoices
+3. Test other email templates (Professional, Formal, Reminder, Thank You)
+4. Test CC field in email dialog
+5. Test custom template editing/saving
+6. Monitor for any edge cases
 
 ---
 
@@ -121,6 +171,7 @@ Error: [paste error if any]
 
 ## 🎉 Version History
 
+- **v2.0.5** (2026-01-29) - **EMAIL INVOICES** + UX improvements + bug fixes 🎉
 - **v2.0.4** (2026-01-21) - Fixed time entry edit + Invoice tab grouping + Select All buttons
 - **v2.0.3** (2026-01-15) - Fixed Invoice tab loading with global tasks
 - **v2.0.2** (2026-01-13) - Fixed manual entry with global tasks
@@ -132,7 +183,62 @@ Error: [paste error if any]
 
 ---
 
-**App Version:** V2.0.4  
-**Status:** 🟢 FULLY OPERATIONAL  
+## 📧 Email Invoice Feature Details
+
+**Email Settings Tab:**
+- SMTP server, port, email, app password configuration
+- Provider presets: Gmail (smtp.gmail.com:587), Outlook, Custom
+- From Name field (optional)
+- Password visibility toggle
+- Test connection button
+- Settings persist to database
+- Auto-load on app startup (silent)
+- Gmail App Password instructions built-in
+
+**Email Templates Tab:**
+- 5 built-in templates:
+  - Professional (business-like)
+  - Friendly (casual with emojis) ← Used successfully!
+  - Formal (very professional)
+  - Reminder (payment reminder)
+  - Thank You (gratitude message)
+- Template editor (subject + HTML body)
+- Variable insertion buttons (13 variables available)
+- Live preview with sample data
+- Save custom templates
+- Reset to default
+- Send test email
+
+**Email Invoice Dialog:**
+- Appears in invoice preview
+- Template dropdown (auto-populated)
+- Subject line (editable, auto-filled from template)
+- Message body (editable HTML, auto-filled from template)
+- CC field (optional)
+- "Mark as Billed" checkbox
+- Preview invoice button
+- Send button
+
+**Variables Available:**
+- Client: name, company, email
+- Invoice: number, date, total, payment terms, due date, date range
+- Company: name, email, phone, website
+
+**How It Works:**
+1. User configures email settings (one-time setup)
+2. User creates invoice, clicks "📧 Email Invoice"
+3. Dialog opens with template pre-filled
+4. User edits if needed, clicks "📧 Send Invoice"
+5. App generates PDF in temp folder
+6. App sends email with PDF attached via SMTP
+7. App cleans up temp files
+8. App optionally marks entries as billed
+9. Success/failure message displayed
+
+---
+
+**App Version:** V2.0.5  
+**Status:** 🟢 FULLY OPERATIONAL + EMAIL INVOICES!  
 **Database:** Synced to Google Drive  
-**Git Branch:** master
+**Git Branch:** master  
+**Token Usage:** ~116k / 200k (58%) - Very efficient session!

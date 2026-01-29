@@ -6,6 +6,133 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.0.5] - 2026-01-29
+
+### Added - EMAIL INVOICE FEATURE 🎉
+- **Complete Email Invoice System**: Send invoices directly from the app with PDF attachments
+  - New "📧 Email Invoice" button in invoice preview dialog
+  - Auto-generates PDF invoice in temp folder, attaches to email, then cleans up
+  - Optional: Mark time entries as billed after sending
+  - Shows success/failure messages with details
+
+- **Email Settings Tab**: Full SMTP configuration interface
+  - Provider presets (Gmail, Outlook, Custom) with auto-fill
+  - SMTP server, port, email address, app password fields
+  - "From Name" field for professional sender display
+  - Password visibility toggle
+  - Test connection button with detailed error messages
+  - Settings persist to database and auto-load on startup
+  - Gmail App Password instructions built-in
+
+- **Email Templates Tab**: Manage email templates with live preview
+  - 5 built-in templates: Professional, Friendly, Formal, Reminder, Thank You
+  - Template editor with subject and HTML body
+  - Variable insertion buttons (Client Name, Invoice #, Total, Date, Company)
+  - Live preview with sample data
+  - Save custom templates to database
+  - Reset to default functionality
+  - Send test email button
+
+- **Email Sender Module** (`email_sender.py`):
+  - `EmailSender` class: Handles SMTP connection and sending
+  - `EmailTemplate` class: Template management and variable substitution
+  - Support for CC/BCC addresses
+  - HTML email body support
+  - PDF attachment handling
+  - Connection testing with helpful error messages
+  - 13 template variables available: client info, invoice details, company info
+
+- **Database Tables**:
+  - `email_settings` - Stores SMTP configuration
+  - `email_templates` - Stores custom email templates
+  - Added email tracking columns to `billing_history` table
+
+### Fixed
+- **Task Edit Bug**: Fixed critical bug where updating task rates didn't persist to database
+  - Issue: `update_task()` extracted task_id from wrong tree column (values vs tags)
+  - Solution: Extract task_id from tags (`task_id_123`) instead of values column
+  - All task updates (rate changes, name changes) now work correctly
+
+- **Tree Collapse Issue**: Fixed annoying UX bug where trees collapsed after every edit
+  - Added `save_tree_state()` and `restore_tree_state()` helper methods
+  - All three tabs maintain expansion state: Tasks, Time Entries, Invoice
+  - Trees now default to fully expanded on load
+  - No more clicking through folders after every update!
+
+- **Edit Time Entries from Invoice Tab**: Can now edit entries before creating invoice
+  - Added "✏️ Edit Entry" button to Invoice tab main screen
+  - Added "✏️ Edit Entries" button to invoice preview dialog
+  - Edit dialog appears in front (not hidden behind main window)
+  - Modal dialog with proper positioning (transient, lift, focus_force, grab_set)
+  - Auto-refreshes invoice list after editing
+  - No premature refresh alerts
+
+- **Dialog Positioning**: Fixed edit dialogs appearing behind main window
+  - Applied proper modal behavior: transient, grab_set, lift, focus_force
+  - Dialogs center on parent window
+  - Callback-based refresh (no immediate refresh on open)
+
+- **Whitespace on Startup**: Removed 292px blank area on right side of window
+  - Removed Timer tab scrollbar completely
+  - Cleaner, more professional appearance
+
+- **ReportLab Installation**: Fixed missing dependency for PDF generation
+  - Added to requirements.txt
+  - Required for email invoice feature
+
+- **Email Settings Persistence**: Settings now auto-load on app startup
+  - Added `load_email_settings_silent()` method (no popup)
+  - Called automatically in `refresh_all_data()`
+  - Auto-detects provider (Gmail/Outlook/Custom) from SMTP server
+  - Settings saved and restored correctly across app restarts
+
+### Changed
+- **Import Statements**: Added `tempfile` and `os` imports for email feature
+- **Email Settings Auto-Load**: Settings now load silently on startup (no popup)
+- **Template Dropdown**: Auto-populates with 5 built-in templates on startup
+
+### Technical Details
+- **Files Modified**: 
+  - `gui.py` - Added email dialog, settings methods, template methods (~260 new lines)
+  - `email_sender.py` - New file (~350 lines)
+  - `db_manager.py` - Email settings/templates methods already existed
+  - `requirements.txt` - Added reportlab>=3.6.0
+
+- **New Methods in gui.py**:
+  - `show_email_invoice_dialog()` - Main email dialog with template rendering
+  - `save_email_settings()` - Save SMTP config to database
+  - `load_email_settings()` - Load SMTP config (with popup)
+  - `load_email_settings_silent()` - Load SMTP config (silent)
+  - `_populate_email_settings()` - Helper to fill form fields
+  - `test_email_connection()` - Test SMTP connection
+  - `on_email_provider_select()` - Auto-fill SMTP details
+  - `toggle_password_visibility()` - Show/hide password
+  - `save_current_template()` - Save template to database
+  - `load_selected_template()` - Load template from dropdown
+  - `reset_template_to_default()` - Reset to built-in template
+  - `insert_variable()` - Insert variable at cursor
+  - `update_template_preview()` - Render preview with sample data
+  - `send_test_template_email()` - Send test email to self
+  - `refresh_email_templates()` - Populate template dropdown
+  - `save_tree_state()` - Save expanded tree items
+  - `restore_tree_state()` - Restore expanded tree items
+
+- **Database Methods** (in db_manager.py):
+  - `get_email_settings()` - Retrieve SMTP config
+  - `save_email_settings()` - Save SMTP config
+  - `get_email_templates()` - Get all templates
+  - `get_email_template()` - Get specific template
+  - `save_email_template()` - Save/update template
+  - `delete_email_template()` - Delete template
+
+### Session Highlights
+- **Major UX Improvements**: Tree expansion state, edit from invoice tab, dialog positioning
+- **Complete Email System**: From SMTP config to template rendering to PDF attachment
+- **Production Tested**: Successfully sent real invoice via email with PDF attachment
+- **Token Efficient**: Completed in ~116k tokens with surgical code edits
+
+---
+
 ## [2.0.4] - 2026-01-21
 
 ### Added

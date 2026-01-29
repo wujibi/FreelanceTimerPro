@@ -7,6 +7,8 @@ from models import Client, Project, Task, TimeEntry, CompanyInfo
 import sqlite3
 import threading
 import time
+import tempfile
+import os
 
 
 class TimeTrackerApp:
@@ -205,6 +207,34 @@ class TimeTrackerApp:
         # Set root window background
         self.root.configure(bg=self.colors['background'])
 
+    def save_tree_state(self, tree):
+        """Save expanded state of tree items"""
+        expanded = set()
+        
+        def collect_expanded(parent=''):
+            for item in tree.get_children(parent):
+                if tree.item(item, 'open'):
+                    # Save item text as identifier
+                    expanded.add(tree.item(item, 'text'))
+                # Recurse into children
+                collect_expanded(item)
+        
+        collect_expanded()
+        return expanded
+    
+    def restore_tree_state(self, tree, expanded_items, expand_all=False):
+        """Restore expanded state of tree items"""
+        def expand_items(parent=''):
+            for item in tree.get_children(parent):
+                item_text = tree.item(item, 'text')
+                # Expand if it was previously expanded OR if expand_all=True
+                if expand_all or item_text in expanded_items:
+                    tree.item(item, open=True)
+                # Recurse into children
+                expand_items(item)
+        
+        expand_items()
+
     def create_widgets(self):
         # Create notebook for tabs
         self.notebook = ttk.Notebook(self.root)
@@ -217,38 +247,15 @@ class TimeTrackerApp:
         self.create_tasks_tab()
         self.create_time_entries_tab()
         self.create_company_tab()
+        self.create_email_settings_tab()
+        self.create_email_templates_tab()
         self.create_invoice_tab()
         self.create_billed_invoices_tab()
 
     def create_timer_tab(self):
-        # Timer tab with scrolling support
+        # Timer tab - simple frame without scrollbar
         timer_frame = ttk.Frame(self.notebook)
         self.notebook.add(timer_frame, text="Timer")
-        
-        # Create canvas and scrollbar for scrolling
-        canvas = tk.Canvas(timer_frame, bg=self.colors['background'], highlightthickness=0)
-        scrollbar = ttk.Scrollbar(timer_frame, orient="vertical", command=canvas.yview)
-        scrollable_frame = ttk.Frame(canvas)
-        
-        scrollable_frame.bind(
-            "<Configure>",
-            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
-        )
-        
-        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
-        canvas.configure(yscrollcommand=scrollbar.set)
-        
-        # Pack canvas and scrollbar
-        canvas.pack(side="left", fill="both", expand=True)
-        scrollbar.pack(side="right", fill="y")
-        
-        # Enable mousewheel scrolling
-        def _on_mousewheel(event):
-            canvas.yview_scroll(int(-1*(event.delta/120)), "units")
-        canvas.bind_all("<MouseWheel>", _on_mousewheel)
-        
-        # Now use scrollable_frame instead of timer_frame for all content
-        timer_frame = scrollable_frame
 
         # Timer display
         timer_display_frame = ttk.LabelFrame(timer_frame, text="Active Timer")
@@ -783,6 +790,201 @@ class TimeTrackerApp:
         ttk.Button(button_frame, text="Save Company Info", command=self.save_company_info).pack(side='left', padx=5)
         ttk.Button(button_frame, text="Load Current Info", command=self.load_company_info).pack(side='left', padx=5)
 
+    def create_email_settings_tab(self):
+        """Create Email Settings tab for SMTP configuration"""
+        email_frame = ttk.Frame(self.notebook)
+        self.notebook.add(email_frame, text="📧 Email Settings")
+        
+        # Main settings frame
+        settings_frame = ttk.LabelFrame(email_frame, text="SMTP Configuration")
+        settings_frame.pack(fill='x', padx=10, pady=10)
+        
+        form_frame = ttk.Frame(settings_frame)
+        form_frame.pack(fill='x', padx=10, pady=10)
+        
+        # Provider presets
+        ttk.Label(form_frame, text="Provider:").grid(row=0, column=0, sticky='w', pady=5)
+        provider_frame = ttk.Frame(form_frame)
+        provider_frame.grid(row=0, column=1, sticky='ew', padx=5, pady=5)
+        
+        self.email_provider_var = tk.StringVar(value="custom")
+        ttk.Radiobutton(provider_frame, text="Gmail", variable=self.email_provider_var,
+                       value="gmail", command=self.on_email_provider_select).pack(side='left', padx=5)
+        ttk.Radiobutton(provider_frame, text="Outlook", variable=self.email_provider_var,
+                       value="outlook", command=self.on_email_provider_select).pack(side='left', padx=5)
+        ttk.Radiobutton(provider_frame, text="Custom", variable=self.email_provider_var,
+                       value="custom", command=self.on_email_provider_select).pack(side='left', padx=5)
+        
+        # SMTP Server
+        ttk.Label(form_frame, text="SMTP Server:").grid(row=1, column=0, sticky='w', pady=5)
+        self.smtp_server_entry = ttk.Entry(form_frame, width=40)
+        self.smtp_server_entry.grid(row=1, column=1, sticky='ew', padx=5, pady=5)
+        
+        # SMTP Port
+        ttk.Label(form_frame, text="SMTP Port:").grid(row=2, column=0, sticky='w', pady=5)
+        self.smtp_port_entry = ttk.Entry(form_frame, width=10)
+        self.smtp_port_entry.grid(row=2, column=1, sticky='w', padx=5, pady=5)
+        self.smtp_port_entry.insert(0, "587")
+        
+        # Email Address
+        ttk.Label(form_frame, text="Your Email:").grid(row=3, column=0, sticky='w', pady=5)
+        self.email_address_entry = ttk.Entry(form_frame, width=40)
+        self.email_address_entry.grid(row=3, column=1, sticky='ew', padx=5, pady=5)
+        
+        # Email Password
+        ttk.Label(form_frame, text="App Password:").grid(row=4, column=0, sticky='w', pady=5)
+        password_frame = ttk.Frame(form_frame)
+        password_frame.grid(row=4, column=1, sticky='ew', padx=5, pady=5)
+        
+        self.email_password_entry = ttk.Entry(password_frame, show='*', width=30)
+        self.email_password_entry.pack(side='left', fill='x', expand=True)
+        
+        self.show_password_var = tk.BooleanVar(value=False)
+        ttk.Checkbutton(password_frame, text="Show", variable=self.show_password_var,
+                       command=self.toggle_password_visibility).pack(side='left', padx=5)
+        
+        # Gmail App Password instructions
+        gmail_note = ttk.Label(form_frame, 
+            text="💡 Gmail users: Enable 2-Step Verification, then create an App Password at myaccount.google.com/security",
+            font=('Arial', 8), foreground='#666', wraplength=500)
+        gmail_note.grid(row=5, column=0, columnspan=2, sticky='w', pady=(0, 10))
+        
+        # From Name (optional)
+        ttk.Label(form_frame, text="From Name (optional):").grid(row=6, column=0, sticky='w', pady=5)
+        self.email_from_name_entry = ttk.Entry(form_frame, width=40)
+        self.email_from_name_entry.grid(row=6, column=1, sticky='ew', padx=5, pady=5)
+        
+        form_frame.columnconfigure(1, weight=1)
+        
+        # Default behavior
+        behavior_frame = ttk.LabelFrame(email_frame, text="Default Behavior")
+        behavior_frame.pack(fill='x', padx=10, pady=10)
+        
+        options_frame = ttk.Frame(behavior_frame)
+        options_frame.pack(fill='x', padx=10, pady=10)
+        
+        self.send_copy_to_self_var = tk.BooleanVar(value=True)
+        ttk.Checkbutton(options_frame, text="☑️ Always send copy to me",
+                       variable=self.send_copy_to_self_var).pack(anchor='w', pady=2)
+        
+        self.show_preview_var = tk.BooleanVar(value=True)
+        ttk.Checkbutton(options_frame, text="☑️ Show preview before sending",
+                       variable=self.show_preview_var).pack(anchor='w', pady=2)
+        
+        # Buttons
+        button_frame = ttk.Frame(email_frame)
+        button_frame.pack(fill='x', padx=10, pady=10)
+        
+        ttk.Button(button_frame, text="💾 Save Settings",
+                  command=self.save_email_settings).pack(side='left', padx=5)
+        ttk.Button(button_frame, text="🔄 Load Settings",
+                  command=self.load_email_settings).pack(side='left', padx=5)
+        ttk.Button(button_frame, text="🔧 Test Connection",
+                  command=self.test_email_connection,
+                  style='Accent.TButton').pack(side='right', padx=5)
+    
+    def create_email_templates_tab(self):
+        """Create Email Templates tab for managing email templates"""
+        template_frame = ttk.Frame(self.notebook)
+        self.notebook.add(template_frame, text="📝 Email Templates")
+        
+        # Template selection
+        selection_frame = ttk.Frame(template_frame)
+        selection_frame.pack(fill='x', padx=10, pady=10)
+        
+        ttk.Label(selection_frame, text="Template:").pack(side='left', padx=5)
+        
+        self.template_combo = ttk.Combobox(selection_frame, state='readonly', width=25)
+        self.template_combo.pack(side='left', padx=5)
+        self.template_combo.bind('<<ComboboxSelected>>', self.on_template_select)
+        
+        ttk.Button(selection_frame, text="Load",
+                  command=self.load_selected_template).pack(side='left', padx=5)
+        ttk.Button(selection_frame, text="Reset to Default",
+                  command=self.reset_template_to_default).pack(side='left', padx=5)
+        
+        # Editor and preview
+        editor_frame = ttk.Frame(template_frame)
+        editor_frame.pack(fill='both', expand=True, padx=10, pady=10)
+        
+        # Left side - Editor
+        left_frame = ttk.LabelFrame(editor_frame, text="✏️ Template Editor")
+        left_frame.pack(side='left', fill='both', expand=True, padx=(0, 5))
+        
+        # Subject
+        subject_frame = ttk.Frame(left_frame)
+        subject_frame.pack(fill='x', padx=10, pady=5)
+        ttk.Label(subject_frame, text="Subject:").pack(side='left')
+        self.template_subject_entry = ttk.Entry(subject_frame)
+        self.template_subject_entry.pack(side='left', fill='x', expand=True, padx=5)
+        
+        # Variable insertion buttons
+        vars_frame = ttk.LabelFrame(left_frame, text="Insert Variable")
+        vars_frame.pack(fill='x', padx=10, pady=5)
+        
+        vars_inner = ttk.Frame(vars_frame)
+        vars_inner.pack(fill='x', padx=5, pady=5)
+        
+        # Create buttons for common variables
+        variables = [
+            ('Client Name', '{{client_name}}'),
+            ('Invoice #', '{{invoice_number}}'),
+            ('Total', '{{invoice_total}}'),
+            ('Date', '{{invoice_date}}'),
+            ('Company', '{{company_name}}')
+        ]
+        
+        for i, (label, var) in enumerate(variables):
+            ttk.Button(vars_inner, text=label,
+                      command=lambda v=var: self.insert_variable(v)).grid(row=i//3, column=i%3, padx=2, pady=2, sticky='ew')
+        
+        # Body
+        body_label = ttk.Label(left_frame, text="Body (supports HTML):")
+        body_label.pack(anchor='w', padx=10, pady=(10, 0))
+        
+        body_frame = ttk.Frame(left_frame)
+        body_frame.pack(fill='both', expand=True, padx=10, pady=5)
+        
+        self.template_body_text = tk.Text(body_frame, height=15, wrap='word')
+        self.template_body_text.pack(side='left', fill='both', expand=True)
+        
+        body_scroll = ttk.Scrollbar(body_frame, command=self.template_body_text.yview)
+        body_scroll.pack(side='right', fill='y')
+        self.template_body_text.config(yscrollcommand=body_scroll.set)
+        
+        # Right side - Preview
+        right_frame = ttk.LabelFrame(editor_frame, text="👁️ Live Preview")
+        right_frame.pack(side='right', fill='both', expand=True, padx=(5, 0))
+        
+        preview_info = ttk.Label(right_frame, 
+            text="Preview with sample data", 
+            font=('Arial', 9, 'italic'), foreground='#666')
+        preview_info.pack(anchor='w', padx=10, pady=5)
+        
+        preview_text_frame = ttk.Frame(right_frame)
+        preview_text_frame.pack(fill='both', expand=True, padx=10, pady=5)
+        
+        self.template_preview_text = tk.Text(preview_text_frame, height=15, wrap='word',
+                                            state='disabled', background='#f8f8f8')
+        self.template_preview_text.pack(side='left', fill='both', expand=True)
+        
+        preview_scroll = ttk.Scrollbar(preview_text_frame, command=self.template_preview_text.yview)
+        preview_scroll.pack(side='right', fill='y')
+        self.template_preview_text.config(yscrollcommand=preview_scroll.set)
+        
+        ttk.Button(right_frame, text="🔄 Update Preview",
+                  command=self.update_template_preview).pack(pady=5)
+        
+        # Bottom buttons
+        bottom_frame = ttk.Frame(template_frame)
+        bottom_frame.pack(fill='x', padx=10, pady=10)
+        
+        ttk.Button(bottom_frame, text="💾 Save Template",
+                  command=self.save_current_template).pack(side='left', padx=5)
+        ttk.Button(bottom_frame, text="📧 Send Test Email",
+                  command=self.send_test_template_email,
+                  style='Accent.TButton').pack(side='right', padx=5)
+
     def create_invoice_tab(self):
         # Invoice tab - COMPLETELY REDESIGNED
         invoice_frame = ttk.Frame(self.notebook)
@@ -897,6 +1099,8 @@ class TimeTrackerApp:
         ttk.Button(summary_frame, text="📄 Preview Invoice", 
                   command=self.preview_invoice, 
                   style='Accent.TButton').pack(side='right', padx=5)
+        ttk.Button(summary_frame, text="✏️ Edit Entry", 
+                  command=self.edit_invoice_entry).pack(side='right', padx=5)
         ttk.Button(summary_frame, text="Select All", 
                   command=self.select_all_invoice_entries).pack(side='right', padx=5)
         ttk.Button(summary_frame, text="Deselect All", 
@@ -1977,7 +2181,34 @@ class TimeTrackerApp:
             messagebox.showerror("Error", "Please select a task to update")
             return
 
-        task_id = self.task_tree.item(selection[0])['values'][0]
+        # Extract task ID from tags (same as on_task_select)
+        item = selection[0]
+        item_tags = self.task_tree.item(item)['tags']
+        item_values = self.task_tree.item(item)['values']
+        
+        # Only allow updating actual tasks (not client/project headers)
+        if 'task' not in item_tags:
+            messagebox.showerror("Error", "Please select an actual task (not a client/project group)")
+            return
+        
+        # Extract task ID from tags
+        task_id = None
+        for tag in item_tags:
+            if tag.startswith('task_id_'):
+                task_id = int(tag.replace('task_id_', ''))
+                break
+        
+        # Fallback: try values column
+        if not task_id and len(item_values) > 1:
+            try:
+                task_id = int(item_values[1])
+            except:
+                pass
+        
+        if not task_id:
+            messagebox.showerror("Error", "Could not determine task ID")
+            return
+
         name = self.task_name_entry.get().strip()
         description = self.task_desc_text.get("1.0", tk.END).strip()
 
@@ -2021,40 +2252,77 @@ class TimeTrackerApp:
 
     def on_task_select(self, event):
         selection = self.task_tree.selection()
-        if selection:
-            task_id = self.task_tree.item(selection[0])['values'][0]
-            task = self.task_model.get_by_id(task_id)
-            if task:
-                # Set project and client
-                project = self.project_model.get_by_id(task[1])
-                if project:
-                    client = self.client_model.get_by_id(project[1])
-                    if client:
-                        self.task_client_combo.set(client[1])
-                        # Trigger the client selection to populate projects
-                        clients = self.client_model.get_all()
-                        for c in clients:
-                            if c[1] == client[1]:
-                                projects = self.project_model.get_by_client(c[0])
-                                self.task_project_combo['values'] = [p[2] for p in projects]
-                                break
-                        self.task_project_combo.set(project[2])
-
-                # Set task details
-                self.task_name_entry.delete(0, tk.END)
-                self.task_name_entry.insert(0, task[2])
-
-                self.task_desc_text.delete("1.0", tk.END)
-                self.task_desc_text.insert("1.0", task[3] or "")
-
-                if task[5]:  # is_lump_sum
-                    self.task_billing_var.set("lump_sum")
-                    self.task_rate_entry.delete(0, tk.END)
-                    self.task_rate_entry.insert(0, str(task[6]))
-                else:
-                    self.task_billing_var.set("hourly")
-                    self.task_rate_entry.delete(0, tk.END)
-                    self.task_rate_entry.insert(0, str(task[4]))
+        if not selection:
+            return
+        
+        # Get item tags and values
+        item = selection[0]
+        item_tags = self.task_tree.item(item)['tags']
+        item_values = self.task_tree.item(item)['values']
+        
+        # Only process if this is an actual task (not client/project header)
+        if 'task' not in item_tags:
+            return
+        
+        # Extract task ID from tags (stored as 'task_id_123')
+        task_id = None
+        for tag in item_tags:
+            if tag.startswith('task_id_'):
+                task_id = int(tag.replace('task_id_', ''))
+                break
+        
+        # Fallback: try to get ID from values column
+        if not task_id and len(item_values) > 1:
+            try:
+                task_id = int(item_values[1])  # ID is in column 1
+            except:
+                pass
+        
+        if not task_id:
+            return
+        
+        task = self.task_model.get_by_id(task_id)
+        if not task:
+            return
+        
+        # Check if it's a global task
+        is_global = task[1] is None  # project_id is None for global tasks
+        
+        if is_global:
+            # Set global checkbox
+            self.task_global_var.set(True)
+            self.toggle_task_project_field()  # This will disable client/project combos
+        else:
+            # Clear global checkbox
+            self.task_global_var.set(False)
+            self.toggle_task_project_field()  # This will enable client/project combos
+            
+            # Set project and client
+            project = self.project_model.get_by_id(task[1])
+            if project:
+                client = self.client_model.get_by_id(project[1])
+                if client:
+                    self.task_client_combo.set(client[1])
+                    # Trigger the client selection to populate projects
+                    projects = self.project_model.get_by_client(client[0])
+                    self.task_project_combo['values'] = [p[2] for p in projects]
+                    self.task_project_combo.set(project[2])
+        
+        # Set task details
+        self.task_name_entry.delete(0, tk.END)
+        self.task_name_entry.insert(0, task[2])
+        
+        self.task_desc_text.delete("1.0", tk.END)
+        self.task_desc_text.insert("1.0", task[3] or "")
+        
+        if task[5]:  # is_lump_sum
+            self.task_billing_var.set("lump_sum")
+            self.task_rate_entry.delete(0, tk.END)
+            self.task_rate_entry.insert(0, str(task[6]))
+        else:
+            self.task_billing_var.set("hourly")
+            self.task_rate_entry.delete(0, tk.END)
+            self.task_rate_entry.insert(0, str(task[4]))
 
     def toggle_task_billing(self):
         pass
@@ -2101,10 +2369,59 @@ class TimeTrackerApp:
 
         self.open_edit_time_entry_dialog(entry_id)
 
-    def open_edit_time_entry_dialog(self, entry_id):
+    def open_edit_time_entry_dialog_and_refresh(self, entry_id):
+        """Open edit dialog and refresh invoice list after closing"""
         edit_window = tk.Toplevel(self.root)
         edit_window.title("Edit Time Entry")
         edit_window.geometry("500x400")
+        
+        # Make dialog modal and bring to front
+        edit_window.transient(self.root)
+        edit_window.grab_set()
+        
+        # Center on parent window
+        edit_window.update_idletasks()
+        x = self.root.winfo_x() + (self.root.winfo_width() // 2) - (edit_window.winfo_width() // 2)
+        y = self.root.winfo_y() + (self.root.winfo_height() // 2) - (edit_window.winfo_height() // 2)
+        edit_window.geometry(f"+{x}+{y}")
+        
+        edit_window.lift()
+        edit_window.focus_force()
+        
+        # Refresh when dialog closes
+        def on_close():
+            edit_window.destroy()
+            # Reload invoice entries to show changes
+            if hasattr(self, 'invoice_entries_tree'):
+                self.load_invoiceable_entries()
+        
+        edit_window.protocol("WM_DELETE_WINDOW", on_close)
+        
+        # Continue with rest of dialog creation
+        self._build_edit_dialog_content(edit_window, entry_id, on_close)
+    
+    def open_edit_time_entry_dialog(self, entry_id):
+        """Original edit dialog (used by Time Entries tab)"""
+        edit_window = tk.Toplevel(self.root)
+        edit_window.title("Edit Time Entry")
+        edit_window.geometry("500x400")
+        
+        # Make dialog appear in front
+        edit_window.transient(self.root)
+        
+        # Center on parent window
+        edit_window.update_idletasks()
+        x = self.root.winfo_x() + (self.root.winfo_width() // 2) - (edit_window.winfo_width() // 2)
+        y = self.root.winfo_y() + (self.root.winfo_height() // 2) - (edit_window.winfo_height() // 2)
+        edit_window.geometry(f"+{x}+{y}")
+        
+        edit_window.lift()
+        edit_window.focus_force()
+        
+        # Build dialog content
+        self._build_edit_dialog_content(edit_window, entry_id, lambda: edit_window.destroy())
+    
+    def _build_edit_dialog_content(self, edit_window, entry_id, close_callback):
 
         # Get the entry details - simplified query using denormalized columns
         with self.db.get_connection() as conn:
@@ -2114,7 +2431,7 @@ class TimeTrackerApp:
 
         if not entry:
             messagebox.showerror("Error", f"Time entry #{entry_id} not found in database")
-            edit_window.destroy()
+            close_callback()
             return
 
         # Create form
@@ -2276,7 +2593,7 @@ class TimeTrackerApp:
                 # Update the entry
                 self.time_entry_model.update(entry_id, start_time, end_time, description)
                 self.refresh_time_entries()
-                edit_window.destroy()
+                close_callback()
                 messagebox.showinfo("Success", 
                                   f"Time entry updated successfully\n\n" +
                                   f"Duration: {duration_hours:.2f} hours")
@@ -2285,7 +2602,7 @@ class TimeTrackerApp:
                 messagebox.showerror("Error", f"Invalid input: {str(e)}")
 
         ttk.Button(button_frame, text="Save Changes", command=save_changes).pack(side='right', padx=5)
-        ttk.Button(button_frame, text="Cancel", command=edit_window.destroy).pack(side='right')
+        ttk.Button(button_frame, text="Cancel", command=close_callback).pack(side='right')
 
     def delete_time_entry(self):
         selection = self.entries_tree.selection()
@@ -3033,6 +3350,9 @@ class TimeTrackerApp:
             ))
 
     def refresh_tasks(self):
+        # Save expansion state before clearing
+        expanded_items = self.save_tree_state(self.task_tree)
+        
         # Clear tree
         for item in self.task_tree.get_children():
             self.task_tree.delete(item)
@@ -3101,9 +3421,15 @@ class TimeTrackerApp:
         self.task_tree.tag_configure('project', font=('Arial', 9, 'bold'))
         self.task_tree.tag_configure('task', font=('Arial', 9))
         self.task_tree.tag_configure('global', font=('Arial', 10, 'bold'), foreground='#10b981')
+        
+        # Restore expansion state (expand all by default)
+        self.restore_tree_state(self.task_tree, expanded_items, expand_all=True)
 
 
     def refresh_time_entries(self):
+        # Save expansion state before clearing
+        expanded_items = self.save_tree_state(self.entries_tree)
+        
         # Clear tree
         for item in self.entries_tree.get_children():
             self.entries_tree.delete(item)
@@ -3231,6 +3557,9 @@ class TimeTrackerApp:
         self.entries_tree.tag_configure('project', font=('Arial', 9, 'bold'))
         self.entries_tree.tag_configure('task', font=('Arial', 9))
         self.entries_tree.tag_configure('entry', font=('Arial', 8))
+        
+        # Restore expansion state (expand all by default)
+        self.restore_tree_state(self.entries_tree, expanded_items, expand_all=True)
 
     def refresh_combos(self):
         # Refresh timer combos
@@ -3319,6 +3648,314 @@ class TimeTrackerApp:
             'total': sum(item['amount'] for item in invoice_items)
         }
 
+    # Email Settings Methods
+    def on_email_provider_select(self):
+        """Auto-fill SMTP settings based on provider selection"""
+        provider = self.email_provider_var.get()
+        
+        if provider == "gmail":
+            self.smtp_server_entry.delete(0, tk.END)
+            self.smtp_server_entry.insert(0, "smtp.gmail.com")
+            self.smtp_port_entry.delete(0, tk.END)
+            self.smtp_port_entry.insert(0, "587")
+        elif provider == "outlook":
+            self.smtp_server_entry.delete(0, tk.END)
+            self.smtp_server_entry.insert(0, "smtp.office365.com")
+            self.smtp_port_entry.delete(0, tk.END)
+            self.smtp_port_entry.insert(0, "587")
+        # Custom provider - let user fill manually
+    
+    def toggle_password_visibility(self):
+        """Show/hide email password"""
+        if self.show_password_var.get():
+            self.email_password_entry.config(show='')
+        else:
+            self.email_password_entry.config(show='*')
+    
+    def save_email_settings(self):
+        """Save email settings to database"""
+        smtp_server = self.smtp_server_entry.get().strip()
+        smtp_port = self.smtp_port_entry.get().strip()
+        email_address = self.email_address_entry.get().strip()
+        email_password = self.email_password_entry.get().strip()
+        from_name = self.email_from_name_entry.get().strip()
+        
+        if not all([smtp_server, smtp_port, email_address, email_password]):
+            messagebox.showerror("Error", "Please fill in all required fields (SMTP server, port, email, password)")
+            return
+        
+        try:
+            smtp_port = int(smtp_port)
+        except ValueError:
+            messagebox.showerror("Error", "Port must be a number")
+            return
+        
+        # Save to database
+        success = self.db.save_email_settings(
+            smtp_server=smtp_server,
+            smtp_port=smtp_port,
+            email_address=email_address,
+            email_password=email_password,
+            from_name=from_name or None,
+            send_copy_to_self=self.send_copy_to_self_var.get(),
+            show_preview_before_send=self.show_preview_var.get()
+        )
+        
+        if success:
+            messagebox.showinfo("Success", "Email settings saved successfully!\n\nClick 'Test Connection' to verify.")
+        else:
+            messagebox.showerror("Error", "Failed to save email settings")
+    
+    def load_email_settings(self):
+        """Load email settings from database"""
+        settings = self.db.get_email_settings()
+        
+        if not settings:
+            messagebox.showinfo("No Settings", "No email settings found. Please configure your SMTP settings.")
+            return
+        
+        # Populate fields
+        self.smtp_server_entry.delete(0, tk.END)
+        self.smtp_server_entry.insert(0, settings[1])  # smtp_server
+        
+        self.smtp_port_entry.delete(0, tk.END)
+        self.smtp_port_entry.insert(0, str(settings[2]))  # smtp_port
+        
+        self.email_address_entry.delete(0, tk.END)
+        self.email_address_entry.insert(0, settings[3])  # email_address
+        
+        self.email_password_entry.delete(0, tk.END)
+        self.email_password_entry.insert(0, settings[4])  # email_password
+        
+        if settings[5]:  # from_name
+            self.email_from_name_entry.delete(0, tk.END)
+            self.email_from_name_entry.insert(0, settings[5])
+        
+        self.send_copy_to_self_var.set(bool(settings[6]))  # send_copy_to_self
+        self.show_preview_var.set(bool(settings[7]))  # show_preview_before_send
+        
+        messagebox.showinfo("Loaded", "Email settings loaded successfully!")
+    
+    def test_email_connection(self):
+        """Test SMTP connection and send test email"""
+        smtp_server = self.smtp_server_entry.get().strip()
+        smtp_port = self.smtp_port_entry.get().strip()
+        email_address = self.email_address_entry.get().strip()
+        email_password = self.email_password_entry.get().strip()
+        
+        if not all([smtp_server, smtp_port, email_address, email_password]):
+            messagebox.showerror("Error", "Please fill in all fields first")
+            return
+        
+        try:
+            smtp_port = int(smtp_port)
+        except ValueError:
+            messagebox.showerror("Error", "Port must be a number")
+            return
+        
+        # Import email sender
+        from email_sender import EmailSender
+        
+        # Create sender and test
+        sender = EmailSender(smtp_server, smtp_port, email_address, email_password)
+        
+        # First test connection
+        success, message = sender.test_connection()
+        
+        if success:
+            # Connection worked, now send test email
+            if messagebox.askyesno("Connection Successful!", 
+                "SMTP connection successful! ✅\n\nWould you like to send a test email to yourself?"):
+                success, message = sender.send_test_email()
+                messagebox.showinfo("Test Email", message)
+        else:
+            messagebox.showerror("Connection Failed", message)
+    
+    # Email Template Methods
+    def on_template_select(self, event=None):
+        """Template selected from dropdown"""
+        pass  # Just for binding, actual load happens on Load button
+    
+    def load_selected_template(self):
+        """Load the selected template"""
+        template_name = self.template_combo.get()
+        if not template_name:
+            messagebox.showwarning("No Selection", "Please select a template first")
+            return
+        
+        # Try to load from database first
+        template = self.db.get_email_template(template_name=template_name)
+        
+        if template:
+            # Load from database
+            self.template_subject_entry.delete(0, tk.END)
+            self.template_subject_entry.insert(0, template[2])  # subject
+            
+            self.template_body_text.delete('1.0', tk.END)
+            self.template_body_text.insert('1.0', template[3])  # body
+        else:
+            # Load from defaults
+            from email_sender import EmailTemplate
+            default_template = EmailTemplate.get_template(template_name)
+            
+            if default_template:
+                self.template_subject_entry.delete(0, tk.END)
+                self.template_subject_entry.insert(0, default_template['subject'])
+                
+                self.template_body_text.delete('1.0', tk.END)
+                self.template_body_text.insert('1.0', default_template['body'])
+            else:
+                messagebox.showerror("Error", f"Template '{template_name}' not found")
+                return
+        
+        self.update_template_preview()
+    
+    def reset_template_to_default(self):
+        """Reset current template to default version"""
+        template_name = self.template_combo.get()
+        if not template_name:
+            messagebox.showwarning("No Selection", "Please select a template first")
+            return
+        
+        from email_sender import EmailTemplate
+        default_template = EmailTemplate.get_template(template_name)
+        
+        if default_template:
+            self.template_subject_entry.delete(0, tk.END)
+            self.template_subject_entry.insert(0, default_template['subject'])
+            
+            self.template_body_text.delete('1.0', tk.END)
+            self.template_body_text.insert('1.0', default_template['body'])
+            
+            self.update_template_preview()
+            messagebox.showinfo("Reset", f"Template '{template_name}' reset to default")
+        else:
+            messagebox.showerror("Error", f"Default template '{template_name}' not found")
+    
+    def insert_variable(self, variable):
+        """Insert a variable at cursor position in body text"""
+        self.template_body_text.insert(tk.INSERT, variable)
+        self.template_body_text.focus_set()
+    
+    def update_template_preview(self):
+        """Update the preview pane with rendered template"""
+        from email_sender import EmailTemplate
+        import html
+        
+        # Get current template text
+        subject = self.template_subject_entry.get()
+        body = self.template_body_text.get('1.0', tk.END)
+        
+        # Sample data
+        sample_data = {
+            'client_name': 'John Smith',
+            'client_company': 'Smith & Associates',
+            'client_email': 'john@company.com',
+            'invoice_number': 'INV-20260129-123456',
+            'invoice_date': 'January 29, 2026',
+            'invoice_total': '$1,234.56',
+            'payment_terms': 'Payment due within 30 days',
+            'due_date': 'February 28, 2026',
+            'date_range': 'January 1-29, 2026',
+            'company_name': 'Your Company Name',
+            'company_email': 'you@company.com',
+            'company_phone': '(555) 123-4567',
+            'company_website': 'www.yourcompany.com'
+        }
+        
+        # Render template
+        rendered_subject = EmailTemplate.render_template(subject, sample_data)
+        rendered_body = EmailTemplate.render_template(body, sample_data)
+        
+        # Strip HTML for preview (simple approach)
+        import re
+        preview_body = re.sub('<[^<]+?>', '', rendered_body)
+        preview_body = html.unescape(preview_body)
+        
+        # Update preview
+        self.template_preview_text.config(state='normal')
+        self.template_preview_text.delete('1.0', tk.END)
+        self.template_preview_text.insert('1.0', f"Subject: {rendered_subject}\n\n{preview_body}")
+        self.template_preview_text.config(state='disabled')
+    
+    def save_current_template(self):
+        """Save the current template to database"""
+        template_name = self.template_combo.get()
+        if not template_name:
+            messagebox.showwarning("No Selection", "Please select a template first")
+            return
+        
+        subject = self.template_subject_entry.get().strip()
+        body = self.template_body_text.get('1.0', tk.END).strip()
+        
+        if not subject or not body:
+            messagebox.showerror("Error", "Subject and body cannot be empty")
+            return
+        
+        # Save to database
+        success = self.db.save_email_template(template_name, subject, body, is_default=False)
+        
+        if success:
+            messagebox.showinfo("Success", f"Template '{template_name}' saved successfully!")
+        else:
+            messagebox.showerror("Error", "Failed to save template")
+    
+    def send_test_template_email(self):
+        """Send a test email using current template"""
+        # Check if email settings exist
+        settings = self.db.get_email_settings()
+        if not settings:
+            messagebox.showerror("No Email Settings", 
+                "Please configure your email settings in the Email Settings tab first")
+            return
+        
+        # Get current template
+        subject = self.template_subject_entry.get().strip()
+        body = self.template_body_text.get('1.0', tk.END).strip()
+        
+        if not subject or not body:
+            messagebox.showerror("Error", "Please create a template first")
+            return
+        
+        from email_sender import EmailSender, EmailTemplate
+        
+        # Sample data
+        sample_data = {
+            'client_name': 'John Smith',
+            'client_company': 'Smith & Associates',
+            'client_email': 'john@company.com',
+            'invoice_number': 'INV-TEST-123456',
+            'invoice_date': datetime.now().strftime('%B %d, %Y'),
+            'invoice_total': '$1,234.56',
+            'payment_terms': 'Payment due within 30 days',
+            'due_date': (datetime.now() + timedelta(days=30)).strftime('%B %d, %Y'),
+            'date_range': 'January 1-29, 2026',
+            'company_name': settings[5] or 'Your Company',
+            'company_email': settings[3],
+            'company_phone': '(555) 123-4567',
+            'company_website': 'www.yourcompany.com'
+        }
+        
+        # Render template
+        rendered_subject = EmailTemplate.render_template(subject, sample_data)
+        rendered_body = EmailTemplate.render_template(body, sample_data)
+        
+        # Create sender
+        sender = EmailSender(settings[1], settings[2], settings[3], settings[4])
+        
+        # Send test email
+        success, message = sender.send_email(
+            to_address=settings[3],  # Send to self
+            subject=f"TEST: {rendered_subject}",
+            body_html=rendered_body,
+            from_name=settings[5]
+        )
+        
+        if success:
+            messagebox.showinfo("Success", f"{message}\n\nCheck your inbox!")
+        else:
+            messagebox.showerror("Failed", message)
+    
     def refresh_all_data(self):
         self.refresh_clients()
         self.refresh_projects()
@@ -3326,7 +3963,18 @@ class TimeTrackerApp:
         self.refresh_time_entries()
         self.refresh_combos()
         self.load_company_info()
-        self.update_daily_totals_display()  # Initialize daily totals display
+        self.update_daily_totals_display()
+        self.refresh_email_templates()
+        self.load_email_settings_silent()  # Auto-load email settings on startup  # Initialize daily totals display
+        
+        # Load email templates list if tab exists
+        if hasattr(self, 'template_combo'):
+            from email_sender import EmailTemplate
+            template_names = EmailTemplate.get_template_names()
+            self.template_combo['values'] = template_names
+            if template_names:
+                self.template_combo.set(template_names[0])  # Select first template
+        
         if hasattr(self, 'billed_invoices_tree'):
             self.refresh_billed_invoices()  # Refresh billed invoices if tab exists
     
@@ -3365,13 +4013,24 @@ class TimeTrackerApp:
             self.date_range_frame.pack_forget()
     
     def refresh_invoice_combos(self):
-        """Refresh client and project dropdowns"""
+        """Refresh client and project dropdowns and reload current client's entries"""
+        # Save current client selection
+        current_client = self.invoice_client_combo.get()
+        
+        # Refresh client list
         clients = self.client_model.get_all()
         client_names = [c[1] for c in clients]
         self.invoice_client_combo['values'] = client_names
-        self.invoice_project_combo['values'] = []
-        self.invoice_project_combo.set('')
-        messagebox.showinfo("Refreshed", "Client and project lists updated.")
+        
+        # Restore client selection if it still exists
+        if current_client in client_names:
+            self.invoice_client_combo.set(current_client)
+            # Reload entries for this client
+            self.load_invoiceable_entries()
+        else:
+            self.invoice_project_combo['values'] = []
+            self.invoice_project_combo.set('')
+            messagebox.showinfo("Refreshed", "Client list updated.")
     
     def load_invoiceable_entries(self):
         """Load unbilled time entries based on selected client/project/date filter"""
@@ -3534,10 +4193,21 @@ class TimeTrackerApp:
                         values=(date_display, '', '', f'{hours:.2f} hrs', description or ''),
                         tags=(f'entry_id_{entry_id}', 'entry'))
         
+        # Save expansion state before clearing (only if tree exists and has items)
+        expanded_items = set()
+        if hasattr(self, 'invoice_entries_tree'):
+            try:
+                expanded_items = self.save_tree_state(self.invoice_entries_tree)
+            except:
+                pass
+        
         # Configure tag styles
         self.invoice_entries_tree.tag_configure('project', font=('Arial', 10, 'bold'))
         self.invoice_entries_tree.tag_configure('task', font=('Arial', 9, 'bold'))
         self.invoice_entries_tree.tag_configure('entry', font=('Arial', 9))
+        
+        # Restore expansion state (expand all by default)
+        self.restore_tree_state(self.invoice_entries_tree, expanded_items, expand_all=True)
         
         # Update summary
         self.invoice_summary_label.config(
@@ -3572,6 +4242,42 @@ class TimeTrackerApp:
         selected = self.invoice_entries_tree.selection()
         if selected:
             self.invoice_entries_tree.selection_remove(*selected)
+    
+    def edit_invoice_entry(self):
+        """Edit a selected time entry from the Invoice Tab"""
+        selection = self.invoice_entries_tree.selection()
+        if not selection:
+            messagebox.showerror("Error", "Please select ONE time entry to edit")
+            return
+        
+        if len(selection) > 1:
+            messagebox.showwarning("Multiple Selection", 
+                "Please select only ONE entry at a time to edit.\n\n" +
+                f"You have selected {len(selection)} entries.")
+            return
+        
+        # Get the selected item
+        item = selection[0]
+        tags = self.invoice_entries_tree.item(item)['tags']
+        
+        # Only allow editing of actual entries, not group nodes
+        if 'entry' not in tags:
+            messagebox.showerror("Error", "Please select an individual time entry (not a project/task group)")
+            return
+        
+        # Extract entry ID from tags
+        entry_id = None
+        for tag in tags:
+            if tag.startswith('entry_id_'):
+                entry_id = int(tag.replace('entry_id_', ''))
+                break
+        
+        if not entry_id:
+            messagebox.showerror("Error", "Could not find entry ID")
+            return
+        
+        # Open the edit dialog and wait for it to close
+        self.open_edit_time_entry_dialog_and_refresh(entry_id)
     
     def preview_invoice(self):
         """Generate and show invoice preview dialog"""
@@ -3861,10 +4567,681 @@ class TimeTrackerApp:
                             f"Failed to create invoice:\n\n{str(e)}\n\n" +
                             f"Check console for details.")
         
-        ttk.Button(button_frame, text="✏️ Edit Items", 
-                  command=lambda: messagebox.showinfo("Edit", "Edit functionality coming soon!")).pack(side='left', padx=5)
+        def edit_time_entries_from_preview():
+            """Allow editing time entries from the invoice preview"""
+            # Create a selection window showing all time entries in this invoice
+            edit_window = tk.Toplevel(preview_dialog)
+            edit_window.title("Edit Time Entries")
+            edit_window.geometry("700x500")
+            
+            # Header
+            ttk.Label(edit_window, text="Select a time entry to edit:", 
+                     font=('Arial', 12, 'bold')).pack(padx=20, pady=10)
+            
+            # Tree showing all entries
+            tree_frame = ttk.Frame(edit_window)
+            tree_frame.pack(fill='both', expand=True, padx=20, pady=10)
+            
+            edit_tree = ttk.Treeview(tree_frame,
+                columns=('Date', 'Project', 'Task', 'Hours', 'Description'),
+                show='headings',
+                selectmode='browse')
+            
+            edit_tree.heading('Date', text='Date')
+            edit_tree.heading('Project', text='Project')
+            edit_tree.heading('Task', text='Task')
+            edit_tree.heading('Hours', text='Hours')
+            edit_tree.heading('Description', text='Description')
+            
+            edit_tree.column('Date', width=120)
+            edit_tree.column('Project', width=120)
+            edit_tree.column('Task', width=120)
+            edit_tree.column('Hours', width=80)
+            edit_tree.column('Description', width=200)
+            
+            # Scrollbar for tree
+            scrollbar = ttk.Scrollbar(tree_frame, orient='vertical', command=edit_tree.yview)
+            edit_tree.configure(yscrollcommand=scrollbar.set)
+            
+            edit_tree.pack(side='left', fill='both', expand=True)
+            scrollbar.pack(side='right', fill='y')
+            
+            # Load time entry details
+            conn = self.db.conn
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            
+            placeholders = ','.join(['?' for _ in entry_ids])
+            cursor.execute(f'''
+                SELECT te.id as entry_id, te.start_time, te.end_time, te.duration_minutes, 
+                       te.description, p.name as project_name, t.name as task_name
+                FROM time_entries te
+                JOIN tasks t ON te.task_id = t.id
+                JOIN projects p ON te.project_id = p.id
+                WHERE te.id IN ({placeholders})
+                ORDER BY te.start_time
+            ''', entry_ids)
+            
+            time_entries = cursor.fetchall()
+            conn.row_factory = None
+            
+            # Populate tree
+            for entry in time_entries:
+                try:
+                    dt = datetime.fromisoformat(entry['start_time'])
+                    date_display = dt.strftime("%m/%d/%y %I:%M %p")
+                except:
+                    date_display = entry['start_time'][:10]
+                
+                hours = (entry['duration_minutes'] or 0) / 60.0
+                
+                edit_tree.insert('', 'end',
+                    values=(
+                        date_display,
+                        entry['project_name'],
+                        entry['task_name'],
+                        f"{hours:.2f}",
+                        entry['description'] or ''
+                    ),
+                    tags=(f"entry_id_{entry['entry_id']}",))
+            
+            # Button frame
+            btn_frame = ttk.Frame(edit_window)
+            btn_frame.pack(fill='x', padx=20, pady=20)
+            
+            def edit_selected_entry():
+                """Edit the selected time entry"""
+                selection = edit_tree.selection()
+                if not selection:
+                    messagebox.showerror("Error", "Please select a time entry to edit")
+                    return
+                
+                # Extract entry ID from tags
+                tags = edit_tree.item(selection[0])['tags']
+                entry_id = None
+                for tag in tags:
+                    if tag.startswith('entry_id_'):
+                        entry_id = int(tag.replace('entry_id_', ''))
+                        break
+                
+                if not entry_id:
+                    messagebox.showerror("Error", "Could not find entry ID")
+                    return
+                
+                # Close the edit selection window
+                edit_window.destroy()
+                
+                # Open the edit dialog (reuse existing method)
+                self.open_edit_time_entry_dialog(entry_id)
+                
+                # After editing, refresh the invoice preview
+                def refresh_after_edit():
+                    # Wait a moment for the edit dialog to close
+                    preview_dialog.after(100, lambda: [
+                        preview_dialog.destroy(),
+                        self.load_invoiceable_entries(),
+                        messagebox.showinfo("Updated", 
+                            "Time entry updated. Please preview the invoice again to see changes.")
+                    ])
+                
+                # Schedule refresh
+                self.root.after(500, refresh_after_edit)
+            
+            def refresh_invoice_preview():
+                """Refresh the invoice preview with updated data"""
+                edit_window.destroy()
+                preview_dialog.destroy()
+                # Reload the invoice entries to show updated data
+                self.load_invoiceable_entries()
+                messagebox.showinfo("Refreshed", 
+                    "Invoice data refreshed. Select entries and preview again to see changes.")
+            
+            ttk.Button(btn_frame, text="✏️ Edit Selected Entry", 
+                      command=edit_selected_entry).pack(side='left', padx=5)
+            ttk.Button(btn_frame, text="🔄 Refresh & Close", 
+                      command=refresh_invoice_preview).pack(side='left', padx=5)
+            ttk.Button(btn_frame, text="Cancel", 
+                      command=edit_window.destroy).pack(side='right', padx=5)
+        
+        def email_invoice():
+            """Email the invoice to the client"""
+            # First, check if email is configured
+            email_settings = self.db.get_email_settings()
+            if not email_settings:
+                if messagebox.askyesno("Email Not Configured",
+                    "Email settings haven't been configured yet.\n\n" +
+                    "Would you like to set them up now?"):
+                    # Switch to Email Settings tab
+                    self.notebook.select(6)  # Email Settings tab index
+                    preview_dialog.destroy()
+                return
+            
+            # Get client email
+            client = self.client_model.get_by_id(client_id)
+            if not client or not client[3]:  # client[3] is email
+                messagebox.showerror("No Email Address",
+                    f"Client '{client_name}' doesn't have an email address on file.\n\n" +
+                    "Please add their email in the Clients tab first.")
+                return
+            
+            client_email = client[3]
+            
+            # Show email send dialog
+            self.show_email_invoice_dialog(preview_dialog, client_name, client_email, 
+                                           client_id, entry_ids, invoice_items, total_amount,
+                                           start_date, end_date)
+        
+        ttk.Button(button_frame, text="✏️ Edit Entries", 
+                  command=edit_time_entries_from_preview).pack(side='left', padx=5)
+        ttk.Button(button_frame, text="📧 Email Invoice", 
+                  command=email_invoice).pack(side='right', padx=5)
         ttk.Button(button_frame, text="✅ CREATE INVOICE", 
                   command=create_invoice,
                   style='Accent.TButton').pack(side='right', padx=5)
         ttk.Button(button_frame, text="Cancel", 
                   command=preview_dialog.destroy).pack(side='right', padx=5)
+    
+    def show_email_invoice_dialog(self, parent_dialog, client_name, client_email, 
+                                   client_id, entry_ids, invoice_items, total_amount,
+                                   start_date, end_date):
+        """Show dialog to send invoice via email"""
+        import tempfile
+        from email_sender import EmailSender, EmailTemplate
+        
+        # Create email dialog
+        email_dialog = tk.Toplevel(parent_dialog)
+        email_dialog.title("Email Invoice")
+        email_dialog.geometry("600x700")
+        email_dialog.transient(parent_dialog)
+        email_dialog.grab_set()
+        
+        # Header
+        header_frame = ttk.Frame(email_dialog)
+        header_frame.pack(fill='x', padx=20, pady=20)
+        
+        ttk.Label(header_frame, text="📧 Email Invoice", 
+                 font=('Arial', 16, 'bold')).pack()
+        ttk.Label(header_frame, text=f"To: {client_name} ({client_email})", 
+                 font=('Arial', 10)).pack(pady=5)
+        
+        # Form
+        form_frame = ttk.LabelFrame(email_dialog, text="Email Details")
+        form_frame.pack(fill='both', expand=True, padx=20, pady=10)
+        
+        # Template selection
+        ttk.Label(form_frame, text="Template:").grid(row=0, column=0, sticky='w', padx=10, pady=5)
+        template_var = tk.StringVar(value="Professional")
+        template_combo = ttk.Combobox(form_frame, textvariable=template_var, 
+                                     values=EmailTemplate.get_template_names(), state='readonly')
+        template_combo.grid(row=0, column=1, sticky='ew', padx=10, pady=5)
+        
+        # Subject
+        ttk.Label(form_frame, text="Subject:").grid(row=1, column=0, sticky='w', padx=10, pady=5)
+        subject_entry = ttk.Entry(form_frame, width=50)
+        subject_entry.grid(row=1, column=1, sticky='ew', padx=10, pady=5)
+        
+        # CC (optional)
+        ttk.Label(form_frame, text="CC (optional):").grid(row=2, column=0, sticky='w', padx=10, pady=5)
+        cc_entry = ttk.Entry(form_frame, width=50)
+        cc_entry.grid(row=2, column=1, sticky='ew', padx=10, pady=5)
+        ttk.Label(form_frame, text="Separate multiple emails with commas", 
+                 font=('Arial', 8), foreground='gray').grid(row=3, column=1, sticky='w', padx=10)
+        
+        # Message body
+        ttk.Label(form_frame, text="Message:").grid(row=4, column=0, sticky='nw', padx=10, pady=5)
+        message_text = tk.Text(form_frame, height=15, wrap='word')
+        message_text.grid(row=4, column=1, sticky='ew', padx=10, pady=5)
+        
+        # Scrollbar for message
+        message_scroll = ttk.Scrollbar(form_frame, orient='vertical', command=message_text.yview)
+        message_text.configure(yscrollcommand=message_scroll.set)
+        message_scroll.grid(row=4, column=2, sticky='ns', pady=5)
+        
+        form_frame.columnconfigure(1, weight=1)
+        
+        # Function to update template preview
+        def update_template(*args):
+            template_name = template_var.get()
+            template = EmailTemplate.get_template(template_name)
+            if template:
+                # Get company info
+                company = self.company_model.get()
+                
+                # Prepare variables for template
+                invoice_number = f"INV-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+                date_range = f"{start_date.strftime('%m/%d/%y')} - {end_date.strftime('%m/%d/%y')}"
+                
+                variables = {
+                    'client_name': client_name,
+                    'client_email': client_email,
+                    'invoice_number': invoice_number,
+                    'invoice_date': datetime.now().strftime('%B %d, %Y'),
+                    'invoice_total': f"${total_amount:.2f}",
+                    'payment_terms': company[7] if company and len(company) > 7 else 'Net 30',
+                    'due_date': (datetime.now() + timedelta(days=30)).strftime('%B %d, %Y'),
+                    'date_range': date_range,
+                    'company_name': company[1] if company else 'Your Company',
+                    'company_email': company[4] if company and len(company) > 4 else '',
+                    'company_phone': company[3] if company and len(company) > 3 else '',
+                    'company_website': company[6] if company and len(company) > 6 else ''
+                }
+                
+                # Render template
+                subject = EmailTemplate.render_template(template['subject'], variables)
+                body = EmailTemplate.render_template(template['body'], variables)
+                
+                # Update fields
+                subject_entry.delete(0, tk.END)
+                subject_entry.insert(0, subject)
+                
+                message_text.delete('1.0', tk.END)
+                message_text.insert('1.0', body)
+        
+        # Bind template change
+        template_combo.bind('<<ComboboxSelected>>', update_template)
+        
+        # Load initial template
+        update_template()
+        
+        # Buttons
+        button_frame = ttk.Frame(email_dialog)
+        button_frame.pack(fill='x', padx=20, pady=20)
+        
+        def send_email():
+            """Send the email with invoice attached"""
+            try:
+                # Get email settings
+                email_settings = self.db.get_email_settings()
+                if not email_settings:
+                    messagebox.showerror("Error", "Email settings not found")
+                    return
+                
+                smtp_server = email_settings[1]
+                smtp_port = email_settings[2]
+                email_address = email_settings[3]
+                email_password = email_settings[4]
+                from_name = email_settings[5] if len(email_settings) > 5 else None
+                
+                # Initialize email sender
+                sender = EmailSender(smtp_server, smtp_port, email_address, email_password)
+                
+                # Generate invoice PDF in temp location
+                invoice_number = f"INV-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+                temp_dir = tempfile.gettempdir()
+                pdf_path = os.path.join(temp_dir, f"{invoice_number}.pdf")
+                
+                # Create invoice data
+                invoice_data = {
+                    'client_id': client_id,
+                    'client_name': client_name,
+                    'entry_ids': entry_ids,
+                    'items': invoice_items,
+                    'total': total_amount,
+                    'start_date': start_date,
+                    'end_date': end_date
+                }
+                
+                # Generate PDF
+                from invoice_generator import InvoiceGenerator
+                generator = InvoiceGenerator(self.db)
+                generator.generate_pdf(invoice_data, pdf_path, invoice_number)
+                
+                # Get email details
+                subject = subject_entry.get().strip()
+                body_html = message_text.get('1.0', tk.END).strip()
+                
+                # Parse CC addresses
+                cc_addresses = None
+                cc_text = cc_entry.get().strip()
+                if cc_text:
+                    cc_addresses = [email.strip() for email in cc_text.split(',')]
+                
+                # Send email
+                success, message = sender.send_email(
+                    to_address=client_email,
+                    subject=subject,
+                    body_html=body_html,
+                    attachment_path=pdf_path,
+                    cc_addresses=cc_addresses,
+                    from_name=from_name
+                )
+                
+                # Clean up temp PDF
+                try:
+                    os.remove(pdf_path)
+                except:
+                    pass
+                
+                if success:
+                    # Ask if they want to mark as billed
+                    if messagebox.askyesno("Email Sent!",
+                        f"Invoice emailed successfully to {client_email}!\n\n" +
+                        "Would you like to mark these time entries as BILLED now?"):
+                        
+                        # Mark entries as billed
+                        invoice_date = datetime.now()
+                        conn = self.db.conn
+                        cursor = conn.cursor()
+                        placeholders = ','.join(['?' for _ in entry_ids])
+                        cursor.execute(f'''
+                            UPDATE time_entries 
+                            SET is_billed = 1, 
+                                invoice_number = ?,
+                                billing_date = ?
+                            WHERE id IN ({placeholders})
+                        ''', [invoice_number, invoice_date.strftime("%Y-%m-%d")] + entry_ids)
+                        conn.commit()
+                        
+                        # Refresh displays
+                        self.refresh_time_entries()
+                        self.load_invoiceable_entries()
+                        
+                        messagebox.showinfo("Success",
+                            f"Invoice #{invoice_number} sent and {len(entry_ids)} entries marked as billed!")
+                    
+                    # Close dialogs
+                    email_dialog.destroy()
+                    parent_dialog.destroy()
+                else:
+                    messagebox.showerror("Send Failed", message)
+                    
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+                messagebox.showerror("Error", f"Failed to send email:\n\n{str(e)}")
+        
+        ttk.Button(button_frame, text="📧 Send Invoice", 
+                  command=send_email,
+                  style='Accent.TButton').pack(side='right', padx=5)
+        ttk.Button(button_frame, text="Cancel", 
+                  command=email_dialog.destroy).pack(side='right', padx=5)
+    
+    # Email Settings Methods
+    def on_email_provider_select(self):
+        """Auto-fill SMTP settings based on provider selection"""
+        provider = self.email_provider_var.get()
+        
+        if provider == "gmail":
+            self.smtp_server_entry.delete(0, tk.END)
+            self.smtp_server_entry.insert(0, "smtp.gmail.com")
+            self.smtp_port_entry.delete(0, tk.END)
+            self.smtp_port_entry.insert(0, "587")
+        elif provider == "outlook":
+            self.smtp_server_entry.delete(0, tk.END)
+            self.smtp_server_entry.insert(0, "smtp-mail.outlook.com")
+            self.smtp_port_entry.delete(0, tk.END)
+            self.smtp_port_entry.insert(0, "587")
+    
+    def toggle_password_visibility(self):
+        """Toggle password visibility"""
+        if self.show_password_var.get():
+            self.email_password_entry.config(show='')
+        else:
+            self.email_password_entry.config(show='*')
+    
+    def save_email_settings(self):
+        """Save email SMTP settings to database"""
+        smtp_server = self.smtp_server_entry.get().strip()
+        smtp_port = self.smtp_port_entry.get().strip()
+        email_address = self.email_address_entry.get().strip()
+        email_password = self.email_password_entry.get().strip()
+        from_name = self.email_from_name_entry.get().strip()
+        
+        if not smtp_server or not smtp_port or not email_address or not email_password:
+            messagebox.showerror("Error", "Please fill in all required fields")
+            return
+        
+        try:
+            port = int(smtp_port)
+        except ValueError:
+            messagebox.showerror("Error", "SMTP port must be a number")
+            return
+        
+        # Save to database
+        success = self.db.save_email_settings(
+            smtp_server=smtp_server,
+            smtp_port=port,
+            email_address=email_address,
+            email_password=email_password,
+            from_name=from_name if from_name else None,
+            send_copy_to_self=self.send_copy_to_self_var.get(),
+            show_preview_before_send=self.show_preview_var.get()
+        )
+        
+        if success:
+            messagebox.showinfo("Success", "Email settings saved successfully!")
+        else:
+            messagebox.showerror("Error", "Failed to save email settings")
+    
+    def load_email_settings(self):
+        """Load email SMTP settings from database (with popup)"""
+        settings = self.db.get_email_settings()
+        
+        if not settings:
+            messagebox.showinfo("No Settings", "No email settings found. Please configure your email.")
+            return
+        
+        self._populate_email_settings(settings)
+        messagebox.showinfo("Success", "Email settings loaded successfully!")
+    
+    def load_email_settings_silent(self):
+        """Load email SMTP settings from database silently (no popup)"""
+        settings = self.db.get_email_settings()
+        
+        if not settings:
+            return  # No settings found, silently skip
+        
+        self._populate_email_settings(settings)
+    
+    def _populate_email_settings(self, settings):
+        """Internal method to populate email settings fields"""
+        # Settings structure: id, smtp_server, smtp_port, email_address, email_password, 
+        # from_name, send_copy_to_self, show_preview_before_send
+        
+        # Clear existing values
+        self.smtp_server_entry.delete(0, tk.END)
+        self.smtp_port_entry.delete(0, tk.END)
+        self.email_address_entry.delete(0, tk.END)
+        self.email_password_entry.delete(0, tk.END)
+        self.email_from_name_entry.delete(0, tk.END)
+        
+        # Fill in loaded values
+        self.smtp_server_entry.insert(0, settings[1])
+        self.smtp_port_entry.insert(0, str(settings[2]))
+        self.email_address_entry.insert(0, settings[3])
+        self.email_password_entry.insert(0, settings[4])
+        
+        if settings[5]:  # from_name
+            self.email_from_name_entry.insert(0, settings[5])
+        
+        if len(settings) > 6:
+            self.send_copy_to_self_var.set(bool(settings[6]))
+        if len(settings) > 7:
+            self.show_preview_var.set(bool(settings[7]))
+        
+        # Set provider radio button based on SMTP server
+        smtp_server = settings[1].lower()
+        if 'gmail' in smtp_server:
+            self.email_provider_var.set('gmail')
+        elif 'outlook' in smtp_server:
+            self.email_provider_var.set('outlook')
+        else:
+            self.email_provider_var.set('custom')
+    
+    def test_email_connection(self):
+        """Test SMTP connection"""
+        smtp_server = self.smtp_server_entry.get().strip()
+        smtp_port = self.smtp_port_entry.get().strip()
+        email_address = self.email_address_entry.get().strip()
+        email_password = self.email_password_entry.get().strip()
+        
+        if not smtp_server or not smtp_port or not email_address or not email_password:
+            messagebox.showerror("Error", "Please fill in all required fields before testing")
+            return
+        
+        try:
+            port = int(smtp_port)
+        except ValueError:
+            messagebox.showerror("Error", "SMTP port must be a number")
+            return
+        
+        from email_sender import EmailSender
+        sender = EmailSender(smtp_server, port, email_address, email_password)
+        
+        success, message = sender.test_connection()
+        
+        if success:
+            messagebox.showinfo("Connection Successful", message)
+        else:
+            messagebox.showerror("Connection Failed", message)
+    
+    # Email Template Methods
+    def on_template_select(self, event=None):
+        """When template is selected from dropdown"""
+        # This is just for loading from dropdown, actual loading happens in load_selected_template
+        pass
+    
+    def load_selected_template(self):
+        """Load the selected template from dropdown"""
+        from email_sender import EmailTemplate
+        
+        template_name = self.template_combo.get()
+        if not template_name:
+            messagebox.showerror("Error", "Please select a template")
+            return
+        
+        template = EmailTemplate.get_template(template_name)
+        if template:
+            self.template_subject_entry.delete(0, tk.END)
+            self.template_subject_entry.insert(0, template['subject'])
+            
+            self.template_body_text.delete('1.0', tk.END)
+            self.template_body_text.insert('1.0', template['body'])
+            
+            self.update_template_preview()
+            messagebox.showinfo("Loaded", f"Template '{template_name}' loaded successfully!")
+    
+    def reset_template_to_default(self):
+        """Reset current template to its default version"""
+        template_name = self.template_combo.get()
+        if not template_name:
+            messagebox.showerror("Error", "Please select a template first")
+            return
+        
+        if messagebox.askyesno("Confirm Reset", 
+            f"Reset '{template_name}' template to default?\n\nAny custom changes will be lost."):
+            self.load_selected_template()
+    
+    def insert_variable(self, variable):
+        """Insert a template variable at cursor position"""
+        self.template_body_text.insert(tk.INSERT, variable)
+    
+    def update_template_preview(self):
+        """Update the template preview with sample data"""
+        from email_sender import EmailTemplate
+        
+        subject = self.template_subject_entry.get()
+        body = self.template_body_text.get('1.0', tk.END)
+        
+        # Sample data
+        variables = {
+            'client_name': 'John Smith',
+            'client_company': 'Smith Industries',
+            'client_email': 'john@example.com',
+            'invoice_number': 'INV-20260129-123456',
+            'invoice_date': 'January 29, 2026',
+            'invoice_total': '$1,234.56',
+            'payment_terms': 'Net 30',
+            'due_date': 'February 28, 2026',
+            'date_range': '01/01/26 - 01/29/26',
+            'company_name': 'Your Company',
+            'company_email': 'billing@yourcompany.com',
+            'company_phone': '(555) 123-4567',
+            'company_website': 'www.yourcompany.com'
+        }
+        
+        # Render with sample data
+        preview_subject = EmailTemplate.render_template(subject, variables)
+        preview_body = EmailTemplate.render_template(body, variables)
+        
+        # Update preview
+        self.template_preview_text.config(state='normal')
+        self.template_preview_text.delete('1.0', tk.END)
+        self.template_preview_text.insert('1.0', f"Subject: {preview_subject}\n\n{preview_body}")
+        self.template_preview_text.config(state='disabled')
+    
+    def save_current_template(self):
+        """Save the current template to database"""
+        template_name = self.template_combo.get()
+        if not template_name:
+            messagebox.showerror("Error", "Please select a template to save")
+            return
+        
+        subject = self.template_subject_entry.get().strip()
+        body = self.template_body_text.get('1.0', tk.END).strip()
+        
+        if not subject or not body:
+            messagebox.showerror("Error", "Subject and body cannot be empty")
+            return
+        
+        # Save to database
+        success = self.db.save_email_template(template_name, subject, body, is_default=False)
+        
+        if success:
+            messagebox.showinfo("Success", f"Template '{template_name}' saved successfully!")
+        else:
+            messagebox.showerror("Error", "Failed to save template")
+    
+    def send_test_template_email(self):
+        """Send a test email using current template"""
+        # Check if email settings exist
+        settings = self.db.get_email_settings()
+        if not settings:
+            messagebox.showerror("Error", 
+                "Email settings not configured.\n\nPlease configure email settings in the Email Settings tab first.")
+            return
+        
+        subject = self.template_subject_entry.get().strip()
+        body = self.template_body_text.get('1.0', tk.END).strip()
+        
+        if not subject or not body:
+            messagebox.showerror("Error", "Subject and body cannot be empty")
+            return
+        
+        from email_sender import EmailSender, EmailTemplate
+        
+        # Get sample data
+        variables = {
+            'client_name': 'Test Client',
+            'invoice_number': 'INV-TEST-123',
+            'invoice_total': '$100.00',
+            'company_name': 'Your Company'
+        }
+        
+        # Render template
+        rendered_subject = EmailTemplate.render_template(subject, variables)
+        rendered_body = EmailTemplate.render_template(body, variables)
+        
+        # Send test email
+        sender = EmailSender(settings[1], settings[2], settings[3], settings[4])
+        success, message = sender.send_email(
+            to_address=settings[3],  # Send to self
+            subject=f"TEST: {rendered_subject}",
+            body_html=rendered_body,
+            from_name=settings[5] if len(settings) > 5 else None
+        )
+        
+        if success:
+            messagebox.showinfo("Test Sent", 
+                f"Test email sent to {settings[3]}!\n\nCheck your inbox.")
+        else:
+            messagebox.showerror("Send Failed", message)
+    
+    def refresh_email_templates(self):
+        """Refresh the email templates dropdown"""
+        if hasattr(self, 'template_combo'):
+            from email_sender import EmailTemplate
+            template_names = EmailTemplate.get_template_names()
+            self.template_combo['values'] = template_names
+            if template_names:
+                self.template_combo.set(template_names[0])  # Set first template as default
