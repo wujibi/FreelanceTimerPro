@@ -210,8 +210,8 @@ Error (if any): [paste error]
 
 ---
 
-**Last Updated:** January 29, 2026 - 4:00 PM
-**App Version:** V2.0.5
-**Status:** ✅ Fully Functional + Email Invoices!
-**Last Session:** Complete email invoice system + UX improvements
-**Git Status:** Major changes ready to commit
+**Last Updated:** January 30, 2026
+**App Version:** V2.0.6
+**Status:** ✅ Fully Functional - UI Reorganized!
+**Recent Fixes:** Tab bar cleanup (9✓7 tabs), submenu navigation, tab appearance fix
+**Git Helper:** Use `git_push.bat` for commits (see GIT_USAGE.md)

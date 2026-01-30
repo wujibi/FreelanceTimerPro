@@ -1,11 +1,41 @@
-# Time Tracker Pro V2.0.5 - Current Status
+# Time Tracker Pro V2.0.6 - Current Status
 
-**Last Updated:** January 29, 2026 - 4:00 PM  
-**Status:** ✅ **FULLY OPERATIONAL + EMAIL INVOICES!**
+**Last Updated:** January 30, 2026  
+**Status:** ✅ **FULLY OPERATIONAL - UI IMPROVED!**
 
 ---
 
-## ✅ Recent Session Summary (January 29, 2026)
+## ✅ Recent Session Summary (January 30, 2026)
+
+### UI Reorganization:
+1. 🎨 **Tab Bar Cleanup** - Reduced from 9 to 7 main tabs
+   - Moved "Billed Invoices" into Invoices tab with dropdown submenu
+   - Combined Email Settings + Templates into single Email tab with submenus
+   - Dropdown navigation: "📄 Create Invoice" | "💰 Paid/Unpaid Invoices"
+   - Email views: "⚙️ Settings" | "📝 Templates"
+   - Less cluttered, better organization
+   - All functionality preserved
+
+2. ✅ **Tab Appearance Fix** - Selected tab no longer "raises"
+   - Changed theme from 'clam' to 'alt'
+   - Selected tab stays same height as others
+   - Blue highlight shows active tab
+   - Much cleaner visual appearance
+
+3. 📄 **Git Workflow Tools** - Created reusable helpers
+   - `git_push.bat` - Generic commit/push script with prompts
+   - `GIT_USAGE.md` - Complete usage guide
+   - Replaced hardcoded version-specific scripts
+
+4. 🧹 **Documentation Cleanup** - Deleted 13 obsolete files
+   - Removed session-specific docs
+   - Removed old git scripts
+   - Removed bug fix docs
+   - Removed backup files
+
+---
+
+## Previous Session Summary (January 29, 2026)
 
 ### Major Features Added:
 1. 🎉 **EMAIL INVOICE FEATURE** - Complete end-to-end email system

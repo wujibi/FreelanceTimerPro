@@ -46,4 +46,7 @@ venv/
 .DS_Store
 Thumbs.db
 
+# Chat backups (temporary)
+Old_Chats/
+
 # Add to existing .gitignore

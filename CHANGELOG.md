@@ -6,6 +6,52 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.0.6] - 2026-01-30
+
+### Changed - UI REORGANIZATION 🎨
+- **Tab Bar Cleanup**: Reduced main tab count from 9 to 7 tabs
+  - Moved "Billed Invoices" into Invoices tab as submenu item
+  - Moved "Email Settings" and "Email Templates" into single Email tab with submenus
+  - Added dropdown navigation at top of Invoices and Email tabs
+  - Invoices submenu: "📄 Create Invoice" | "💰 Paid/Unpaid Invoices"
+  - Email submenu: "⚙️ Settings" | "📝 Templates"
+  - Less cluttered interface, better organization
+
+- **Tab Appearance**: Fixed selected tab visual style
+  - Changed theme from 'clam' to 'alt' to remove raised tab effect
+  - Selected tab now stays same height as other tabs
+  - Blue highlight indicates active tab clearly
+  - Cleaner, more professional look
+
+### Added
+- **Git Helper Scripts**: Created reusable git workflow tools
+  - `git_push.bat` - Generic script for committing/pushing changes
+  - `GIT_USAGE.md` - Complete usage guide and troubleshooting
+  - Prompts for version number, title, and detailed changes
+  - Replaces hardcoded version-specific scripts
+
+### Removed
+- **Obsolete Documentation**: Cleaned up 13 temporary/old files
+  - Session-specific docs (COMPLETE_VERIFICATION_TEST.md, etc.)
+  - Old git scripts (GIT_COMMANDS_TODAY.bat, etc.)
+  - Bug fix docs (INVOICE_BUG_FIX.md, etc.)
+  - Backup files (gui.py.backup_invoice_bug)
+
+### Technical Details
+- **Files Modified**: `gui.py` (~800 lines refactored)
+- **New Methods**:
+  - `create_email_tab()` - Combined email views with submenu
+  - `show_email_view()` - Switch between Settings/Templates
+  - `create_email_settings_view()` - Settings subview
+  - `create_email_templates_view()` - Templates subview
+  - `create_invoice_create_view()` - Create invoice subview
+  - `create_invoice_billed_view()` - Paid/Unpaid invoices subview
+  - `show_invoice_view()` - Switch between invoice views
+- **Theme Change**: `style.theme_use('alt')` instead of 'clam'
+- **All Functionality Preserved**: Email and invoice features work identically
+
+---
+
 ## [2.0.5] - 2026-01-29
 
 ### Added - EMAIL INVOICE FEATURE 🎉

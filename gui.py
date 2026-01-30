@@ -134,22 +134,29 @@ class TimeTrackerApp:
         """Apply modern styling to the application"""
         style = ttk.Style()
         
-        # Try to use 'clam' theme as base (modern looking)
+        # Use 'alt' theme - it doesn't raise selected tabs
         try:
-            style.theme_use('clam')
+            style.theme_use('alt')
         except:
-            pass  # Use default if clam not available
+            try:
+                style.theme_use('clam')
+            except:
+                pass  # Use default if neither available
         
-        # Configure Notebook (tabs)
+        # Configure Notebook (tabs) - flat style, no raising
         style.configure('TNotebook', 
                        background=self.colors['background'],
-                       borderwidth=0)
+                       borderwidth=0,
+                       relief='flat')
         style.configure('TNotebook.Tab',
                        padding=[20, 10],
-                       font=self.fonts['subheading'])
+                       font=self.fonts['subheading'],
+                       relief='flat',
+                       borderwidth=1)
         style.map('TNotebook.Tab',
                  background=[('selected', self.colors['primary'])],
-                 foreground=[('selected', 'white')])
+                 foreground=[('selected', 'white')],
+                 relief=[('selected', 'flat')])
         
         # Configure Buttons
         style.configure('TButton',
@@ -247,10 +254,8 @@ class TimeTrackerApp:
         self.create_tasks_tab()
         self.create_time_entries_tab()
         self.create_company_tab()
-        self.create_email_settings_tab()
-        self.create_email_templates_tab()
         self.create_invoice_tab()
-        self.create_billed_invoices_tab()
+        self.create_email_tab()
 
     def create_timer_tab(self):
         # Timer tab - simple frame without scrollbar
@@ -790,13 +795,50 @@ class TimeTrackerApp:
         ttk.Button(button_frame, text="Save Company Info", command=self.save_company_info).pack(side='left', padx=5)
         ttk.Button(button_frame, text="Load Current Info", command=self.load_company_info).pack(side='left', padx=5)
 
-    def create_email_settings_tab(self):
-        """Create Email Settings tab for SMTP configuration"""
+    def create_email_tab(self):
+        """Create Email tab with Settings and Templates subviews"""
         email_frame = ttk.Frame(self.notebook)
-        self.notebook.add(email_frame, text="📧 Email Settings")
+        self.notebook.add(email_frame, text="📧 Email")
+        
+        # Submenu bar at top
+        submenu_frame = ttk.Frame(email_frame)
+        submenu_frame.pack(fill='x', padx=10, pady=(10, 0))
+        
+        ttk.Label(submenu_frame, text="View:", font=('Arial', 10, 'bold')).pack(side='left', padx=5)
+        ttk.Button(submenu_frame, text="⚙️ Settings", 
+                  command=lambda: self.show_email_view('settings')).pack(side='left', padx=2)
+        ttk.Button(submenu_frame, text="📝 Templates", 
+                  command=lambda: self.show_email_view('templates')).pack(side='left', padx=2)
+        
+        # Container for switching views
+        self.email_view_container = ttk.Frame(email_frame)
+        self.email_view_container.pack(fill='both', expand=True)
+        
+        # Create both views
+        self.create_email_settings_view()
+        self.create_email_templates_view()
+        
+        # Show settings by default
+        self.show_email_view('settings')
+    
+    def show_email_view(self, view_type):
+        """Switch between email views"""
+        for widget in self.email_view_container.winfo_children():
+            widget.pack_forget()
+        
+        if view_type == 'settings':
+            self.email_settings_frame.pack(fill='both', expand=True)
+            self.load_email_settings_silent()  # Auto-load when viewing
+        else:
+            self.email_templates_frame.pack(fill='both', expand=True)
+            self.refresh_email_templates()  # Auto-refresh when viewing
+    
+    def create_email_settings_view(self):
+        """Create Email Settings view for SMTP configuration"""
+        self.email_settings_frame = ttk.Frame(self.email_view_container)
         
         # Main settings frame
-        settings_frame = ttk.LabelFrame(email_frame, text="SMTP Configuration")
+        settings_frame = ttk.LabelFrame(self.email_settings_frame, text="SMTP Configuration")
         settings_frame.pack(fill='x', padx=10, pady=10)
         
         form_frame = ttk.Frame(settings_frame)
@@ -857,7 +899,7 @@ class TimeTrackerApp:
         form_frame.columnconfigure(1, weight=1)
         
         # Default behavior
-        behavior_frame = ttk.LabelFrame(email_frame, text="Default Behavior")
+        behavior_frame = ttk.LabelFrame(self.email_settings_frame, text="Default Behavior")
         behavior_frame.pack(fill='x', padx=10, pady=10)
         
         options_frame = ttk.Frame(behavior_frame)
@@ -872,7 +914,7 @@ class TimeTrackerApp:
                        variable=self.show_preview_var).pack(anchor='w', pady=2)
         
         # Buttons
-        button_frame = ttk.Frame(email_frame)
+        button_frame = ttk.Frame(self.email_settings_frame)
         button_frame.pack(fill='x', padx=10, pady=10)
         
         ttk.Button(button_frame, text="💾 Save Settings",
@@ -883,13 +925,12 @@ class TimeTrackerApp:
                   command=self.test_email_connection,
                   style='Accent.TButton').pack(side='right', padx=5)
     
-    def create_email_templates_tab(self):
-        """Create Email Templates tab for managing email templates"""
-        template_frame = ttk.Frame(self.notebook)
-        self.notebook.add(template_frame, text="📝 Email Templates")
+    def create_email_templates_view(self):
+        """Create Email Templates view for managing email templates"""
+        self.email_templates_frame = ttk.Frame(self.email_view_container)
         
         # Template selection
-        selection_frame = ttk.Frame(template_frame)
+        selection_frame = ttk.Frame(self.email_templates_frame)
         selection_frame.pack(fill='x', padx=10, pady=10)
         
         ttk.Label(selection_frame, text="Template:").pack(side='left', padx=5)
@@ -904,7 +945,7 @@ class TimeTrackerApp:
                   command=self.reset_template_to_default).pack(side='left', padx=5)
         
         # Editor and preview
-        editor_frame = ttk.Frame(template_frame)
+        editor_frame = ttk.Frame(self.email_templates_frame)
         editor_frame.pack(fill='both', expand=True, padx=10, pady=10)
         
         # Left side - Editor
@@ -976,7 +1017,7 @@ class TimeTrackerApp:
                   command=self.update_template_preview).pack(pady=5)
         
         # Bottom buttons
-        bottom_frame = ttk.Frame(template_frame)
+        bottom_frame = ttk.Frame(self.email_templates_frame)
         bottom_frame.pack(fill='x', padx=10, pady=10)
         
         ttk.Button(bottom_frame, text="💾 Save Template",
@@ -989,9 +1030,45 @@ class TimeTrackerApp:
         # Invoice tab - COMPLETELY REDESIGNED
         invoice_frame = ttk.Frame(self.notebook)
         self.notebook.add(invoice_frame, text="Invoices")
+        
+        # Submenu bar at top
+        submenu_frame = ttk.Frame(invoice_frame)
+        submenu_frame.pack(fill='x', padx=10, pady=(10, 0))
+        
+        ttk.Label(submenu_frame, text="View:", font=('Arial', 10, 'bold')).pack(side='left', padx=5)
+        ttk.Button(submenu_frame, text="📄 Create Invoice", 
+                  command=lambda: self.show_invoice_view('create')).pack(side='left', padx=2)
+        ttk.Button(submenu_frame, text="💰 Paid/Unpaid Invoices", 
+                  command=lambda: self.show_invoice_view('billed')).pack(side='left', padx=2)
+        
+        # Container for switching views
+        self.invoice_view_container = ttk.Frame(invoice_frame)
+        self.invoice_view_container.pack(fill='both', expand=True)
+        
+        # Create both views
+        self.create_invoice_create_view()
+        self.create_invoice_billed_view()
+        
+        # Show create view by default
+        self.show_invoice_view('create')
+    
+    def show_invoice_view(self, view_type):
+        """Switch between invoice views"""
+        for widget in self.invoice_view_container.winfo_children():
+            widget.pack_forget()
+        
+        if view_type == 'create':
+            self.invoice_create_frame.pack(fill='both', expand=True)
+        else:
+            self.invoice_billed_frame.pack(fill='both', expand=True)
+            self.refresh_billed_invoices()
+    
+    def create_invoice_create_view(self):
+        """Create the invoice creation view"""
+        self.invoice_create_frame = ttk.Frame(self.invoice_view_container)
 
         # Selection section at top
-        selection_frame = ttk.LabelFrame(invoice_frame, text="📋 Invoice Selection")
+        selection_frame = ttk.LabelFrame(self.invoice_create_frame, text="📋 Invoice Selection")
         selection_frame.pack(fill='x', padx=10, pady=10)
 
         form_frame = ttk.Frame(selection_frame)
@@ -1039,7 +1116,7 @@ class TimeTrackerApp:
         # Hide date range by default
         self.date_range_frame.pack_forget()
 
-        # Load entries button
+        # Load entries button AND email config buttons
         button_row = ttk.Frame(selection_frame)
         button_row.pack(fill='x', padx=10, pady=(0, 10))
         
@@ -1049,7 +1126,7 @@ class TimeTrackerApp:
                   command=self.refresh_invoice_combos).pack(side='left', padx=5)
 
         # Time entries display section
-        entries_frame = ttk.LabelFrame(invoice_frame, text="⏱️ Select Time Entries to Invoice")
+        entries_frame = ttk.LabelFrame(self.invoice_create_frame, text="⏱️ Select Time Entries to Invoice")
         entries_frame.pack(fill='both', expand=True, padx=10, pady=10)
 
         # Info label
@@ -1106,16 +1183,12 @@ class TimeTrackerApp:
         ttk.Button(summary_frame, text="Deselect All", 
                   command=self.deselect_all_invoice_entries).pack(side='right', padx=5)
 
-    # ADD THIS METHOD TO gui.py AFTER create_invoice_tab() method
-    # This is the complete Billed Invoices tab implementation
-
-    def create_billed_invoices_tab(self):
-        """Create the Billed Invoices tab with Paid/Unpaid views"""
-        billed_frame = ttk.Frame(self.notebook)
-        self.notebook.add(billed_frame, text="💰 Billed Invoices")
+    def create_invoice_billed_view(self):
+        """Create the billed invoices view (was separate tab)"""
+        self.invoice_billed_frame = ttk.Frame(self.invoice_view_container)
 
         # Top control frame
-        control_frame = ttk.Frame(billed_frame)
+        control_frame = ttk.Frame(self.invoice_billed_frame)
         control_frame.pack(fill='x', padx=10, pady=10)
 
         # View selector
@@ -1137,7 +1210,7 @@ class TimeTrackerApp:
                    command=self.refresh_billed_invoices).pack(side='right', padx=5)
 
         # Invoice list
-        list_frame = ttk.LabelFrame(billed_frame, text="Invoices")
+        list_frame = ttk.LabelFrame(self.invoice_billed_frame, text="Invoices")
         list_frame.pack(fill='both', expand=True, padx=10, pady=10)
 
         tree_frame = ttk.Frame(list_frame)
@@ -1167,7 +1240,7 @@ class TimeTrackerApp:
         vsb.pack(side='right', fill='y')
 
         # Action buttons
-        action_frame = ttk.Frame(billed_frame)
+        action_frame = ttk.Frame(self.invoice_billed_frame)
         action_frame.pack(fill='x', padx=10, pady=10)
 
         ttk.Button(action_frame, text="Mark as PAID",
