@@ -1,3 +1,4 @@
+# Version: 2026-02-03
 import os
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
@@ -2307,9 +2308,25 @@ class TimeTrackerApp:
         if not selection:
             messagebox.showerror("Error", "Please select a task to delete")
             return
+        
+        # Get task ID from tags (not values which might be header)
+        item_tags = self.task_tree.item(selection[0])['tags']
+        if 'task' not in item_tags:
+            messagebox.showerror("Error", "Please select an actual task (not a client/project header)")
+            return
+        
+        # Extract task ID from tags
+        task_id = None
+        for tag in item_tags:
+            if tag.startswith('task_id_'):
+                task_id = int(tag.replace('task_id_', ''))
+                break
+        
+        if not task_id:
+            messagebox.showerror("Error", "Could not determine task ID")
+            return
 
         if messagebox.askyesno("Confirm", "Delete this task? This will also delete all associated time entries."):
-            task_id = self.task_tree.item(selection[0])['values'][0]
             self.task_model.delete(task_id)
             self.refresh_tasks()
             self.refresh_combos()
@@ -3861,6 +3878,10 @@ class TimeTrackerApp:
         
         if template:
             # Load from database
+            print(f"[DEBUG] Loading template '{template_name}' from DATABASE")
+            print(f"[DEBUG] Subject: {template[2][:50]}...")
+            print(f"[DEBUG] Body length: {len(template[3])} chars")
+            
             self.template_subject_entry.delete(0, tk.END)
             self.template_subject_entry.insert(0, template[2])  # subject
             
@@ -3868,6 +3889,7 @@ class TimeTrackerApp:
             self.template_body_text.insert('1.0', template[3])  # body
         else:
             # Load from defaults
+            print(f"[DEBUG] Template '{template_name}' NOT in database, loading from DEFAULTS")
             from email_sender import EmailTemplate
             default_template = EmailTemplate.get_template(template_name)
             
@@ -3953,7 +3975,9 @@ class TimeTrackerApp:
     
     def save_current_template(self):
         """Save the current template to database"""
+        print("[DEBUG] ===== SAVE_CURRENT_TEMPLATE CALLED =====")
         template_name = self.template_combo.get()
+        print(f"[DEBUG] Template name: {template_name}")
         if not template_name:
             messagebox.showwarning("No Selection", "Please select a template first")
             return
@@ -3969,7 +3993,12 @@ class TimeTrackerApp:
         success = self.db.save_email_template(template_name, subject, body, is_default=False)
         
         if success:
-            messagebox.showinfo("Success", f"Template '{template_name}' saved successfully!")
+            # Verify by reloading from database
+            saved_template = self.db.get_email_template(template_name=template_name)
+            if saved_template and saved_template[2] == subject and saved_template[3] == body:
+                messagebox.showinfo("Success", f"Template '{template_name}' saved successfully!")
+            else:
+                messagebox.showwarning("Warning", f"Template saved but verification failed. Try loading the template to confirm.")
         else:
             messagebox.showerror("Error", "Failed to save template")
     
@@ -5183,16 +5212,33 @@ class TimeTrackerApp:
             messagebox.showerror("Error", "Please select a template")
             return
         
-        template = EmailTemplate.get_template(template_name)
-        if template:
+        # Try database first
+        db_template = self.db.get_email_template(template_name=template_name)
+        
+        if db_template:
+            # Load from database (custom version)
             self.template_subject_entry.delete(0, tk.END)
-            self.template_subject_entry.insert(0, template['subject'])
+            self.template_subject_entry.insert(0, db_template[2])  # subject
             
             self.template_body_text.delete('1.0', tk.END)
-            self.template_body_text.insert('1.0', template['body'])
+            self.template_body_text.insert('1.0', db_template[3])  # body
             
             self.update_template_preview()
-            messagebox.showinfo("Loaded", f"Template '{template_name}' loaded successfully!")
+            messagebox.showinfo("Loaded", f"Template '{template_name}' loaded (CUSTOM VERSION)")
+        else:
+            # Fall back to built-in default
+            template = EmailTemplate.get_template(template_name)
+            if template:
+                self.template_subject_entry.delete(0, tk.END)
+                self.template_subject_entry.insert(0, template['subject'])
+                
+                self.template_body_text.delete('1.0', tk.END)
+                self.template_body_text.insert('1.0', template['body'])
+                
+                self.update_template_preview()
+                messagebox.showinfo("Loaded", f"Template '{template_name}' loaded (DEFAULT VERSION)")
+            else:
+                messagebox.showerror("Error", f"Template '{template_name}' not found")
     
     def reset_template_to_default(self):
         """Reset current template to its default version"""
@@ -5212,6 +5258,8 @@ class TimeTrackerApp:
     def update_template_preview(self):
         """Update the template preview with sample data"""
         from email_sender import EmailTemplate
+        import re
+        import html
         
         subject = self.template_subject_entry.get()
         body = self.template_body_text.get('1.0', tk.END)
@@ -5237,10 +5285,22 @@ class TimeTrackerApp:
         preview_subject = EmailTemplate.render_template(subject, variables)
         preview_body = EmailTemplate.render_template(body, variables)
         
+        # Strip HTML tags for readable preview
+        # Replace <br> and </p> with newlines first
+        preview_body = preview_body.replace('<br>', '\n').replace('<br/>', '\n').replace('<br />', '\n')
+        preview_body = preview_body.replace('</p>', '\n\n')
+        # Remove all other HTML tags
+        preview_body = re.sub('<[^<]+?>', '', preview_body)
+        # Decode HTML entities
+        preview_body = html.unescape(preview_body)
+        # Clean up extra whitespace
+        preview_body = '\n'.join(line.strip() for line in preview_body.split('\n'))
+        preview_body = re.sub('\n{3,}', '\n\n', preview_body)  # Max 2 consecutive newlines
+        
         # Update preview
         self.template_preview_text.config(state='normal')
         self.template_preview_text.delete('1.0', tk.END)
-        self.template_preview_text.insert('1.0', f"Subject: {preview_subject}\n\n{preview_body}")
+        self.template_preview_text.insert('1.0', f"Subject: {preview_subject}\n\n{preview_body.strip()}")
         self.template_preview_text.config(state='disabled')
     
     def save_current_template(self):

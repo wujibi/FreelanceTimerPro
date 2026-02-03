@@ -1,11 +1,52 @@
-# Time Tracker Pro V2.0.6 - Current Status
+# Time Tracker Pro V2.0.7 - Current Status
 
-**Last Updated:** January 30, 2026  
-**Status:** ✅ **FULLY OPERATIONAL - UI IMPROVED!**
+**Last Updated:** February 3, 2026  
+**Status:** ✅ **FULLY OPERATIONAL - CRITICAL BUGS FIXED!**
 
 ---
 
-## ✅ Recent Session Summary (January 30, 2026)
+## ✅ Recent Session Summary (February 3, 2026)
+
+### Critical Bug Fixes:
+1. 🐛 **Email Template Save Bug FIXED**
+   - Custom email template edits now persist correctly
+   - Issue: Duplicate `load_selected_template()` function - second one overrode first
+   - Second function only loaded from built-in defaults, never checked database
+   - Fixed: Check database first, fall back to defaults if not found
+   - Template customizations now save and load reliably
+   - Users can customize Professional, Friendly, Formal templates
+
+2. 🐛 **Task Deletion Bug FIXED**
+   - Tasks now delete correctly from Tasks tab
+   - Issue: Code tried to extract task_id from `values[0]` which contained "Task" string
+   - Fixed: Extract task_id from item tags (`task_id_123` format)
+   - Deletion works reliably for regular and global tasks
+
+3. ✨ **Email Template Preview Enhancement**
+   - HTML now renders as readable text (no more raw HTML tags)
+   - Converts `<br>` and `</p>` to newlines
+   - Strips all HTML tags for clean preview
+   - Decodes HTML entities (&nbsp;, &lt;, etc.)
+   - Removes excessive whitespace
+   - **Known limitation:** Styling preview (colors, borders) not shown
+   - Added to punch list for future enhancement (tkinterweb library)
+
+4. 🧹 **Code Cleanup**
+   - Removed debug print statements
+   - Cleaner console output
+   - Version banner simplified
+
+### Files Modified:
+- `gui.py` - 3 functions fixed/enhanced
+  - `load_selected_template()` - Database check before defaults
+  - `delete_task()` - Extract ID from tags
+  - `update_template_preview()` - HTML stripping for readable preview
+- `CHANGELOG.md` - Added v2.0.7 entry
+- `CURRENT_STATUS.md` - Updated (this file)
+
+---
+
+## Previous Session Summary (January 30, 2026)
 
 ### UI Reorganization:
 1. 🎨 **Tab Bar Cleanup** - Reduced from 9 to 7 main tabs
@@ -134,7 +175,9 @@
 - Tree expansion state preservation (no more collapsing!)
 
 ### 📊 Known Issues:
-- **None!** App is fully functional with complete email system.
+- **HTML Preview Styling** - Email template preview doesn't show colors/borders (text only)
+  - Workaround: Preview shows content accurately, styling preserved in actual emails
+  - Future fix: Consider tkinterweb library for full HTML rendering
 
 ---
 
@@ -201,6 +244,8 @@ Error: [paste error if any]
 
 ## 🎉 Version History
 
+- **v2.0.7** (2026-02-03) - **CRITICAL BUG FIXES** - Email template save + Task deletion + HTML preview 🐛
+- **v2.0.6** (2026-01-30) - UI reorganization (9→7 tabs) + Tab appearance fix + Git helpers
 - **v2.0.5** (2026-01-29) - **EMAIL INVOICES** + UX improvements + bug fixes 🎉
 - **v2.0.4** (2026-01-21) - Fixed time entry edit + Invoice tab grouping + Select All buttons
 - **v2.0.3** (2026-01-15) - Fixed Invoice tab loading with global tasks

@@ -6,6 +6,43 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.0.7] - 2026-02-03
+
+### Fixed - CRITICAL BUG FIXES 🐛
+- **Email Template Save Bug**: Custom email template edits now persist correctly
+  - Root cause: Duplicate `load_selected_template()` function at end of gui.py
+  - Second function was overriding first and only loading from built-in defaults
+  - Fixed to check database first, then fall back to defaults
+  - Template customizations now save and load properly
+  - Users can now customize invoice email templates successfully
+
+- **Task Deletion Bug**: Tasks now delete correctly from Tasks tab
+  - Root cause: Attempting to extract task_id from `values[0]` which contained "Task" string
+  - Fixed to extract task_id from item tags (`task_id_123` format)
+  - Deletion now works reliably for all task types (regular and global)
+
+### Improved
+- **Email Template Preview**: HTML now renders as readable text
+  - Strips HTML tags for clean preview
+  - Converts `<br>` and `</p>` to newlines
+  - Decodes HTML entities (&nbsp;, etc.)
+  - Removes excessive whitespace
+  - Note: Styling preview (colors, borders) not shown - planned for future enhancement
+
+- **Code Cleanup**: Removed debug print statements
+  - Cleaned up version banner prints
+  - Removed template save/load debug messages
+  - Cleaner console output
+
+### Technical Details
+- **Files Modified**: `gui.py` (2 bug fixes, 1 enhancement)
+- **Functions Fixed**:
+  - `load_selected_template()` - Now checks database before defaults
+  - `delete_task()` - Now extracts task_id from tags correctly
+  - `update_template_preview()` - Added HTML stripping for readable preview
+
+---
+
 ## [2.0.6] - 2026-01-30
 
 ### Changed - UI REORGANIZATION 🎨
