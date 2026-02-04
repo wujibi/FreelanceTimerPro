@@ -5,6 +5,7 @@ from tkinter import ttk, messagebox, filedialog
 from datetime import datetime, timedelta
 from db_manager import DatabaseManager
 from models import Client, Project, Task, TimeEntry, CompanyInfo
+from themes import professional_gray, AVAILABLE_THEMES
 import sqlite3
 import threading
 import time
@@ -40,28 +41,12 @@ class TimeTrackerApp:
                 print(f"[DEBUG] Could not set icon: {e}")  # Debug
                 pass  # Use default icon if custom not available
             
-            # Modern color scheme
-            self.colors = {
-                'primary': '#2563eb',      # Professional Blue
-                'secondary': '#64748b',    # Slate Gray  
-                'accent': '#10b981',       # Success Green
-                'background': '#f8fafc',   # Light Gray
-                'text': '#1e293b',         # Dark Slate
-                'border': '#e2e8f0',       # Light Border
-                'hover': '#3b82f6',        # Lighter Blue
-                'error': '#ef4444',        # Red
-                'success': '#22c55e'       # Green
-            }
-            
-            # Configure modern fonts
-            self.fonts = {
-                'heading': ('Segoe UI', 12, 'bold'),
-                'subheading': ('Segoe UI', 10, 'bold'),
-                'body': ('Segoe UI', 10),
-                'small': ('Segoe UI', 9),
-                'title': ('Segoe UI', 14, 'bold'),
-                'large_display': ('Segoe UI', 24)
-            }
+            # Load theme (colors and fonts)
+            print("[DEBUG] Loading theme...")
+            self.current_theme = professional_gray  # Default theme
+            self.colors = self.current_theme.get_colors()
+            self.fonts = self.current_theme.get_fonts()
+            print(f"[DEBUG] Theme loaded: {len(self.colors)} colors, {len(self.fonts)} fonts")
 
             # Initialize database with the provided path
             if db_path:
@@ -132,88 +117,34 @@ class TimeTrackerApp:
         self.root.geometry(f'{width}x{height}+{x}+{y}')
     
     def apply_modern_theme(self):
-        """Apply modern styling to the application"""
+        """Apply theme styling to the application using theme system"""
+        print("[DEBUG] Applying theme styles...")
         style = ttk.Style()
         
-        # Use 'alt' theme - it doesn't raise selected tabs
-        try:
-            style.theme_use('alt')
-        except:
-            try:
-                style.theme_use('clam')
-            except:
-                pass  # Use default if neither available
-        
-        # Configure Notebook (tabs) - flat style, no raising
-        style.configure('TNotebook', 
-                       background=self.colors['background'],
-                       borderwidth=0,
-                       relief='flat')
-        style.configure('TNotebook.Tab',
-                       padding=[20, 10],
-                       font=self.fonts['subheading'],
-                       relief='flat',
-                       borderwidth=1)
-        style.map('TNotebook.Tab',
-                 background=[('selected', self.colors['primary'])],
-                 foreground=[('selected', 'white')],
-                 relief=[('selected', 'flat')])
-        
-        # Configure Buttons
-        style.configure('TButton',
-                       font=self.fonts['body'],
-                       padding=[10, 5],
-                       borderwidth=1)
-        style.map('TButton',
-                 background=[('active', self.colors['hover'])],
-                 foreground=[('active', 'white')])
-        
-        # Accent button style (for primary actions)
-        style.configure('Accent.TButton',
-                       font=self.fonts['subheading'],
-                       background=self.colors['primary'],
-                       foreground='white',
-                       padding=[15, 8])
-        
-        # Configure Labels
-        style.configure('TLabel',
-                       font=self.fonts['body'],
-                       background=self.colors['background'])
-        
-        style.configure('Title.TLabel',
-                       font=self.fonts['title'])
-        
-        # Configure Entry
-        style.configure('TEntry',
-                       font=self.fonts['body'],
-                       fieldbackground='white',
-                       borderwidth=1)
-        
-        # Configure Treeview (tables)
-        style.configure('Treeview',
-                       font=self.fonts['body'],
-                       rowheight=25,
-                       borderwidth=1)
-        style.configure('Treeview.Heading',
-                       font=self.fonts['subheading'],
-                       background=self.colors['secondary'],
-                       foreground='white',
-                       borderwidth=1)
-        style.map('Treeview',
-                 background=[('selected', self.colors['primary'])],
-                 foreground=[('selected', 'white')])
-        
-        # Configure LabelFrame
-        style.configure('TLabelframe',
-                       borderwidth=2,
-                       relief='solid',
-                       background=self.colors['background'])
-        style.configure('TLabelframe.Label',
-                       font=self.fonts['subheading'],
-                       foreground=self.colors['text'])
+        # Apply current theme
+        self.current_theme.apply_theme(style, self.colors, self.fonts)
         
         # Set root window background
         self.root.configure(bg=self.colors['background'])
+        print("[DEBUG] Theme styles applied successfully")
+    
+    def switch_theme(self, theme_name):
+        """Switch to a different theme"""
+        if theme_name not in AVAILABLE_THEMES:
+            messagebox.showerror("Error", f"Theme '{theme_name}' not found")
+            return
+        
+        # Load new theme
+        self.current_theme = AVAILABLE_THEMES[theme_name]
+        self.colors = self.current_theme.get_colors()
+        self.fonts = self.current_theme.get_fonts()
+        
+        # Reapply theme
+        self.apply_modern_theme()
+        
+        messagebox.showinfo("Theme Changed", 
+                          f"Theme changed to '{theme_name}'\n\n" +
+                          "Note: Some changes may require restarting the app for full effect.")
 
     def save_tree_state(self, tree):
         """Save expanded state of tree items"""
@@ -259,12 +190,47 @@ class TimeTrackerApp:
         self.create_email_tab()
 
     def create_timer_tab(self):
-        # Timer tab - simple frame without scrollbar
+        """Create Timer tab with Active Timer and Manual Entry subviews"""
         timer_frame = ttk.Frame(self.notebook)
         self.notebook.add(timer_frame, text="Timer")
+        
+        # Submenu bar at top
+        submenu_frame = ttk.Frame(timer_frame)
+        submenu_frame.pack(fill='x', padx=10, pady=(10, 0))
+        
+        ttk.Label(submenu_frame, text="View:", font=('Arial', 10, 'bold')).pack(side='left', padx=5)
+        ttk.Button(submenu_frame, text="⏱️ Active Timer", 
+                  command=lambda: self.show_timer_view('active')).pack(side='left', padx=2)
+        ttk.Button(submenu_frame, text="📝 Manual Entry", 
+                  command=lambda: self.show_timer_view('manual')).pack(side='left', padx=2)
+        
+        # Container for switching views
+        self.timer_view_container = ttk.Frame(timer_frame)
+        self.timer_view_container.pack(fill='both', expand=True)
+        
+        # Create both views
+        self.create_active_timer_view()
+        self.create_manual_entry_view()
+        
+        # Show active timer by default
+        self.show_timer_view('active')
+    
+    def show_timer_view(self, view_type):
+        """Switch between timer views"""
+        for widget in self.timer_view_container.winfo_children():
+            widget.pack_forget()
+        
+        if view_type == 'active':
+            self.active_timer_frame.pack(fill='both', expand=True)
+        else:
+            self.manual_entry_frame.pack(fill='both', expand=True)
+    
+    def create_active_timer_view(self):
+        """Create Active Timer view"""
+        self.active_timer_frame = ttk.Frame(self.timer_view_container)
 
         # Timer display
-        timer_display_frame = ttk.LabelFrame(timer_frame, text="Active Timer")
+        timer_display_frame = ttk.LabelFrame(self.active_timer_frame, text="Active Timer")
         timer_display_frame.pack(fill='x', padx=10, pady=10)
 
         self.timer_label = ttk.Label(timer_display_frame, text="00:00:00", font=self.fonts['large_display'])
@@ -309,9 +275,39 @@ class TimeTrackerApp:
 
         self.stop_button = ttk.Button(button_frame, text="Stop Timer", command=self.stop_timer, state='disabled')
         self.stop_button.pack(side='left', padx=5)
+        
+        # Daily Totals Section (moved up for better visibility)
+        daily_frame = ttk.LabelFrame(self.active_timer_frame, text="Today's Time by Client")
+        daily_frame.pack(fill='both', expand=True, padx=10, pady=10)
+        
+        # Text widget for displaying daily totals
+        daily_text_frame = ttk.Frame(daily_frame)
+        daily_text_frame.pack(fill='both', expand=True, padx=10, pady=10)
+        
+        self.daily_totals_text = tk.Text(daily_text_frame, height=12, wrap='word', 
+                                         font=('Courier', 10), state='disabled')
+        self.daily_totals_text.pack(side='left', fill='both', expand=True)
+        
+        # Scrollbar for daily totals
+        daily_scrollbar = ttk.Scrollbar(daily_text_frame, command=self.daily_totals_text.yview)
+        daily_scrollbar.pack(side='right', fill='y')
+        self.daily_totals_text.config(yscrollcommand=daily_scrollbar.set)
+        
+        # Buttons for daily totals
+        daily_button_frame = ttk.Frame(daily_frame)
+        daily_button_frame.pack(fill='x', padx=10, pady=5)
+        
+        ttk.Button(daily_button_frame, text="Refresh Totals", 
+                  command=self.update_daily_totals_display).pack(side='left', padx=5)
+        ttk.Button(daily_button_frame, text="Reset Daily Totals", 
+                  command=self.reset_daily_totals).pack(side='left', padx=5)
+    
+    def create_manual_entry_view(self):
+        """Create Manual Entry view"""
+        self.manual_entry_frame = ttk.Frame(self.timer_view_container)
 
         # Manual time entry section
-        manual_frame = ttk.LabelFrame(timer_frame, text="Manual Time Entry")
+        manual_frame = ttk.LabelFrame(self.manual_entry_frame, text="Manual Time Entry")
         manual_frame.pack(fill='both', expand=True, padx=10, pady=10)
 
         form_frame = ttk.Frame(manual_frame)
@@ -392,30 +388,30 @@ class TimeTrackerApp:
         ttk.Button(manual_button_frame, text="Add Entry", command=self.add_manual_entry).pack(side='left', padx=5)
         ttk.Button(manual_button_frame, text="Clear", command=self.clear_manual_entry_form).pack(side='left', padx=5)
         
-        # Daily Totals Section
-        daily_frame = ttk.LabelFrame(timer_frame, text="Today's Time by Client")
-        daily_frame.pack(fill='both', expand=True, padx=10, pady=10)
+        # Daily Totals Section (replicated for convenience)
+        manual_daily_frame = ttk.LabelFrame(self.manual_entry_frame, text="Today's Time by Client")
+        manual_daily_frame.pack(fill='both', expand=True, padx=10, pady=10)
         
         # Text widget for displaying daily totals
-        daily_text_frame = ttk.Frame(daily_frame)
-        daily_text_frame.pack(fill='both', expand=True, padx=10, pady=10)
+        manual_daily_text_frame = ttk.Frame(manual_daily_frame)
+        manual_daily_text_frame.pack(fill='both', expand=True, padx=10, pady=10)
         
-        self.daily_totals_text = tk.Text(daily_text_frame, height=6, wrap='word', 
-                                         font=('Courier', 10), state='disabled')
-        self.daily_totals_text.pack(side='left', fill='both', expand=True)
+        self.manual_daily_totals_text = tk.Text(manual_daily_text_frame, height=10, wrap='word', 
+                                                font=('Courier', 10), state='disabled')
+        self.manual_daily_totals_text.pack(side='left', fill='both', expand=True)
         
         # Scrollbar for daily totals
-        daily_scrollbar = ttk.Scrollbar(daily_text_frame, command=self.daily_totals_text.yview)
-        daily_scrollbar.pack(side='right', fill='y')
-        self.daily_totals_text.config(yscrollcommand=daily_scrollbar.set)
+        manual_daily_scrollbar = ttk.Scrollbar(manual_daily_text_frame, command=self.manual_daily_totals_text.yview)
+        manual_daily_scrollbar.pack(side='right', fill='y')
+        self.manual_daily_totals_text.config(yscrollcommand=manual_daily_scrollbar.set)
         
         # Buttons for daily totals
-        daily_button_frame = ttk.Frame(daily_frame)
-        daily_button_frame.pack(fill='x', padx=10, pady=5)
+        manual_daily_button_frame = ttk.Frame(manual_daily_frame)
+        manual_daily_button_frame.pack(fill='x', padx=10, pady=5)
         
-        ttk.Button(daily_button_frame, text="Refresh Totals", 
+        ttk.Button(manual_daily_button_frame, text="Refresh Totals", 
                   command=self.update_daily_totals_display).pack(side='left', padx=5)
-        ttk.Button(daily_button_frame, text="Reset Daily Totals", 
+        ttk.Button(manual_daily_button_frame, text="Reset Daily Totals", 
                   command=self.reset_daily_totals).pack(side='left', padx=5)
 
     def create_clients_tab(self):
@@ -795,6 +791,23 @@ class TimeTrackerApp:
 
         ttk.Button(button_frame, text="Save Company Info", command=self.save_company_info).pack(side='left', padx=5)
         ttk.Button(button_frame, text="Load Current Info", command=self.load_company_info).pack(side='left', padx=5)
+        
+        # Theme selector
+        theme_frame = ttk.LabelFrame(company_form, text="🎨 Appearance")
+        theme_frame.pack(fill='x', padx=10, pady=10)
+        
+        theme_inner = ttk.Frame(theme_frame)
+        theme_inner.pack(fill='x', padx=10, pady=10)
+        
+        ttk.Label(theme_inner, text="Theme:").pack(side='left', padx=5)
+        
+        self.theme_combo = ttk.Combobox(theme_inner, state='readonly', width=25)
+        self.theme_combo['values'] = list(AVAILABLE_THEMES.keys())
+        self.theme_combo.set('Professional Gray')  # Default
+        self.theme_combo.pack(side='left', padx=5)
+        
+        ttk.Button(theme_inner, text="Apply Theme", 
+                  command=lambda: self.switch_theme(self.theme_combo.get())).pack(side='left', padx=5)
 
     def create_email_tab(self):
         """Create Email tab with Settings and Templates subviews"""
@@ -1584,15 +1597,18 @@ class TimeTrackerApp:
             self.daily_project_totals = {}
             self.session_date = current_date
         
-        # Enable text widget for editing
+        # Enable BOTH text widgets for editing
         self.daily_totals_text.config(state='normal')
         self.daily_totals_text.delete('1.0', 'end')
+        self.manual_daily_totals_text.config(state='normal')
+        self.manual_daily_totals_text.delete('1.0', 'end')
         
         if not self.daily_client_totals:
-            self.daily_totals_text.insert('1.0', 
-                f"📊 Daily Time Tracker - {self.session_date.strftime('%B %d, %Y')}\n\n" +
+            text = (f"📊 Daily Time Tracker - {self.session_date.strftime('%B %d, %Y')}\n\n" +
                 "No time tracked yet today.\n\n" +
                 "Start a timer to begin tracking!")
+            self.daily_totals_text.insert('1.0', text)
+            self.manual_daily_totals_text.insert('1.0', text)
         else:
             # Build header
             text = f"📊 Daily Time Tracker - {self.session_date.strftime('%B %d, %Y')}\n"
@@ -1656,9 +1672,11 @@ class TimeTrackerApp:
             text += f"  TOTAL TODAY:  {h:02d}:{m:02d}:{s:02d}  ({grand_total_hours:.2f} hrs)"
             
             self.daily_totals_text.insert('1.0', text)
+            self.manual_daily_totals_text.insert('1.0', text)
         
-        # Disable editing
+        # Disable editing on BOTH widgets
         self.daily_totals_text.config(state='disabled')
+        self.manual_daily_totals_text.config(state='disabled')
     
     def reset_daily_totals(self):
         """Manually reset daily totals"""
