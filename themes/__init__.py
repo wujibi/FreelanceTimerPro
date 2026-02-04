@@ -1,5 +1,5 @@
 """
-Time Tracker Pro - Theme System
+Freelance Timer Pro - Theme System
 Modular theme/stylesheet system for easy customization
 """
 

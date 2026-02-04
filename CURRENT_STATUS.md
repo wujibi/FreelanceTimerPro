@@ -1,11 +1,90 @@
-# Time Tracker Pro V2.0.7 - Current Status
+# Freelance Timer Pro V2.0.8 - Current Status
 
-**Last Updated:** February 3, 2026  
-**Status:** ✅ **FULLY OPERATIONAL - CRITICAL BUGS FIXED!**
+**Last Updated:** February 4, 2026  
+**Status:** ✅ **FULLY OPERATIONAL - THEME SYSTEM + REBRANDING!**
 
 ---
 
-## ✅ Recent Session Summary (February 3, 2026)
+## ✅ Recent Session Summary (February 4, 2026)
+
+### Major Features Added:
+1. 🎨 **THEME SYSTEM IMPLEMENTED**
+   - Modular theme/stylesheet architecture in `themes/` folder
+   - Separated colors and fonts from gui.py into pluggable theme modules
+   - Two starter themes: Professional Gray (default), Dark Mode
+   - Easy to create custom themes by copying existing theme file
+   - Theme functions: `get_colors()`, `get_fonts()`, `apply_theme()`
+
+2. ✨ **LIVE THEME SWITCHER**
+   - Frontend theme selector in Company Info tab → "🎨 Appearance" section
+   - Dropdown menu with all available themes
+   - Apply button changes theme instantly (no restart needed for most changes)
+   - Theme preference persists across sessions (saved to database)
+   - New `settings` table stores user preferences (key/value pairs)
+   - Dropdown reflects current theme on load
+
+3. 🎯 **APPLICATION REBRANDED**
+   - Renamed from "Time Tracker Pro" to "Freelance Timer Pro"
+   - Window title updated
+   - All documentation updated (CHANGELOG, README, guides)
+   - Prepared for public release with new brand identity
+   - Internal database files unchanged (no data migration hassle)
+
+### Documentation Added:
+4. 📚 **THEME_SWITCHER_GUIDE.md**
+   - Complete guide to using theme switcher
+   - Step-by-step theme creation instructions
+   - Example color palettes: Corporate Blue, Sunset Orange, Ocean Teal, Forest Green
+   - Color usage guide (primary, secondary, accent, background, text)
+   - Testing checklist and troubleshooting
+   - Advanced customization (fonts, custom widget styles)
+
+5. 📚 **APP_RENAME_GUIDE.md**
+   - Guide for future name changes using PyCharm Find/Replace
+   - Search patterns and strategies
+   - Database migration considerations
+   - Testing checklist and rollback plan
+
+### Technical Changes:
+- **New Files Created**:
+  - `themes/__init__.py` - Theme registry with AVAILABLE_THEMES dict
+  - `themes/professional_gray.py` - Default theme (gray with blue accents)
+  - `themes/dark_mode.py` - Dark theme for reduced eye strain
+  - `themes/README.md` - Full theme system technical documentation
+  - `THEME_SWITCHER_GUIDE.md` - User-facing theme guide
+  - `APP_RENAME_GUIDE.md` - Renaming guide for future changes
+
+- **Database Schema**: Added `settings` table
+  ```sql
+  CREATE TABLE settings (
+      key TEXT PRIMARY KEY,
+      value TEXT
+  )
+  ```
+
+- **New Functions in gui.py**:
+  - `load_theme_preference()` - Loads saved theme from database
+  - `save_theme_preference(theme_name)` - Saves theme choice to database  
+  - `switch_theme(theme_name)` - Applies new theme and saves preference
+
+- **Initialization Order**: Database now initializes BEFORE theme loading
+  - Required for loading saved theme preference from database
+  - Previous order caused theme preference not to persist
+
+- **Files Modified**:
+  - `gui.py` - Theme system integration, switcher UI, persistence
+  - `CHANGELOG.md` - Added v2.0.8 entry, updated header
+  - `CURRENT_STATUS.md` - This update
+
+### Bug Fixes:
+6. 🐛 **Theme Persistence Bug Fixed**
+   - Initial implementation loaded theme before database was ready
+   - Moved database initialization before theme loading
+   - Theme preference now persists correctly across app restarts
+
+---
+
+## ✅ Previous Session Summary (February 3, 2026)
 
 ### Critical Bug Fixes:
 1. 🐛 **Email Template Save Bug FIXED**
@@ -167,6 +246,8 @@
 - **📧 EMAIL INVOICES - Send invoices with PDF attachments** 🎉
 - **📧 Email Settings - SMTP configuration with Gmail/Outlook presets**
 - **📧 Email Templates - 5 built-in templates with variable substitution**
+- **🎨 THEME SYSTEM - Modular themes + live switcher** ✨
+- **🎨 Theme Persistence - Saves preference across sessions**
 - Daily time totals by client and project
 - Google Drive database sync
 - Company info management
@@ -244,6 +325,7 @@ Error: [paste error if any]
 
 ## 🎉 Version History
 
+- **v2.0.8** (2026-02-04) - **THEME SYSTEM + REBRANDING** - Modular themes + Live switcher + Renamed to Freelance Timer Pro 🎨
 - **v2.0.7** (2026-02-03) - **CRITICAL BUG FIXES** - Email template save + Task deletion + HTML preview 🐛
 - **v2.0.6** (2026-01-30) - UI reorganization (9→7 tabs) + Tab appearance fix + Git helpers
 - **v2.0.5** (2026-01-29) - **EMAIL INVOICES** + UX improvements + bug fixes 🎉
@@ -312,8 +394,7 @@ Error: [paste error if any]
 
 ---
 
-**App Version:** V2.0.5  
-**Status:** 🟢 FULLY OPERATIONAL + EMAIL INVOICES!  
+**App Version:** V2.0.8  
+**Status:** 🟢 FULLY OPERATIONAL + THEME SYSTEM!  
 **Database:** Synced to Google Drive  
-**Git Branch:** master  
-**Token Usage:** ~116k / 200k (58%) - Very efficient session!
+**Git Branch:** master

@@ -24,7 +24,7 @@ class TimeTrackerApp:
         try:
             print("[DEBUG] TimeTrackerApp.__init__ starting...")
             self.root = root
-            self.root.title("Time Tracker Pro V2.0 - Professional Time & Invoice Management")
+            self.root.title("Freelance Timer Pro V2.0 - Professional Time & Invoice Management")
             
             # Modern window setup
             self.root.geometry("1200x800")
@@ -41,22 +41,22 @@ class TimeTrackerApp:
                 print(f"[DEBUG] Could not set icon: {e}")  # Debug
                 pass  # Use default icon if custom not available
             
-            # Load theme (colors and fonts)
-            print("[DEBUG] Loading theme...")
-            self.current_theme = professional_gray  # Default theme
-            self.colors = self.current_theme.get_colors()
-            self.fonts = self.current_theme.get_fonts()
-            print(f"[DEBUG] Theme loaded: {len(self.colors)} colors, {len(self.fonts)} fonts")
-
-            # Initialize database with the provided path
+            # Initialize database FIRST (needed for theme preference)
             if db_path:
                 print(f"[DEBUG] Initializing DatabaseManager with path: {db_path}")
                 self.db = DatabaseManager(db_path)
             else:
                 print(f"[DEBUG] Initializing DatabaseManager with default path")
                 self.db = DatabaseManager()
-
             print(f"[DEBUG] DatabaseManager initialized successfully")
+            
+            # Load theme (colors and fonts) AFTER database is ready
+            print("[DEBUG] Loading theme...")
+            saved_theme = self.load_theme_preference()
+            self.current_theme = AVAILABLE_THEMES.get(saved_theme, professional_gray)
+            self.colors = self.current_theme.get_colors()
+            self.fonts = self.current_theme.get_fonts()
+            print(f"[DEBUG] Theme loaded: {saved_theme} ({len(self.colors)} colors, {len(self.fonts)} fonts)")
 
             # Initialize models
             print("[DEBUG] Initializing models...")
@@ -128,6 +128,40 @@ class TimeTrackerApp:
         self.root.configure(bg=self.colors['background'])
         print("[DEBUG] Theme styles applied successfully")
     
+    def load_theme_preference(self):
+        """Load saved theme preference from database"""
+        try:
+            conn = sqlite3.connect(self.db.db_path)
+            cursor = conn.cursor()
+            cursor.execute("SELECT value FROM settings WHERE key = 'theme'")
+            result = cursor.fetchone()
+            conn.close()
+            return result[0] if result else 'Professional Gray'
+        except:
+            return 'Professional Gray'  # Default if no setting exists
+    
+    def save_theme_preference(self, theme_name):
+        """Save theme preference to database"""
+        try:
+            conn = sqlite3.connect(self.db.db_path)
+            cursor = conn.cursor()
+            # Create settings table if doesn't exist
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS settings (
+                    key TEXT PRIMARY KEY,
+                    value TEXT
+                )
+            ''')
+            # Save theme preference
+            cursor.execute('''
+                INSERT OR REPLACE INTO settings (key, value)
+                VALUES ('theme', ?)
+            ''', (theme_name,))
+            conn.commit()
+            conn.close()
+        except Exception as e:
+            print(f"[ERROR] Could not save theme preference: {e}")
+    
     def switch_theme(self, theme_name):
         """Switch to a different theme"""
         if theme_name not in AVAILABLE_THEMES:
@@ -139,11 +173,15 @@ class TimeTrackerApp:
         self.colors = self.current_theme.get_colors()
         self.fonts = self.current_theme.get_fonts()
         
+        # Save preference
+        self.save_theme_preference(theme_name)
+        
         # Reapply theme
         self.apply_modern_theme()
         
         messagebox.showinfo("Theme Changed", 
                           f"Theme changed to '{theme_name}'\n\n" +
+                          "Your preference has been saved.\n" +
                           "Note: Some changes may require restarting the app for full effect.")
 
     def save_tree_state(self, tree):
@@ -803,7 +841,9 @@ class TimeTrackerApp:
         
         self.theme_combo = ttk.Combobox(theme_inner, state='readonly', width=25)
         self.theme_combo['values'] = list(AVAILABLE_THEMES.keys())
-        self.theme_combo.set('Professional Gray')  # Default
+        # Set to current theme
+        current_theme_name = [name for name, module in AVAILABLE_THEMES.items() if module == self.current_theme]
+        self.theme_combo.set(current_theme_name[0] if current_theme_name else 'Professional Gray')
         self.theme_combo.pack(side='left', padx=5)
         
         ttk.Button(theme_inner, text="Apply Theme", 

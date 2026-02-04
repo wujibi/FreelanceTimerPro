@@ -1,4 +1,4 @@
-# Time Tracker Pro - Theme System
+# Freelance Timer Pro - Theme System
 
 ## Overview
 The theme system separates presentation (colors/fonts) from application logic, making it easy to customize the app's appearance without modifying `gui.py`.
@@ -226,4 +226,4 @@ If you create a great theme:
 ---
 
 **Last Updated:** February 3, 2026  
-**Compatible with:** Time Tracker Pro v2.0.7+
+**Compatible with:** Freelance Timer Pro v2.0.7+

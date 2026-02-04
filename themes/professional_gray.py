@@ -1,7 +1,7 @@
 """
 Professional Gray Theme
 Clean, neutral gray theme with blue accents
-Based on the original Time Tracker Pro design
+Based on the original Freelance Timer Pro design
 """
 
 def get_colors():

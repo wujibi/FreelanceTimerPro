@@ -1,8 +1,66 @@
-# Changelog - Time Tracker Pro
+# Changelog - Freelance Timer Pro
 
-All notable changes to Time Tracker Pro will be documented in this file.
+All notable changes to Freelance Timer Pro will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
+
+---
+
+## [2.0.8] - 2026-02-04
+
+### Added - NEW FEATURES ✨
+- **Theme System**: Modular theme/stylesheet system implemented
+  - Separated colors and fonts from gui.py into theme modules
+  - Created `themes/` folder with pluggable theme architecture
+  - Two starter themes: Professional Gray (default), Dark Mode
+  - Easy to create custom themes by copying existing theme file
+  
+- **Live Theme Switcher**: Frontend theme selector in Company Info tab
+  - Dropdown menu in "🎨 Appearance" section
+  - Apply themes without restarting app (most changes instant)
+  - Theme preference persists across sessions (saved to database)
+  - New `settings` table stores user preferences
+
+### Changed - REBRANDING 🎯
+- **Application Name**: Renamed from "Time Tracker Pro" to "Freelance Timer Pro"
+  - Window title updated
+  - Documentation updated (CHANGELOG, README, guides)
+  - Prepared for public release with new brand identity
+  - Internal database files unchanged (no data migration needed)
+
+### Documentation 📚
+- **THEME_SWITCHER_GUIDE.md**: Complete guide to using and creating themes
+  - How to switch themes via frontend
+  - Step-by-step theme creation instructions
+  - Example color palettes (Corporate Blue, Sunset Orange, Ocean Teal, Forest Green)
+  - Testing checklist and troubleshooting
+  
+- **APP_RENAME_GUIDE.md**: Guide for future name changes
+  - PyCharm Find/Replace strategy
+  - Database migration considerations
+  - Testing checklist
+
+### Technical Details
+- **New Files**: 
+  - `themes/__init__.py` - Theme registry
+  - `themes/professional_gray.py` - Default theme (extracted from gui.py)
+  - `themes/dark_mode.py` - Dark theme for reduced eye strain
+  - `themes/README.md` - Full theme system documentation
+  
+- **Database Schema**: Added `settings` table
+  ```sql
+  CREATE TABLE settings (
+      key TEXT PRIMARY KEY,
+      value TEXT
+  )
+  ```
+  
+- **New Functions in gui.py**:
+  - `load_theme_preference()` - Loads saved theme from database
+  - `save_theme_preference()` - Saves theme choice to database
+  - `switch_theme()` - Applies new theme and saves preference
+  
+- **Initialization Order**: Database now initializes BEFORE theme loading (required for loading saved preference)
 
 ---
 
