@@ -5,7 +5,7 @@ from tkinter import ttk, messagebox, filedialog
 from datetime import datetime, timedelta
 from db_manager import DatabaseManager
 from models import Client, Project, Task, TimeEntry, CompanyInfo
-from themes import professional_gray, AVAILABLE_THEMES
+from themes import deep_navy_pro, AVAILABLE_THEMES
 import sqlite3
 import threading
 import time
@@ -53,7 +53,7 @@ class TimeTrackerApp:
             # Load theme (colors and fonts) AFTER database is ready
             print("[DEBUG] Loading theme...")
             saved_theme = self.load_theme_preference()
-            self.current_theme = AVAILABLE_THEMES.get(saved_theme, professional_gray)
+            self.current_theme = AVAILABLE_THEMES.get(saved_theme, deep_navy_pro)
             self.colors = self.current_theme.get_colors()
             self.fonts = self.current_theme.get_fonts()
             print(f"[DEBUG] Theme loaded: {saved_theme} ({len(self.colors)} colors, {len(self.fonts)} fonts)")
@@ -136,9 +136,9 @@ class TimeTrackerApp:
             cursor.execute("SELECT value FROM settings WHERE key = 'theme'")
             result = cursor.fetchone()
             conn.close()
-            return result[0] if result else 'Professional Gray'
+            return result[0] if result else 'Deep Navy Pro'
         except:
-            return 'Professional Gray'  # Default if no setting exists
+            return 'Deep Navy Pro'  # Default theme (new professional navy design)
     
     def save_theme_preference(self, theme_name):
         """Save theme preference to database"""
@@ -768,6 +768,17 @@ class TimeTrackerApp:
         
         self.entries_tree.pack(side='left', fill='both', expand=True)
         tree_scroll.pack(side='right', fill='y')
+        
+        # Configure alternating row colors for ledger-style display
+        # Check if we're using a dark theme (dark background) or light theme (white background)
+        if self.colors['background'] == '#ffffff':  # Light theme
+            # Light theme: white and very light blue alternating
+            self.entries_tree.tag_configure('oddrow', background=self.colors.get('alt_row', '#f0f4ff'), foreground=self.colors['text'])  # Light blue tint
+            self.entries_tree.tag_configure('evenrow', background='white', foreground=self.colors['text'])  # White
+        else:  # Dark theme
+            # Dark theme: navy and white alternating
+            self.entries_tree.tag_configure('oddrow', background=self.colors['background'], foreground='white')  # Deep navy with white text
+            self.entries_tree.tag_configure('evenrow', background='white', foreground=self.colors['background'])  # White with dark text
 
     def create_company_tab(self):
         # Company info tab
@@ -3695,10 +3706,14 @@ class TimeTrackerApp:
                         entry_billed = " [BILLED]" if is_billed else ""
                         
                         # Store entry ID in tags for later retrieval
+                        # Calculate row number for alternating colors
+                        entry_index = task_entries.index(entry)
+                        row_tag = 'oddrow' if entry_index % 2 == 0 else 'evenrow'
+                        
                         entry_id = self.entries_tree.insert(task_id, 'end',
                             text=f"      ⏱️ Entry",
                             values=('Entry' + entry_billed, '', start_display, f"{duration_hours:.2f} hrs", entry[7] or ''),
-                            tags=('entry', f'entry_id_{entry[0]}'))
+                            tags=('entry', f'entry_id_{entry[0]}', row_tag))
         
         # Configure tag colors
         self.entries_tree.tag_configure('client', font=('Arial', 10, 'bold'))
