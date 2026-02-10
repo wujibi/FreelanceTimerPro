@@ -5,7 +5,7 @@ from tkinter import ttk, messagebox, filedialog
 from datetime import datetime, timedelta
 from db_manager import DatabaseManager
 from models import Client, Project, Task, TimeEntry, CompanyInfo
-from themes import deep_navy_pro, AVAILABLE_THEMES
+from themes import AVAILABLE_THEMES
 import sqlite3
 import threading
 import time
@@ -53,7 +53,8 @@ class TimeTrackerApp:
             # Load theme (colors and fonts) AFTER database is ready
             print("[DEBUG] Loading theme...")
             saved_theme = self.load_theme_preference()
-            self.current_theme = AVAILABLE_THEMES.get(saved_theme, deep_navy_pro)
+            # Get theme from registry, fallback to first available theme if not found
+            self.current_theme = AVAILABLE_THEMES.get(saved_theme, list(AVAILABLE_THEMES.values())[0])
             self.colors = self.current_theme.get_colors()
             self.fonts = self.current_theme.get_fonts()
             print(f"[DEBUG] Theme loaded: {saved_theme} ({len(self.colors)} colors, {len(self.fonts)} fonts)")
@@ -143,9 +144,9 @@ class TimeTrackerApp:
             cursor.execute("SELECT value FROM settings WHERE key = 'theme'")
             result = cursor.fetchone()
             conn.close()
-            return result[0] if result else 'Deep Navy Pro'
+            return result[0] if result else 'Burnt Orange Pro V3'
         except:
-            return 'Deep Navy Pro'  # Default theme (new professional navy design)
+            return 'Burnt Orange Pro V3'  # Default theme (burnt orange branding)
     
     def save_theme_preference(self, theme_name):
         """Save theme preference to database"""
