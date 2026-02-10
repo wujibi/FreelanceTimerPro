@@ -116,6 +116,13 @@ class TimeTrackerApp:
         y = (self.root.winfo_screenheight() // 2) - (height // 2)
         self.root.geometry(f'{width}x{height}+{x}+{y}')
     
+    def center_dialog(self, dialog, width, height):
+        """Center a dialog window on the main window"""
+        dialog.update_idletasks()
+        x = self.root.winfo_x() + (self.root.winfo_width() // 2) - (width // 2)
+        y = self.root.winfo_y() + (self.root.winfo_height() // 2) - (height // 2)
+        dialog.geometry(f"{width}x{height}+{x}+{y}")
+    
     def apply_modern_theme(self):
         """Apply theme styling to the application using theme system"""
         print("[DEBUG] Applying theme styles...")
@@ -779,6 +786,46 @@ class TimeTrackerApp:
             # Dark theme: navy and white alternating
             self.entries_tree.tag_configure('oddrow', background=self.colors['background'], foreground='white')  # Deep navy with white text
             self.entries_tree.tag_configure('evenrow', background='white', foreground=self.colors['background'])  # White with dark text
+        
+        # Configure group heading colors (Client/Project/Task rows)
+        if 'group_heading' in self.colors:
+            # Use theme-specific group heading color
+            self.entries_tree.tag_configure('client_row', 
+                background=self.colors['group_heading'], 
+                foreground=self.colors.get('group_text', 'white'),
+                font=self.fonts['subheading'])
+            
+            self.entries_tree.tag_configure('project_row', 
+                background=self.colors['group_heading'], 
+                foreground=self.colors.get('group_text', 'white'),
+                font=self.fonts['body'])
+            
+            self.entries_tree.tag_configure('task_row', 
+                background=self.colors['group_heading'], 
+                foreground=self.colors.get('group_text', 'white'),
+                font=self.fonts['body'])
+        else:
+            # Fallback for themes without group_heading color
+            self.entries_tree.tag_configure('client_row', 
+                background='#e8f4f8', 
+                foreground='#13100f',
+                font=self.fonts['subheading'])
+            
+            self.entries_tree.tag_configure('project_row', 
+                background='#e8f4f8', 
+                foreground='#13100f',
+                font=self.fonts['body'])
+            
+            self.entries_tree.tag_configure('task_row', 
+                background='#e8f4f8', 
+                foreground='#13100f',
+                font=self.fonts['body'])
+        
+        # Configure entry rows (individual time entries) - always white with dark text
+        self.entries_tree.tag_configure('entry_row', 
+            background='white', 
+            foreground=self.colors['text'],
+            font=self.fonts['body'])
 
     def create_company_tab(self):
         # Company info tab
@@ -1360,7 +1407,7 @@ class TimeTrackerApp:
 
         dialog = tk.Toplevel(self.root)
         dialog.title("Mark Invoices as Paid")
-        dialog.geometry("300x150")
+        self.center_dialog(dialog, 300, 150)
 
         ttk.Label(dialog, text=f"Mark {len(selection)} invoice(s) as PAID?").pack(pady=10)
         ttk.Label(dialog, text="Date Paid (YYYY-MM-DD):").pack(pady=5)
@@ -2532,7 +2579,7 @@ class TimeTrackerApp:
         """Open edit dialog and refresh invoice list after closing"""
         edit_window = tk.Toplevel(self.root)
         edit_window.title("Edit Time Entry")
-        edit_window.geometry("500x400")
+        self.center_dialog(edit_window, 500, 400)
         
         # Make dialog modal and bring to front
         edit_window.transient(self.root)
@@ -2563,7 +2610,7 @@ class TimeTrackerApp:
         """Original edit dialog (used by Time Entries tab)"""
         edit_window = tk.Toplevel(self.root)
         edit_window.title("Edit Time Entry")
-        edit_window.geometry("500x400")
+        self.center_dialog(edit_window, 500, 400)
         
         # Make dialog appear in front
         edit_window.transient(self.root)
@@ -2755,7 +2802,8 @@ class TimeTrackerApp:
                 close_callback()
                 messagebox.showinfo("Success", 
                                   f"Time entry updated successfully\n\n" +
-                                  f"Duration: {duration_hours:.2f} hours")
+                                  f"Duration: {duration_hours:.2f} hours\n\n" +
+                                  f"Click REFRESH to update the invoice data below.")
 
             except ValueError as e:
                 messagebox.showerror("Error", f"Invalid input: {str(e)}")
@@ -3391,7 +3439,7 @@ class TimeTrackerApp:
     def open_edit_invoice_item_dialog(self, item_id, item_values):
         edit_window = tk.Toplevel(self.root)
         edit_window.title("Edit Invoice Item")
-        edit_window.geometry("400x200")
+        self.center_dialog(edit_window, 400, 200)
 
         form_frame = ttk.Frame(edit_window)
         form_frame.pack(fill='both', expand=True, padx=10, pady=10)
@@ -3540,14 +3588,14 @@ class TimeTrackerApp:
             client_id = self.task_tree.insert('', 'end',
                 text=f"📁 {client_name}",
                 values=('Client', '', '', '', ''),
-                tags=('client',))
+                tags=('client', 'client_row'))
             
             for project_name in sorted(hierarchy[client_name].keys()):
                 # Insert project node
                 project_id = self.task_tree.insert(client_id, 'end',
                     text=f"  📂 {project_name}",
                     values=('Project', '', '', '', ''),
-                    tags=('project',))
+                    tags=('project', 'project_row'))
                 
                 # Insert tasks under project
                 for task in hierarchy[client_name][project_name]:
@@ -3557,7 +3605,7 @@ class TimeTrackerApp:
                     self.task_tree.insert(project_id, 'end',
                         text=f"    ⚙️ {task[2]}",
                         values=('Task', task[0], '', billing_type, rate),
-                        tags=('task', f'task_id_{task[0]}'))
+                        tags=('task', 'task_row', f'task_id_{task[0]}'))
         
         # Add global tasks section if any exist
         if global_tasks:
@@ -3652,7 +3700,7 @@ class TimeTrackerApp:
             client_id = self.entries_tree.insert('', 'end', 
                 text=f"📁 {client_name}",
                 values=('Client', '', '', f"{client_total_hours:.2f} hrs", ''),
-                tags=('client',))
+                tags=('client', 'client_row'))
             
             # Add projects under client
             for project_name in sorted(hierarchy[client_name].keys()):
@@ -3668,7 +3716,7 @@ class TimeTrackerApp:
                 project_id = self.entries_tree.insert(client_id, 'end',
                     text=f"  📂 {project_name}",
                     values=('Project', '', '', f"{project_total_hours:.2f} hrs", ''),
-                    tags=('project',))
+                    tags=('project', 'project_row'))
                 
                 # Add tasks under project
                 for task_name in sorted(hierarchy[client_name][project_name].keys()):
@@ -3686,7 +3734,7 @@ class TimeTrackerApp:
                     task_id = self.entries_tree.insert(project_id, 'end',
                         text=f"    📋 {task_name}{billed_indicator}",
                         values=('Task', f"{len(task_entries)} entries", '', f"{task_total_hours:.2f} hrs", ''),
-                        tags=('task',))
+                        tags=('task', 'task_row'))
                     
                     # Add individual entries under task
                     for entry in task_entries:
@@ -3713,7 +3761,7 @@ class TimeTrackerApp:
                         entry_id = self.entries_tree.insert(task_id, 'end',
                             text=f"      ⏱️ Entry",
                             values=('Entry' + entry_billed, '', start_display, f"{duration_hours:.2f} hrs", entry[7] or ''),
-                            tags=('entry', f'entry_id_{entry[0]}', row_tag))
+                            tags=('entry', f'entry_id_{entry[0]}', 'entry_row'))
         
         # Configure tag colors
         self.entries_tree.tag_configure('client', font=('Arial', 10, 'bold'))
@@ -4332,7 +4380,7 @@ class TimeTrackerApp:
             project_node = self.invoice_entries_tree.insert('', 'end',
                 text=f'📁 {project_name}',
                 values=('', '', '', f'{project_hours:.2f} hrs', f'{project_entry_count} entries'),
-                tags=('project',))
+                tags=('project', 'project_row'))
             
             # Add tasks under project
             for task_name in sorted(project_groups[project_name].keys()):
@@ -4345,7 +4393,7 @@ class TimeTrackerApp:
                 task_node = self.invoice_entries_tree.insert(project_node, 'end',
                     text=f'  📋 {task_name}',
                     values=('', '', '', f'{task_hours:.2f} hrs', f'{len(task_entries)} entries'),
-                    tags=('task',))
+                    tags=('task', 'task_row'))
                 
                 # Add individual entries under task
                 for entry in task_entries:
@@ -4366,7 +4414,7 @@ class TimeTrackerApp:
                     self.invoice_entries_tree.insert(task_node, 'end',
                         text='    ⏱️',
                         values=(date_display, '', '', f'{hours:.2f} hrs', description or ''),
-                        tags=(f'entry_id_{entry_id}', 'entry'))
+                        tags=(f'entry_id_{entry_id}', 'entry', 'entry_row'))
         
         # Save expansion state before clearing (only if tree exists and has items)
         expanded_items = set()
@@ -4380,6 +4428,35 @@ class TimeTrackerApp:
         self.invoice_entries_tree.tag_configure('project', font=('Arial', 10, 'bold'))
         self.invoice_entries_tree.tag_configure('task', font=('Arial', 9, 'bold'))
         self.invoice_entries_tree.tag_configure('entry', font=('Arial', 9))
+        
+        # Configure group heading colors for invoice tree
+        if 'group_heading' in self.colors:
+            self.invoice_entries_tree.tag_configure('project_row', 
+                background=self.colors['group_heading'], 
+                foreground=self.colors.get('group_text', 'white'),
+                font=('Arial', 10, 'bold'))
+            
+            self.invoice_entries_tree.tag_configure('task_row', 
+                background=self.colors['group_heading'], 
+                foreground=self.colors.get('group_text', 'white'),
+                font=('Arial', 9, 'bold'))
+        else:
+            # Fallback for themes without group_heading color
+            self.invoice_entries_tree.tag_configure('project_row', 
+                background='#e8f4f8', 
+                foreground='#13100f',
+                font=('Arial', 10, 'bold'))
+            
+            self.invoice_entries_tree.tag_configure('task_row', 
+                background='#e8f4f8', 
+                foreground='#13100f',
+                font=('Arial', 9, 'bold'))
+        
+        # Configure entry rows (individual time entries) - always white with dark text
+        self.invoice_entries_tree.tag_configure('entry_row', 
+            background='white', 
+            foreground=self.colors['text'],
+            font=('Arial', 9))
         
         # Restore expansion state (expand all by default)
         self.restore_tree_state(self.invoice_entries_tree, expanded_items, expand_all=True)
@@ -4493,7 +4570,7 @@ class TimeTrackerApp:
         # Create dialog
         preview_dialog = tk.Toplevel(self.root)
         preview_dialog.title(f"Invoice Preview - {client_name}")
-        preview_dialog.geometry("800x600")
+        self.center_dialog(preview_dialog, 800, 600)
         
         # Get entry details for invoice
         conn = self.db.conn
@@ -4539,6 +4616,7 @@ class TimeTrackerApp:
         # Build invoice items with project/task hierarchy
         invoice_items = []
         total_amount = 0
+        total_hours = 0  # Track total hours across all tasks
         
         for project_name, project_data in project_groups.items():
             # Add project header
@@ -4554,6 +4632,7 @@ class TimeTrackerApp:
             
             for task_name, task_data in project_data['tasks'].items():
                 hours = task_data['minutes'] / 60.0
+                total_hours += hours  # Add to running total
                 
                 if task_data['is_lump_sum']:
                     amount = task_data['lump_sum_amount']
@@ -4666,6 +4745,12 @@ class TimeTrackerApp:
         total_frame = ttk.Frame(preview_dialog)
         total_frame.pack(fill='x', padx=20, pady=10)
         
+        # Total hours label (left side)
+        ttk.Label(total_frame, text=f"Total Hours: {total_hours:.2f} hrs", 
+                 font=('Arial', 12, 'bold'),
+                 foreground=self.colors['text_secondary']).pack(side='left')
+        
+        # Total amount label (right side)
         ttk.Label(total_frame, text=f"TOTAL: ${total_amount:.2f}", 
                  font=('Arial', 14, 'bold')).pack(side='right')
         
@@ -4747,7 +4832,7 @@ class TimeTrackerApp:
             # Create a selection window showing all time entries in this invoice
             edit_window = tk.Toplevel(preview_dialog)
             edit_window.title("Edit Time Entries")
-            edit_window.geometry("700x500")
+            self.center_dialog(edit_window, 700, 500)
             
             # Header
             ttk.Label(edit_window, text="Select a time entry to edit:", 
@@ -4849,18 +4934,8 @@ class TimeTrackerApp:
                 # Open the edit dialog (reuse existing method)
                 self.open_edit_time_entry_dialog(entry_id)
                 
-                # After editing, refresh the invoice preview
-                def refresh_after_edit():
-                    # Wait a moment for the edit dialog to close
-                    preview_dialog.after(100, lambda: [
-                        preview_dialog.destroy(),
-                        self.load_invoiceable_entries(),
-                        messagebox.showinfo("Updated", 
-                            "Time entry updated. Please preview the invoice again to see changes.")
-                    ])
-                
-                # Schedule refresh
-                self.root.after(500, refresh_after_edit)
+                # Note: User must manually refresh using "Refresh & Close" button after editing
+                # This prevents the confusing auto-refresh before user has made changes
             
             def refresh_invoice_preview():
                 """Refresh the invoice preview with updated data"""

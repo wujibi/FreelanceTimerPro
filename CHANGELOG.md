@@ -6,6 +6,77 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.0.9] - 2026-02-10
+
+### Added - BRANDING & UX ✨
+- **Burnt Orange Professional Theme Family**: New default theme matching FreelanceTimer.pro website branding
+  - `burnt_orange_pro.py` - Full burnt orange (groups + selections)
+  - `burnt_orange_pro_v2.py` - Light peach groups, orange selections (two-tone hierarchy)
+  - `burnt_orange_pro_v3.py` - Muted teal groups, orange selections (RECOMMENDED - strong visual contrast)
+  - Warm taupe background (#dad2cd) with burnt orange accent (#ce6427)
+  - Dark brown text (#13100f) for excellent readability
+  - Replaces blue-based themes with warm, professional branding
+
+- **Total Hours Display**: Invoice preview now shows total billable hours
+  - "Total Hours: XX.XX hrs" displays on left side of total bar
+  - "TOTAL: $XXX.XX" remains on right side
+  - Helps clients understand time invested at a glance
+
+- **Group Heading Color System**: Hierarchical treeview styling
+  - Client/Project/Task rows now have distinct background colors
+  - Individual time entries have white background with dark text
+  - Configurable via theme `group_heading` and `group_text` colors
+  - Dramatically improves visual hierarchy in Time Entries and Invoices tabs
+
+### Fixed - CRITICAL BUGS 🐛
+- **Dialog Centering**: All popup dialogs now center properly on main window
+  - Fixed 718px offset bug affecting all dialogs
+  - Created `center_dialog()` helper method
+  - Fixed: Invoice Preview, Edit Entry, Mark as Paid, Edit Time Entries, Edit Invoice Item dialogs
+  - Consistent UX across all modal windows
+
+- **Button Text Visibility**: Fixed invisible text on accent buttons
+  - **CRITICAL FIX**: "CREATE INVOICE" button now readable (was white on orange)
+  - "Preview Invoice" button text now visible
+  - Changed Accent.TButton from white text to dark text on orange background
+  - Prevents accidental invoice creation due to unreadable button labels
+
+- **Active Tab Text**: Tab navigation now readable
+  - Fixed white-on-orange text issue (changed to dark text)
+  - Active tab clearly shows which section user is in
+
+- **Entry Row Text Colors**: Individual time entries now have proper contrast
+  - Fixed alternating row colors interfering with entry readability
+  - Entry rows: white background, dark text (always readable)
+  - Group rows: themed background colors
+  - Selected rows: orange background, white text
+
+### Improved - UX POLISH 💎
+- **Edit Workflow**: Fixed confusing auto-refresh behavior
+  - Removed premature "Time entry updated" alert that appeared before editing
+  - Edit Time Entries dialog no longer crashes/closes unexpectedly
+  - Added clear instruction: "Click REFRESH to update the invoice data below."
+  - User has explicit control over when to refresh invoice preview
+
+- **Theme Cleanup**: Reduced from 7 experimental themes to 3 production-ready themes
+  - Professional Gray (original default)
+  - Dark Mode (low-light environments)
+  - Burnt Orange Pro V3 (NEW DEFAULT - teal groups, best hierarchy)
+  - Removed: Balanced Navy, Deep Navy Pro, Light Navy Pro, Sage Professional, Warm Professional, old Burnt Orange
+
+### Technical
+- **New Helper Method**: `center_dialog(dialog, width, height)` in gui.py
+- **Tag System**: Added `client_row`, `project_row`, `task_row`, `entry_row` tags for treeview styling
+- **Theme Files**: 3 new burnt orange theme variants in themes/ folder
+- **Color Reference**: Created BURNT_ORANGE_COLOR_MAP.html (visual guide for all UI component colors)
+
+### Known Issues
+- PDF Invoice: Total hours not yet added to generated PDF (preview only)
+- PDF Invoice: Blue banner needs to be changed to burnt orange (cosmetic)
+- Theme Customizer UI: Planned as post-launch PAID feature
+
+---
+
 ## [2.0.8] - 2026-02-04
 
 ### Added - NEW FEATURES ✨

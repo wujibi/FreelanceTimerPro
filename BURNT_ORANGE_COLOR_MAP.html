@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Burnt Orange Theme - Color Map Reference</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f5f5f5;
+      padding: 40px 20px;
+      color: #13100f;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      text-align: center;
+      color: #ce6427;
+      margin-bottom: 10px;
+      font-size: 2.5rem;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: #454f59;
+      margin-bottom: 40px;
+      font-size: 1.1rem;
+    }
+
+    /* Color Palette Section */
+    .palette {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+      margin-bottom: 50px;
+    }
+
+    .color-swatch {
+      text-align: center;
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .color-box {
+      width: 100%;
+      height: 100px;
+      border-radius: 6px;
+      margin-bottom: 15px;
+      border: 2px solid #ddd;
+    }
+
+    .color-name {
+      font-weight: bold;
+      margin-bottom: 5px;
+      color: #13100f;
+    }
+
+    .color-hex {
+      font-family: 'Courier New', monospace;
+      color: #454f59;
+      font-size: 0.95rem;
+    }
+
+    .color-usage {
+      margin-top: 10px;
+      font-size: 0.85rem;
+      color: #666;
+      font-style: italic;
+    }
+
+    /* UI Component Map */
+    .ui-map {
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      margin-bottom: 40px;
+    }
+
+    .ui-map h2 {
+      color: #ce6427;
+      margin-bottom: 25px;
+      font-size: 1.8rem;
+      border-bottom: 3px solid #ce6427;
+      padding-bottom: 10px;
+    }
+
+    .component-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 30px;
+    }
+
+    @media (max-width: 768px) {
+      .component-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .component-section {
+      border-left: 4px solid #ce6427;
+      padding-left: 20px;
+      margin-bottom: 25px;
+    }
+
+    .component-title {
+      font-weight: bold;
+      color: #13100f;
+      font-size: 1.2rem;
+      margin-bottom: 15px;
+    }
+
+    .component-item {
+      padding: 10px 0;
+      border-bottom: 1px solid #f0f0f0;
+    }
+
+    .component-item:last-child {
+      border-bottom: none;
+    }
+
+    .component-label {
+      font-weight: 600;
+      color: #454f59;
+      margin-bottom: 5px;
+    }
+
+    .component-value {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .color-dot {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      display: inline-block;
+      border: 2px solid #ddd;
+    }
+
+    .code {
+      font-family: 'Courier New', monospace;
+      background: #f8f8f8;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 0.9rem;
+      color: #ce6427;
+    }
+
+    /* Mock UI Preview */
+    .mock-ui {
+      background: #dad2cd;
+      padding: 20px;
+      border-radius: 8px;
+      margin-top: 30px;
+    }
+
+    .mock-tabs {
+      display: flex;
+      gap: 5px;
+      margin-bottom: 20px;
+    }
+
+    .mock-tab {
+      padding: 12px 24px;
+      background: #cdc4be;
+      color: #13100f;
+      border-radius: 6px 6px 0 0;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .mock-tab.active {
+      background: #ce6427;
+      color: white;
+    }
+
+    .mock-content {
+      background: white;
+      padding: 20px;
+      border-radius: 6px;
+      min-height: 200px;
+    }
+
+    .mock-button {
+      background: #ce6427;
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 4px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-right: 10px;
+    }
+
+    .mock-button:hover {
+      background: #b85520;
+    }
+
+    .legend {
+      background: #fff3e0;
+      border-left: 4px solid #ce6427;
+      padding: 15px 20px;
+      margin: 30px 0;
+      border-radius: 4px;
+    }
+
+    .legend h3 {
+      color: #ce6427;
+      margin-bottom: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔥 Burnt Orange Theme</h1>
+    <p class="subtitle">Complete Color Reference Guide for Time Tracker Pro</p>
+
+    <!-- Color Palette -->
+    <div class="ui-map">
+      <h2>🎨 Core Color Palette</h2>
+      <div class="palette">
+        <div class="color-swatch">
+          <div class="color-box" style="background: #dad2cd;"></div>
+          <div class="color-name">Background</div>
+          <div class="color-hex">#dad2cd</div>
+          <div class="color-usage">Main app background, surfaces</div>
+        </div>
+
+        <div class="color-swatch">
+          <div class="color-box" style="background: #ce6427;"></div>
+          <div class="color-name">Primary (Orange)</div>
+          <div class="color-hex">#ce6427</div>
+          <div class="color-usage">Active tabs, buttons, accents, headers</div>
+        </div>
+
+        <div class="color-swatch">
+          <div class="color-box" style="background: #13100f;"></div>
+          <div class="color-name">Text</div>
+          <div class="color-hex">#13100f</div>
+          <div class="color-usage">Body text, labels, inactive elements</div>
+        </div>
+
+        <div class="color-swatch">
+          <div class="color-box" style="background: #454f59;"></div>
+          <div class="color-name">Secondary</div>
+          <div class="color-hex">#454f59</div>
+          <div class="color-usage">Secondary text, subtle borders</div>
+        </div>
+
+        <div class="color-swatch">
+          <div class="color-box" style="background: #181c20;"></div>
+          <div class="color-name">Accent Dark</div>
+          <div class="color-hex">#181c20</div>
+          <div class="color-usage">Very dark elements, optional use</div>
+        </div>
+
+        <div class="color-swatch">
+          <div class="color-box" style="background: #cdc4be;"></div>
+          <div class="color-name">Surface</div>
+          <div class="color-hex">#cdc4be</div>
+          <div class="color-usage">Inactive tabs, boxes, panels</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- UI Component Map -->
+    <div class="ui-map">
+      <h2>📋 UI Component Color Map</h2>
+      
+      <div class="component-grid">
+        <!-- Left Column -->
+        <div>
+          <div class="component-section">
+            <div class="component-title">Tabs (Notebook)</div>
+            <div class="component-item">
+              <div class="component-label">Active Tab Background</div>
+              <div class="component-value">
+                <span class="color-dot" style="background: #ce6427;"></span>
+                <span class="code">#ce6427</span> (PRIMARY ORANGE)
+              </div>
+            </div>
+            <div class="component-item">
+              <div class="component-label">Active Tab Text</div>
+              <div class="component-value">
+                <span class="color-dot" style="background: white;"></span>
+                <span class="code">white</span>
+              </div>
+            </div>
+            <div class="component-item">
+              <div class="component-label">Inactive Tab Background</div>
+              <div class="component-value">
+                <span class="color-dot" style="background: #cdc4be;"></span>
+                <span class="code">#cdc4be</span> (SURFACE)
+              </div>
+            </div>
+            <div class="component-item">
+              <div class="component-label">Inactive Tab Text</div>
+              <div class="component-value">
+                <span class="color-dot" style="background: #13100f;"></span>
+                <span class="code">#13100f</span> (TEXT)
+              </div>
+            </div>
+            <div class="component-item">
+              <div class="component-label">Hover Tab Background</div>
+              <div class="component-value">
+                <span class="color-dot" style="background: #e8ded9;"></span>
+                <span class="code">#e8ded9</span> (LIGHT HOVER)
+              </div>
+            </div>
+          </div>
+
+          <div class="component-section">
+            <div class="component-title">Buttons</div>
+            <div class="component-item">
+              <div class="component-label">Normal Button</div>
+              <div class="component-value">
+                <span class="color-dot" style="background: #cdc4be;"></span>
+                <span class="code">#cdc4be</span> (SURFACE)
+              </div>
+            </div>
+            <div class="component-item">
+              <div class="component-label">Accent Button (Primary)</div>
+              <div class="component-value">
+                <span class="color-dot" style="background: #ce6427;"></span>
+                <span class="code">#ce6427</span> (ORANGE)
+              </div>
+            </div>
+            <div class="component-item">
+              <div class="component-label">Button Hover</div>
+              <div class="component-value">
+                <span class="color-dot" style="background: #b85520;"></span>
+                <span class="code">#b85520</span> (DARKER ORANGE)
+              </div>
+            </div>
+            <div class="component-item">
+              <div class="component-label">Button Text</div>
+              <div class="component-value">
+                <span class="color-dot" style="background: white;"></span>
+                <span class="code">white</span> on orange buttons
+              </div>
+            </div>
+          </div>
+
+          <div class="component-section">
+            <div class="component-title">Text Inputs & Comboboxes</div>
+            <div class="component-item">
+              <div class="component-label">Field Background</div>
+              <div class="component-value">
+                <span class="color-dot" style="background: white;"></span>
+                <span class="code">white</span>
+              </div>
+            </div>
+            <div class="component-item">
+              <div class="component-label">Field Text</div>
+              <div class="component-value">
+                <span class="color-dot" style="background: #13100f;"></span>
+                <span class="code">#13100f</span>
+              </div>
+            </div>
+            <div class="component-item">
+              <div class="component-label">Border (Normal)</div>
+              <div class="component-value">
+                <span class="color-dot" style="background: #b8aea8;"></span>
+                <span class="code">#b8aea8</span>
+              </div>
+            </div>
+            <div class="component-item">
+              <div class="component-label">Border (Focus)</div>
+              <div class="component-value">
+                <span class="color-dot" style="background: #ce6427;"></span>
+                <span class="code">#ce6427</span> (ORANGE!)
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Column -->
+        <div>
+          <div class="component-section">
+            <div class="component-title">Treeview (Lists/Tables)</div>
+            <div class="component-item">
+              <div class="component-label">Row Background</div>
+              <div class="component-value">
+                <span class="color-dot" style="background: white;"></span>
+                <span class="code">white</span>
+              </div>
+            </div>
+            <div class="component-item">
+              <div class="component-label">Alternating Row</div>
+              <div class="component-value">
+                <span class="color-dot" style="background: #e5ded9;"></span>
+                <span class="code">#e5ded9</span> (LIGHT WARM GRAY)
+              </div>
+            </div>
+            <div class="component-item">
+              <div class="component-label">Header Background</div>
+              <div class="component-value">
+                <span class="color-dot" style="background: #ce6427;"></span>
+                <span class="code">#ce6427</span> (ORANGE!)
+              </div>
+            </div>
+            <div class="component-item">
+              <div class="component-label">Header Text</div>
+              <div class="component-value">
+                <span class="color-dot" style="background: white;"></span>
+                <span class="code">white</span>
+              </div>
+            </div>
+            <div class="component-item">
+              <div class="component-label">Selected Row</div>
+              <div class="component-value">
+                <span class="color-dot" style="background: #ce6427;"></span>
+                <span class="code">#ce6427</span> (ORANGE)
+              </div>
+            </div>
+            <div class="component-item">
+              <div class="component-label">Selected Row Text</div>
+              <div class="component-value">
+                <span class="color-dot" style="background: white;"></span>
+                <span class="code">white</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="component-section">
+            <div class="component-title">Frames & Containers</div>
+            <div class="component-item">
+              <div class="component-label">Main Background</div>
+              <div class="component-value">
+                <span class="color-dot" style="background: #dad2cd;"></span>
+                <span class="code">#dad2cd</span>
+              </div>
+            </div>
+            <div class="component-item">
+              <div class="component-label">LabelFrame Border</div>
+              <div class="component-value">
+                <span class="color-dot" style="background: #b8aea8;"></span>
+                <span class="code">#b8aea8</span>
+              </div>
+            </div>
+            <div class="component-item">
+              <div class="component-label">Scrollbar</div>
+              <div class="component-value">
+                <span class="color-dot" style="background: #cdc4be;"></span>
+                <span class="code">#cdc4be</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="component-section">
+            <div class="component-title">Special Elements</div>
+            <div class="component-item">
+              <div class="component-label">Success (Green)</div>
+              <div class="component-value">
+                <span class="color-dot" style="background: #5a8f5a;"></span>
+                <span class="code">#5a8f5a</span>
+              </div>
+            </div>
+            <div class="component-item">
+              <div class="component-label">Warning (Use Orange)</div>
+              <div class="component-value">
+                <span class="color-dot" style="background: #ce6427;"></span>
+                <span class="code">#ce6427</span>
+              </div>
+            </div>
+            <div class="component-item">
+              <div class="component-label">Danger (Red)</div>
+              <div class="component-value">
+                <span class="color-dot" style="background: #b85450;"></span>
+                <span class="code">#b85450</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Legend -->
+    <div class="legend">
+      <h3>🔥 Orange Usage Philosophy</h3>
+      <p><strong>Use ORANGE for:</strong></p>
+      <ul style="margin-left: 20px; margin-top: 10px;">
+        <li>✅ Active/selected states (tabs, buttons, rows)</li>
+        <li>✅ Primary actions (Save, Generate Invoice, etc.)</li>
+        <li>✅ Table/list headers</li>
+        <li>✅ Focus borders on inputs</li>
+        <li>✅ Hover states on interactive elements</li>
+      </ul>
+      <p style="margin-top: 15px;"><strong>Keep TAUPE for:</strong></p>
+      <ul style="margin-left: 20px; margin-top: 10px;">
+        <li>📋 Main background (warm, not stark white)</li>
+        <li>📋 Inactive tabs</li>
+        <li>📋 Secondary surfaces</li>
+      </ul>
+    </div>
+
+    <!-- Mock Preview -->
+    <div class="ui-map">
+      <h2>👁️ Live Preview</h2>
+      <div class="mock-ui">
+        <div class="mock-tabs">
+          <div class="mock-tab">Timer</div>
+          <div class="mock-tab">Clients</div>
+          <div class="mock-tab active">Invoices</div>
+          <div class="mock-tab">Company Info</div>
+        </div>
+        <div class="mock-content">
+          <h3 style="color: #13100f; margin-bottom: 20px;">Create Invoice</h3>
+          <p style="color: #454f59; margin-bottom: 20px;">Select client and project to generate invoice</p>
+          <button class="mock-button">Generate Invoice</button>
+          <button class="mock-button" style="background: #cdc4be; color: #13100f;">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <div style="text-align: center; margin-top: 50px; color: #454f59;">
+      <p>📄 This document should be opened in a browser to see the live colors</p>
+      <p style="margin-top: 10px;">Reference this when coding theme changes!</p>
+    </div>
+  </div>
+</body>
+</html>
