@@ -210,8 +210,8 @@ Error (if any): [paste error]
 
 ---
 
-**Last Updated:** February 10, 2026
-**App Version:** V2.0.9
-**Status:** ✅ Production Ready - Burnt Orange Theme!
-**Recent Fixes:** Burnt Orange branding theme, dialog centering, button text visibility, total hours display, group heading colors, edit workflow UX
+**Last Updated:** January 30, 2026
+**App Version:** V2.0.6
+**Status:** ✅ Fully Functional - UI Reorganized!
+**Recent Fixes:** Tab bar cleanup (9✓7 tabs), submenu navigation, tab appearance fix
 **Git Helper:** Use `git_push.bat` for commits (see GIT_USAGE.md)
