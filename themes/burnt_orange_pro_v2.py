@@ -233,7 +233,7 @@ def apply_theme(style, colors, fonts):
     style.configure('Treeview.Heading',
                    font=fonts['subheading'],
                    background=colors['primary'],              # BURNT ORANGE header
-                   foreground='white',
+                   foreground=colors['text'],                 # DARK TEXT (readable!)
                    borderwidth=1,
                    relief='flat')
     
@@ -243,7 +243,7 @@ def apply_theme(style, colors, fonts):
     
     style.map('Treeview.Heading',
              background=[('active', colors['orange_hover'])],
-             foreground=[('active', 'white')])
+             foreground=[('active', colors['text'])])       # Dark text on hover too
     
     # ============================================================================
     # FRAMES & CONTAINERS
