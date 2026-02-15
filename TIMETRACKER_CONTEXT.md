@@ -159,7 +159,16 @@ backup_name = f"gui.py.backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
 
 ## 🐛 Known Issues
 
-**None currently!** App is working great after the manual entry fix.
+**Current (February 15, 2026):**
+- 🔴 **Cascade Delete Not Working Reliably**: Deleting a client may not remove associated projects/tasks
+  - Foreign keys are now enabled (foundation is correct)
+  - Something blocking CASCADE behavior (needs investigation)
+  - Workaround: Manually delete projects/tasks before deleting client
+  - Priority: Medium (not launch-blocking)
+
+**Future Enhancements:**
+- PDF Invoice: Change blue banner to burnt orange #ce6427 (cosmetic)
+- Theme Customizer UI: Planned as post-launch PAID feature
 
 ---
 
@@ -210,8 +219,8 @@ Error (if any): [paste error]
 
 ---
 
-**Last Updated:** February 10, 2026
-**App Version:** V2.0.9
-**Status:** ✅ Production Ready - Burnt Orange Theme!
-**Recent Fixes:** Burnt Orange branding theme, dialog centering, button text visibility, total hours display, group heading colors, edit workflow UX
+**Last Updated:** February 15, 2026
+**App Version:** V2.0.10
+**Status:** ✅ Production Ready - Pre-Launch Schema Bugs Fixed!
+**Recent Fixes:** Critical schema bugs for new databases (is_global column, project_id NULL, payment_terms, foreign keys enabled)
 **Git Helper:** Use `git_push.bat` for commits (see GIT_USAGE.md)

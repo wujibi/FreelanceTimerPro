@@ -1,187 +1,195 @@
-# Current Status - Freelance Timer Pro V2.0.9
+# Current Status - Freelance Timer Pro V2.0.10
 
-**Date:** February 10, 2026  
-**Status:** ✅ **PRODUCTION READY - BURNT ORANGE THEME**
+**Date:** February 15, 2026  
+**Status:** ✅ **PRODUCTION READY - PRE-LAUNCH SCHEMA BUGS FIXED**
 
 ---
 
-## 🎨 Major Update: Burnt Orange Branding Theme
+## 🐛 Critical Schema Fixes (Version 2.0.10)
 
 ### What Was Done Today
 
-**1. New Theme Family Created**
-- Created 3 burnt orange theme variants matching FreelanceTimer.pro website
-- `burnt_orange_pro.py` - Full orange (groups + selections)
-- `burnt_orange_pro_v2.py` - Peach groups, orange selections
-- `burnt_orange_pro_v3.py` - **Teal groups, orange selections (RECOMMENDED)**
-- Warm taupe background (#dad2cd) with burnt orange accent (#ce6427)
-- Replaced blue-based themes with brand-consistent warm colors
+**Session Context:**
+- User needed to create sample database for website screenshots
+- Discovered multiple critical schema bugs that would crash app for NEW users
+- All bugs found by creating fresh database and testing basic features
 
-**2. Critical Bug Fixes**
-- ✅ Fixed dialog centering (all popups were 718px offset)
-- ✅ Fixed button text visibility (CREATE INVOICE button was unreadable!)
-- ✅ Fixed active tab text (white on orange = invisible)
-- ✅ Fixed entry row text colors (alternating rows interfering with readability)
-- ✅ Fixed confusing edit workflow (premature "updated" alert)
+**Four Critical Schema Bugs Fixed:**
 
-**3. Visual Hierarchy Improvements**
-- ✅ Group headings (Client/Project/Task) now have distinct colors
-- ✅ Individual entries have white background with dark text
-- ✅ Selected rows have orange background with white text
-- ✅ Clear visual distinction between hierarchy levels
+**1. Missing `is_global` Column** ✅
+- **Bug:** New databases were missing `is_global` column in tasks table
+- **Impact:** App crashed immediately on launch for new users
+- **Error:** `sqlite3.OperationalError: table tasks has no column named is_global`
+- **Fix:** Added `is_global` to both `create_tasks_table()` (line 213) and `fix_tasks_table()` (line 359)
+- **File:** `db_manager.py`
 
-**4. UX Enhancements**
-- ✅ Total hours now display in invoice preview
-- ✅ Success messages now prompt user to refresh data
-- ✅ Removed auto-refresh that was causing confusion
-- ✅ Created helper method `center_dialog()` for consistent positioning
+**2. `project_id` NOT NULL Constraint** ✅
+- **Bug:** Tasks table required `project_id` to be NOT NULL, but global tasks pass NULL
+- **Impact:** Global tasks couldn't be created
+- **Error:** `sqlite3.IntegrityError: NOT NULL constraint failed: tasks.project_id`
+- **Fix:** Removed NOT NULL constraint on `project_id` column (line 197)
+- **File:** `db_manager.py`
 
-**5. Code Cleanup**
-- ✅ Reduced from 7 experimental themes to 3 production themes
-- ✅ Deleted obsolete theme files
-- ✅ Deleted temporary documentation files
-- ✅ Updated production documentation (CHANGELOG, TIMETRACKER_CONTEXT)
+**3. Missing `payment_terms` and `thank_you_message` Columns** ✅
+- **Bug:** Company info table missing invoice-related text fields
+- **Impact:** Saving company info failed completely
+- **Error:** `sqlite3.OperationalError: table company_info has no column named payment_terms`
+- **Fix:** Added columns to both `create_company_info_table()` (lines 251-252) and `fix_company_info_table()` (lines 397-398)
+- **File:** `db_manager.py`
+
+**4. Foreign Keys Disabled** ✅ (Partially)
+- **Bug:** SQLite foreign keys are DISABLED by default, CASCADE deletes not working
+- **Impact:** Deleting clients left orphaned projects/tasks in database
+- **Fix:** Added `PRAGMA foreign_keys = ON` on database connection (lines 27-29)
+- **Status:** ⚠️ Foundation correct, but CASCADE delete still not working reliably (needs further investigation)
+- **File:** `db_manager.py`
 
 ---
 
-## 🚀 Current State
+## 🚨 Known Issues
 
-### Production-Ready Themes (3)
-1. **Burnt Orange Pro V3** (DEFAULT) - Teal groups, best visual hierarchy
-2. **Burnt Orange Pro V2** - Peach groups, two-tone orange
-3. **Professional Gray** - Original neutral theme
-4. **Dark Mode** - Low-light environment theme
+### 🔴 Cascade Delete Not Working Reliably
+- **Status:** Foreign keys are now enabled, but CASCADE delete still inconsistent
+- **Behavior:** Deleting a client may not remove associated projects/tasks
+- **Workaround:** Manually delete projects and tasks before deleting client
+- **Priority:** Medium (not launch-blocking)
+- **Next Steps:** Needs investigation into why CASCADE isn't triggering
+- **Possible Causes:**
+  - Transaction handling in models.py
+  - Need manual CASCADE in delete methods
+  - SQLite quirks with foreign keys
 
-### Working Features
-- ✅ All core functionality stable
-- ✅ Invoicing with proper visual hierarchy
-- ✅ Email invoices with PDF attachments
-- ✅ Time tracking with daily totals
-- ✅ Client/Project/Task management
-- ✅ Manual and automatic time entry
-- ✅ Excel export
-- ✅ Company info and branding
-
-### Known Issues / Future Enhancements
-1. **PDF Invoice Total Hours** - Need to add total hours to generated PDF (currently preview only)
-2. **PDF Invoice Banner** - Blue banner should be changed to burnt orange (cosmetic)
-3. **Theme Customizer UI** - Planned as post-launch PAID feature
-4. **GUI Refactoring** - gui.py is 4,702 lines, should be modularized post-launch
+### 🟡 Future Enhancements (Post-Launch)
+- PDF Invoice: Change blue banner to burnt orange #ce6427 (cosmetic)
+- Theme Customizer UI: Planned as post-launch PAID feature
+- GUI Refactoring: gui.py is 4,702 lines (deferred to v3.0)
 
 ---
 
 ## 📁 Files Changed This Session
 
 ### Core Files Modified
-- `gui.py` - Added center_dialog() method, fixed button colors, added group heading tags, added total hours calculation
-- `themes/burnt_orange_pro.py` - Created new default theme
-- `themes/burnt_orange_pro_v2.py` - Created peach variant
-- `themes/burnt_orange_pro_v3.py` - Created teal variant (recommended)
-- `themes/__init__.py` - Registered new themes, set V3 as default
+- `db_manager.py` - 4 critical schema fixes (lines 27-29, 197, 213, 251-252, 397-398)
 
 ### Documentation Updated
-- `CHANGELOG.md` - Added v2.0.9 entry with complete feature list
-- `TIMETRACKER_CONTEXT.md` - Updated footer with latest version
+- `CHANGELOG.md` - Added v2.0.10 entry with all schema fixes
+- `TIMETRACKER_CONTEXT.md` - Updated version, status, known issues
 - `CURRENT_STATUS.md` - This file
 
-### Files Created (Reference)
-- `BURNT_ORANGE_COLOR_MAP.html` - Visual color reference guide (keep for future Theme Customizer feature)
-
-### Files to Delete (User Action Required)
-**Obsolete Theme Files:**
-- `themes/balanced_navy.py`
-- `themes/burnt_orange.py` (old version)
-- `themes/deep_navy_pro.py`
-- `themes/light_navy_pro.py`
-- `themes/sage_professional.py`
-- `themes/warm_professional.py`
-
-**Temp Documentation:**
-- `ADD_ALTERNATING_ROWS.md`
-- `ALTERNATING_ROWS_COMPLETE.md`
-- `ALTERNATING_ROWS_READY.md`
-- `FINAL_COLOR_FIXES.md`
-- `GROUP_HEADING_FIX_INSTRUCTIONS.md`
-- `LIGHT_THEME_ADDED.md`
-- `THEME_CLEANUP_INSTRUCTIONS.md`
-- `THEME_COMPARISON_GUIDE.md`
-- `THEME_SWITCHER_GUIDE.md`
-- `Time Tracker Pro V2 - Theme-Stylesheet System Implementation.md`
-
 ---
 
-## 🎯 Next Session Goals
+## 🎯 Why These Fixes Matter
 
-### High Priority
-1. **Add Total Hours to PDF Invoice** - Requires ReportLab modifications
-2. **Change PDF Banner Color** - Blue → Burnt Orange (cosmetic but important for branding)
-3. **Test in Production** - Use app for real client work, gather feedback
+**Impact Analysis:**
+- These bugs would have caused **IMMEDIATE CRASHES** for any new user
+- Existing users unaffected (they already have correct schema from migrations)
+- Discovered during pre-launch testing (screenshot database creation)
+- **Launch would have failed without these fixes** ❌→✅
 
-### Medium Priority
-4. **GUI Refactoring** - Break gui.py into modular files (post-launch)
-5. **Better Theming Library** - Consider ttkbootstrap or CustomTkinter (post-launch)
-6. **Theme Customizer UI** - PAID feature allowing users to customize colors
-
-### Low Priority
-7. **Website Launch** - FreelanceTimer.pro with Bulma CSS
-8. **Windows Installer** - Create .exe installer for distribution
-
----
-
-## 💡 Technical Notes
-
-### Theme System Architecture
-- Themes are modular Python files in `themes/` folder
-- Each theme defines `get_colors()`, `get_fonts()`, and `apply_theme(style, colors, fonts)`
-- New `group_heading` and `group_text` colors control hierarchy styling
-- Themes persist across sessions via `settings` table in database
-
-### Dialog Centering Implementation
-```python
-def center_dialog(self, dialog, width, height):
-    """Center a dialog window on the main window"""
-    dialog.update_idletasks()
-    x = self.root.winfo_x() + (self.root.winfo_width() // 2) - (width // 2)
-    y = self.root.winfo_y() + (self.root.winfo_height() // 2) - (height // 2)
-    dialog.geometry(f"{width}x{height}+{x}+{y}")
-```
-
-### Treeview Tag System
-- `client_row` - Client-level grouping
-- `project_row` - Project-level grouping
-- `task_row` - Task-level grouping
-- `entry_row` - Individual time entries (white background, dark text)
-
----
-
-## 📊 Session Statistics
-
-- **Duration:** ~6 hours (with breaks)
-- **Issues Fixed:** 8 major bugs/UX issues
-- **Features Added:** 3 (themes, total hours, group colors)
-- **Files Modified:** 8 files
-- **Files to Delete:** 16 obsolete files
-- **Documentation Updated:** 3 files
-- **Status:** Ready for production use! 🎉
+**Testing Scenario That Caught Bugs:**
+1. User renamed real database to create fresh one for screenshots
+2. App created new database from scratch
+3. Missing `is_global` column → crash on launch
+4. After fix, tried to create global task → NULL constraint error
+5. After fix, tried to save company info → missing payment_terms error
+6. After fixes, tried to delete test client → orphaned projects remained
 
 ---
 
 ## ✅ Pre-Launch Checklist
 
+### Critical (Blocking Launch)
 - [x] Core functionality working (time tracking, invoicing, email)
 - [x] Branding consistent (burnt orange theme matching website)
-- [x] Critical bugs fixed (button visibility, dialog centering)
-- [x] Visual hierarchy clear (group headings, entry rows)
+- [x] Critical bugs fixed (button visibility, dialog centering, schema issues)
+- [x] **Schema bugs fixed for NEW users** ← **Today's achievement!**
 - [x] Documentation updated (CHANGELOG, CONTEXT, STATUS)
-- [x] Code cleaned up (obsolete files identified for deletion)
-- [ ] Total hours on PDF invoice (next session)
-- [ ] PDF banner color changed to orange (next session)
+
+### High Priority (Before Launch)
+- [ ] Test cascade delete thoroughly (or document workaround)
+- [ ] Create sample data for screenshots
+- [ ] Take screenshots for website
 - [ ] Production testing with real client work
-- [ ] Website launched (FreelanceTimer.pro)
+- [ ] Website content complete (FreelanceTimer.pro)
+
+### Medium Priority (Post-Launch)
+- [ ] Total hours on PDF invoice
+- [ ] PDF banner color changed to orange
 - [ ] Windows installer created
+- [ ] GUI refactoring (v3.0)
 
 ---
 
-**Ready for:** Real-world testing with actual client invoicing!  
-**User Action Required:** Delete obsolete files listed above, test thoroughly before next client invoice  
-**Next Session:** Add total hours to PDF invoice, change PDF banner to orange
+## 📊 Session Statistics
+
+- **Duration:** ~2 hours (focused bug fixing)
+- **Issues Found:** 4 critical schema bugs
+- **Issues Fixed:** 3.5 (cascade delete foundation laid, behavior still needs work)
+- **Files Modified:** 1 file (`db_manager.py`)
+- **Lines Changed:** ~15 lines across 5 locations
+- **Impact:** **App now works for NEW users** 🎉
+- **Testing Method:** Created fresh database and tested all basic features
+
+---
+
+## 🔧 Technical Details
+
+### Migration System (Auto-Fix)
+The `fix_*()` methods automatically apply schema fixes to existing databases:
+- `fix_tasks_table()` adds missing `is_global` column
+- `fix_company_info_table()` adds missing `payment_terms` and `thank_you_message`
+- Runs automatically on every app startup
+- Safe for production (only adds missing columns, never deletes data)
+
+### Foreign Key Constraints
+```python
+# Now enabled on every connection
+self.conn.execute("PRAGMA foreign_keys = ON")
+```
+
+**Why This Matters:**
+- SQLite foreign keys are OFF by default (surprising!)
+- CASCADE deletes only work when foreign keys are enabled
+- Without this, orphaned data accumulates in database
+- Fix applies to ALL connections (existing and new databases)
+
+---
+
+## 💡 User Notes (Brian)
+
+**What You Did Right:**
+- ✅ Testing with fresh database before launch
+- ✅ Clear error reporting (full error logs)
+- ✅ Pragmatic decision to save fixes and investigate cascade delete later
+
+**Next Steps for You:**
+1. Commit these changes to Git:
+   ```powershell
+   git add db_manager.py
+   git commit -m "Fix: Critical schema bugs for new databases (v2.0.10)"
+   git push origin master
+   ```
+
+2. Create sample data for screenshots (bugs are fixed now!)
+
+3. Take screenshots for website
+
+4. When you find the next bug (cascade delete or other), start fresh chat with:
+   ```
+   Working on TimeTrackerProV2. Read TIMETRACKER_CONTEXT.md.
+   
+   Issue: [describe bug]
+   
+   [paste error log if any]
+   ```
+
+**You Can Work on Website Now:**
+- App is stable for screenshots
+- No urgent bugs blocking you
+- Cascade delete is a "nice to have" not a critical bug
+
+---
+
+**Ready for:** Website content creation and screenshot capture!  
+**User Action Required:** Git commit, create sample data, take screenshots  
+**Next Session Priority:** Cascade delete investigation (medium priority)

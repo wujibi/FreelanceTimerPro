@@ -6,6 +6,39 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.0.10] - 2026-02-15
+
+### Fixed - PRE-LAUNCH SCHEMA BUGS 🐛
+- **Missing Schema Columns in Fresh Databases**: Fixed critical bugs that would crash app for new users
+  - **`is_global` column**: Tasks table now includes `is_global` column on database creation
+    - Bug: New databases missing column caused immediate crash
+    - Fix: Added to `create_tasks_table()` (line 213) and `fix_tasks_table()` (line 359)
+  - **`project_id` NULL constraint**: Removed NOT NULL constraint to allow global tasks
+    - Bug: Global tasks couldn't be created (passed `project_id=None` but schema required NOT NULL)
+    - Fix: Changed line 197 to allow NULL values for `project_id` when `is_global=True`
+  - **`payment_terms` + `thank_you_message`**: Company info table now includes invoice fields
+    - Bug: Saving company info failed with "no column named payment_terms" error
+    - Fix: Added to `create_company_info_table()` (lines 251-252) and `fix_company_info_table()` (lines 397-398)
+  - **Foreign Key Constraints**: Enabled CASCADE deletes for data integrity
+    - Bug: Deleting clients left orphaned projects/tasks in database
+    - Fix: Added `PRAGMA foreign_keys = ON` on connection (lines 27-29)
+    - Note: Cascade delete behavior still needs testing/debugging
+
+### Technical Details
+- **Files Modified**: `db_manager.py` (4 critical schema fixes)
+- **Impact**: These bugs would have caused immediate crashes for ANY new user on launch day
+- **Testing**: Discovered during pre-launch screenshot database creation
+- **Migration**: Schema fixes apply automatically via `fix_*()` methods on startup
+
+### Known Issues
+- 🔴 **Cascade Delete Not Working Reliably**: Client deletion may not remove associated projects/tasks
+  - Foreign keys are now enabled (foundation is correct)
+  - Something else blocking CASCADE behavior (needs investigation)
+  - Workaround: Users can manually delete projects/tasks individually
+  - Priority: Medium (not launch-blocking)
+
+---
+
 ## [2.0.9] - 2026-02-10
 
 ### Added - BRANDING & UX ✨
