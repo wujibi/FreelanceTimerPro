@@ -25,6 +25,11 @@ class DatabaseManager:
             print(f"[DEBUG] Attempting to connect to database at: {self.db_path}")
             self.conn = sqlite3.connect(self.db_path, check_same_thread=False)
             self.conn.row_factory = sqlite3.Row
+            
+            # CRITICAL: Enable foreign key constraints (disabled by default in SQLite)
+            self.conn.execute("PRAGMA foreign_keys = ON")
+            print(f"[DEBUG] Foreign key constraints enabled")
+            
             import threading
             self.lock = threading.Lock()
             print(f"[DEBUG] Database connection established, calling setup_database()")
@@ -195,12 +200,13 @@ class DatabaseManager:
         query = '''
         CREATE TABLE IF NOT EXISTS tasks (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            project_id INTEGER NOT NULL,
+            project_id INTEGER,
             name TEXT NOT NULL,
             description TEXT,
             hourly_rate REAL DEFAULT 0,
             is_lump_sum INTEGER DEFAULT 0,
             lump_sum_amount REAL DEFAULT 0,
+            is_global INTEGER DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
         )
@@ -248,6 +254,8 @@ class DatabaseManager:
             email TEXT,
             logo_path TEXT,
             website TEXT,
+            payment_terms TEXT,
+            thank_you_message TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
@@ -350,6 +358,7 @@ class DatabaseManager:
             'hourly_rate': 'REAL DEFAULT 0',
             'is_lump_sum': 'INTEGER DEFAULT 0',
             'lump_sum_amount': 'REAL DEFAULT 0',
+            'is_global': 'INTEGER DEFAULT 0',
             'created_at': 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'
         }
 
@@ -391,6 +400,8 @@ class DatabaseManager:
         required_columns = {
             'logo_path': 'TEXT',
             'website': 'TEXT',
+            'payment_terms': 'TEXT',
+            'thank_you_message': 'TEXT',
             'created_at': 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
             'updated_at': 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'
         }
