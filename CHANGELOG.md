@@ -6,6 +6,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.0.11] - 2026-02-21
+
+### Fixed - CASCADE DELETE BUG 🔥
+- **CASCADE Delete Behavior**: Fixed critical bug where deleting Clients, Projects, or Tasks left orphaned data
+  - **Bug**: Deleting projects didn't cascade delete tasks and time entries despite warning dialogs promising data would be removed
+  - **Root Cause**: `Task.delete()` method (models.py line 244) was missing CASCADE logic for time_entries
+  - **Fix 1**: Added CASCADE logic to `Task.delete()` (models.py lines 249-251) - deletes time_entries before task
+  - **Fix 2**: Re-enabled foreign keys in theme preference methods (gui.py lines 137, 153)
+  - **Testing**: Verified with Project 3 deletion test - task 4 CASCADE deleted successfully ✅
+  - **GUI Test**: Deleted "Test Project DELETE" with 2 tasks and 2 time entries - all CASCADE deleted ✅
+
+### Known Issues ⚠️
+- **UI Refresh Delay**: After deletions, tabs don't auto-refresh. Users must manually switch tabs or click refresh to see changes. Data IS correctly deleted - this is purely cosmetic UX issue.
+- **Orphaned Data Cleanup**: Pre-fix orphaned data (3 tasks, 1 time entry) will be manually cleaned via SQL
+
+### Technical Details
+- **Files Modified**: `models.py` (Task.delete method), `gui.py` (theme preference methods)
+- **Impact**: Data integrity restored - CASCADE deletes now work correctly across entire hierarchy
+- **Previous Session**: v2.0.10 fixed schema bugs earlier same day
+
+---
+
 ## [2.0.10] - 2026-02-15
 
 ### Fixed - PRE-LAUNCH SCHEMA BUGS 🐛

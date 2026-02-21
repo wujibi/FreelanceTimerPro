@@ -44,10 +44,36 @@ class Client:
             conn.commit()  # ADDED
 
     def delete(self, client_id):
+        """Delete a client and all associated projects, tasks, and time entries."""
         with self.db.get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute('DELETE FROM clients WHERE id=?', (client_id,))
-            conn.commit()  # ADDED
+            
+            # Manual CASCADE: Delete in reverse dependency order
+            # 1. Delete time entries for all tasks under all projects for this client
+            cursor.execute('''
+                DELETE FROM time_entries 
+                WHERE task_id IN (
+                    SELECT t.id FROM tasks t
+                    JOIN projects p ON t.project_id = p.id
+                    WHERE p.client_id = ?
+                )
+            ''', (client_id,))
+            
+            # 2. Delete all tasks under all projects for this client
+            cursor.execute('''
+                DELETE FROM tasks 
+                WHERE project_id IN (
+                    SELECT id FROM projects WHERE client_id = ?
+                )
+            ''', (client_id,))
+            
+            # 3. Delete all projects for this client
+            cursor.execute('DELETE FROM projects WHERE client_id = ?', (client_id,))
+            
+            # 4. Finally delete the client
+            cursor.execute('DELETE FROM clients WHERE id = ?', (client_id,))
+            
+            conn.commit()
 
 
 class Project:
@@ -110,10 +136,26 @@ class Project:
             conn.commit()  # ADDED
 
     def delete(self, project_id):
+        """Delete a project and all associated tasks and time entries."""
         with self.db.get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute('DELETE FROM projects WHERE id=?', (project_id,))
-            conn.commit()  # ADDED
+            
+            # Manual CASCADE: Delete in reverse dependency order
+            # 1. Delete time entries for all tasks under this project
+            cursor.execute('''
+                DELETE FROM time_entries 
+                WHERE task_id IN (
+                    SELECT id FROM tasks WHERE project_id = ?
+                )
+            ''', (project_id,))
+            
+            # 2. Delete all tasks for this project
+            cursor.execute('DELETE FROM tasks WHERE project_id = ?', (project_id,))
+            
+            # 3. Finally delete the project
+            cursor.execute('DELETE FROM projects WHERE id = ?', (project_id,))
+            
+            conn.commit()
 
 
 class Task:
@@ -200,10 +242,17 @@ class Task:
             conn.commit()  # ADDED
 
     def delete(self, task_id):
+        """Delete a task and all associated time entries."""
         with self.db.get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute('DELETE FROM tasks WHERE id=?', (task_id,))
-            conn.commit()  # ADDED
+            
+            # Manual CASCADE: Delete time entries first
+            cursor.execute('DELETE FROM time_entries WHERE task_id = ?', (task_id,))
+            
+            # Then delete the task
+            cursor.execute('DELETE FROM tasks WHERE id = ?', (task_id,))
+            
+            conn.commit()
 
 
 class TimeEntry:

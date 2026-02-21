@@ -20,15 +20,7 @@ Place your custom icon here as `icon.ico`
 4. Save as `icon.ico` in this folder
 5. Restart the app
 
-#### Option 3: Use Your Latrat Logo
-You already have: `C:/Users/briah/OneDrive/Personal Stuff/Business Stuff/Latro Logistics/Latrat Logo V1.jpg`
 
-Simply:
-1. Go to https://convertio.co/png-ico/
-2. Upload your Latrat Logo V1.jpg
-3. Download the .ico file
-4. Save as `icon.ico` here
-5. Restart the app!
 
 ### Icon Recommendations:
 - **Size:** 256x256px (will auto-scale to different sizes)

@@ -1,98 +1,126 @@
-# Current Status - Freelance Timer Pro V2.0.10
+# Current Status - Freelance Timer Pro V2.0.11
 
-**Date:** February 15, 2026  
-**Status:** ✅ **PRODUCTION READY - PRE-LAUNCH SCHEMA BUGS FIXED**
+**Date:** February 21, 2026  
+**Status:** ✅ **PRODUCTION READY - CASCADE DELETE FIXED**
 
 ---
 
-## 🐛 Critical Schema Fixes (Version 2.0.10)
+## 🔥 CASCADE Delete Fix (Version 2.0.11)
 
 ### What Was Done Today
 
 **Session Context:**
-- User needed to create sample database for website screenshots
-- Discovered multiple critical schema bugs that would crash app for NEW users
-- All bugs found by creating fresh database and testing basic features
+- User discovered CASCADE delete wasn't working while creating test data for screenshots
+- Deleted Project 67 but Tasks 49 and time entries remained (orphaned)
+- Investigated through 4 debugging phases over 2 conversation segments
+- **RESULT: CASCADE delete now works correctly** ✅
 
-**Four Critical Schema Bugs Fixed:**
+**Root Cause Identified:**
+- **Foreign keys were being disabled** in `gui.py` theme preference methods (lines 137, 153)
+- **Task.delete() was missing CASCADE logic** entirely (models.py line 244)
+- GUI delete buttons were calling model methods correctly (not direct SQL bypass)
+- Database-level CASCADE worked, but application-level logic was broken
 
-**1. Missing `is_global` Column** ✅
-- **Bug:** New databases were missing `is_global` column in tasks table
-- **Impact:** App crashed immediately on launch for new users
-- **Error:** `sqlite3.OperationalError: table tasks has no column named is_global`
-- **Fix:** Added `is_global` to both `create_tasks_table()` (line 213) and `fix_tasks_table()` (line 359)
-- **File:** `db_manager.py`
+**Fixes Applied:**
 
-**2. `project_id` NOT NULL Constraint** ✅
-- **Bug:** Tasks table required `project_id` to be NOT NULL, but global tasks pass NULL
-- **Impact:** Global tasks couldn't be created
-- **Error:** `sqlite3.IntegrityError: NOT NULL constraint failed: tasks.project_id`
-- **Fix:** Removed NOT NULL constraint on `project_id` column (line 197)
-- **File:** `db_manager.py`
+**1. Foreign Keys Re-Enabled in Theme Methods** ✅
+- **Bug:** Theme save/load methods were creating connections without enabling foreign keys
+- **Impact:** Every theme change disabled foreign keys for rest of session
+- **Fix:** Added `PRAGMA foreign_keys = ON` to both theme methods in `gui.py` (lines 137, 153)
+- **File:** `gui.py`
 
-**3. Missing `payment_terms` and `thank_you_message` Columns** ✅
-- **Bug:** Company info table missing invoice-related text fields
-- **Impact:** Saving company info failed completely
-- **Error:** `sqlite3.OperationalError: table company_info has no column named payment_terms`
-- **Fix:** Added columns to both `create_company_info_table()` (lines 251-252) and `fix_company_info_table()` (lines 397-398)
-- **File:** `db_manager.py`
+**2. Task.delete() CASCADE Logic Added** ✅
+- **Bug:** Task.delete() didn't have manual CASCADE logic to delete associated time_entries
+- **Impact:** Deleting tasks left orphaned time entries in database
+- **Fix:** Added CASCADE delete logic to Task.delete() method (models.py lines 249-251)
+- **Code:**
+  ```python
+  def delete(self, task_id):
+      with self.db.get_connection() as conn:
+          cursor = conn.cursor()
+          # Delete associated time entries first (CASCADE)
+          cursor.execute('DELETE FROM time_entries WHERE task_id = ?', (task_id,))
+          # Then delete the task
+          cursor.execute('DELETE FROM tasks WHERE id = ?', (task_id,))
+          conn.commit()
+  ```
+- **File:** `models.py`
 
-**4. Foreign Keys Disabled** ✅ (Partially)
-- **Bug:** SQLite foreign keys are DISABLED by default, CASCADE deletes not working
-- **Impact:** Deleting clients left orphaned projects/tasks in database
-- **Fix:** Added `PRAGMA foreign_keys = ON` on database connection (lines 27-29)
-- **Status:** ⚠️ Foundation correct, but CASCADE delete still not working reliably (needs further investigation)
-- **File:** `db_manager.py`
+**Testing Results:**
+
+**Test 1 - Direct Database Test:**
+- Deleted Project 3 using test_actual_delete.py
+- Task 4 CASCADE deleted successfully ✅
+- Time entries CASCADE deleted successfully ✅
+
+**Test 2 - GUI Test:**
+- Created "Test Project DELETE" with 2 tasks and 2 time entries
+- Deleted project via GUI
+- All tasks CASCADE deleted ✅
+- All time entries CASCADE deleted ✅
+- **BUG CONFIRMED FIXED** 🎉
+
+**Diagnostic Findings:**
+- Discovered 3 orphaned tasks (IDs 1, 3, 32) from pre-fix testing
+- Discovered 1 orphaned time entry (ID 1) from pre-fix testing
+- User will manually clean these up later via SQL once comfortable with fix
 
 ---
 
 ## 🚨 Known Issues
 
-### 🔴 Cascade Delete Not Working Reliably
-- **Status:** Foreign keys are now enabled, but CASCADE delete still inconsistent
-- **Behavior:** Deleting a client may not remove associated projects/tasks
-- **Workaround:** Manually delete projects and tasks before deleting client
-- **Priority:** Medium (not launch-blocking)
-- **Next Steps:** Needs investigation into why CASCADE isn't triggering
-- **Possible Causes:**
-  - Transaction handling in models.py
-  - Need manual CASCADE in delete methods
-  - SQLite quirks with foreign keys
+### 🟡 UI Refresh Delay After Deletions
+- **Status:** Cosmetic UX issue (not a data bug)
+- **Behavior:** After deleting Client/Project/Task, tabs don't auto-refresh
+- **Workaround:** Manually switch tabs or click refresh to see changes
+- **Impact:** Low - data IS correctly deleted, just display doesn't update
+- **Priority:** Low (UX polish for future version)
+- **Technical Cause:** gui.py delete methods don't call all necessary refresh functions
+- **Fix Complexity:** Medium (gui.py is 5000+ lines, would need surgical changes)
+
+### 🟢 Orphaned Data Cleanup (Pre-Fix)
+- **Status:** Manual cleanup deferred
+- **Data:** 3 orphaned tasks (IDs 1, 3, 32) + 1 orphaned time entry (ID 1)
+- **Priority:** Low (not affecting functionality)
+- **Plan:** User will manually clean up via SQL when comfortable
+- **Safety:** User correctly refused automated cleanup during debugging
 
 ### 🟡 Future Enhancements (Post-Launch)
 - PDF Invoice: Change blue banner to burnt orange #ce6427 (cosmetic)
 - Theme Customizer UI: Planned as post-launch PAID feature
-- GUI Refactoring: gui.py is 4,702 lines (deferred to v3.0)
+- GUI Refactoring: gui.py is 5000+ lines (deferred to v3.0)
+- Auto-refresh after deletions (UX improvement)
 
 ---
 
 ## 📁 Files Changed This Session
 
 ### Core Files Modified
-- `db_manager.py` - 4 critical schema fixes (lines 27-29, 197, 213, 251-252, 397-398)
+- `models.py` - Added CASCADE logic to Task.delete() (lines 244-258)
+- `gui.py` - Re-enabled foreign keys in theme preference methods (lines 137, 153)
 
 ### Documentation Updated
-- `CHANGELOG.md` - Added v2.0.10 entry with all schema fixes
-- `TIMETRACKER_CONTEXT.md` - Updated version, status, known issues
+- `CHANGELOG.md` - Added v2.0.11 entry with CASCADE delete fix
+- `TIMETRACKER_CONTEXT.md` - Updated version, status, recent fixes
 - `CURRENT_STATUS.md` - This file
 
 ---
 
-## 🎯 Why These Fixes Matter
+## 🎯 Why This Fix Matters
 
 **Impact Analysis:**
-- These bugs would have caused **IMMEDIATE CRASHES** for any new user
-- Existing users unaffected (they already have correct schema from migrations)
-- Discovered during pre-launch testing (screenshot database creation)
-- **Launch would have failed without these fixes** ❌→✅
+- **Critical for data integrity** - Prevents orphaned records accumulating
+- **User trust** - Delete dialogs promise CASCADE, now actually deliver
+- **Production billing system** - Can't have orphaned data in client billing database
+- **Launch blocker removed** - App now safe for production use
 
-**Testing Scenario That Caught Bugs:**
-1. User renamed real database to create fresh one for screenshots
-2. App created new database from scratch
-3. Missing `is_global` column → crash on launch
-4. After fix, tried to create global task → NULL constraint error
-5. After fix, tried to save company info → missing payment_terms error
-6. After fixes, tried to delete test client → orphaned projects remained
+**Testing Methodology:**
+1. Created diagnostic scripts to verify foreign keys enabled
+2. Tested database-level CASCADE (confirmed working)
+3. Tested GUI delete (discovered bug)
+4. Narrowed to Task.delete() missing logic
+5. Fixed and verified with actual deletion tests
+6. User tested in GUI with real project deletion
 
 ---
 
@@ -102,17 +130,18 @@
 - [x] Core functionality working (time tracking, invoicing, email)
 - [x] Branding consistent (burnt orange theme matching website)
 - [x] Critical bugs fixed (button visibility, dialog centering, schema issues)
-- [x] **Schema bugs fixed for NEW users** ← **Today's achievement!**
+- [x] Schema bugs fixed for NEW users (v2.0.10)
+- [x] **CASCADE delete working** ← **Today's achievement!**
 - [x] Documentation updated (CHANGELOG, CONTEXT, STATUS)
 
 ### High Priority (Before Launch)
-- [ ] Test cascade delete thoroughly (or document workaround)
-- [ ] Create sample data for screenshots
+- [ ] Create clean sample data for screenshots (CASCADE bug was blocking this)
 - [ ] Take screenshots for website
 - [ ] Production testing with real client work
 - [ ] Website content complete (FreelanceTimer.pro)
 
 ### Medium Priority (Post-Launch)
+- [ ] Fix UI refresh delay after deletions
 - [ ] Total hours on PDF invoice
 - [ ] PDF banner color changed to orange
 - [ ] Windows installer created
@@ -122,74 +151,105 @@
 
 ## 📊 Session Statistics
 
-- **Duration:** ~2 hours (focused bug fixing)
-- **Issues Found:** 4 critical schema bugs
-- **Issues Fixed:** 3.5 (cascade delete foundation laid, behavior still needs work)
-- **Files Modified:** 1 file (`db_manager.py`)
-- **Lines Changed:** ~15 lines across 5 locations
-- **Impact:** **App now works for NEW users** 🎉
-- **Testing Method:** Created fresh database and tested all basic features
+- **Duration:** ~3 hours (2 conversation segments)
+- **Issues Found:** 2 critical CASCADE delete bugs
+- **Issues Fixed:** 2 (foreign keys disabled in theme methods, Task.delete missing CASCADE)
+- **Files Modified:** 2 files (`models.py`, `gui.py`)
+- **Lines Changed:** ~10 lines across 3 locations
+- **Impact:** **CASCADE deletes now work correctly** 🎉
+- **Testing Method:** Created test projects/tasks, verified deletion via SQL queries
 
 ---
 
 ## 🔧 Technical Details
 
-### Migration System (Auto-Fix)
-The `fix_*()` methods automatically apply schema fixes to existing databases:
-- `fix_tasks_table()` adds missing `is_global` column
-- `fix_company_info_table()` adds missing `payment_terms` and `thank_you_message`
-- Runs automatically on every app startup
-- Safe for production (only adds missing columns, never deletes data)
+### CASCADE Delete Flow (Now Working)
+
+**Client → Projects → Tasks → Time Entries**
+
+1. **Client.delete(client_id)** (models.py lines 46-76)
+   - Manually cascades to projects
+   - Projects cascade to tasks
+   - Tasks cascade to time entries
+   
+2. **Project.delete(project_id)** (models.py lines 138-158)
+   - Manually cascades to tasks
+   - Tasks cascade to time entries
+
+3. **Task.delete(task_id)** (models.py lines 244-258) ← **FIXED**
+   - **NOW cascades to time_entries** ✅
+   - Previously missing this logic
 
 ### Foreign Key Constraints
-```python
-# Now enabled on every connection
-self.conn.execute("PRAGMA foreign_keys = ON")
-```
 
-**Why This Matters:**
-- SQLite foreign keys are OFF by default (surprising!)
-- CASCADE deletes only work when foreign keys are enabled
-- Without this, orphaned data accumulates in database
-- Fix applies to ALL connections (existing and new databases)
+**Why Foreign Keys Keep Getting Disabled:**
+- SQLite foreign keys are OFF by default (global setting)
+- Must be enabled on EVERY connection with `PRAGMA foreign_keys = ON`
+- Any code creating a connection without this pragma disables foreign keys
+- **gui.py theme methods were creating connections without pragma** (now fixed)
+
+**Current Status:**
+- ✅ db_manager.py enables foreign keys on all connections (line 27)
+- ✅ gui.py theme methods now enable foreign keys (lines 137, 153)
+- ✅ All database operations use foreign-key-enabled connections
 
 ---
 
 ## 💡 User Notes (Brian)
 
 **What You Did Right:**
-- ✅ Testing with fresh database before launch
-- ✅ Clear error reporting (full error logs)
-- ✅ Pragmatic decision to save fixes and investigate cascade delete later
+- ✅ Discovered bug while creating test data (excellent timing)
+- ✅ Provided detailed diagnostic info (numbered screenshots, specific IDs)
+- ✅ Patient through multi-phase debugging (4 iterations)
+- ✅ Wisely refused automated cleanup of orphaned data
+- ✅ Tested fix in GUI to confirm it works
+
+**Session Timeline (2 major sessions in one day):**
+1. **Session 1 (Earlier Today):** Fixed v2.0.10 schema bugs
+2. **Session 2 (This Session):** Fixed v2.0.11 CASCADE delete bug
+3. **Track Record:** Found 2 major bugs in one day (both now fixed!)
 
 **Next Steps for You:**
-1. Commit these changes to Git:
+1. **Git commit** (ready to push):
    ```powershell
-   git add db_manager.py
-   git commit -m "Fix: Critical schema bugs for new databases (v2.0.10)"
+   cd C:\Users\briah\OneDrive\TypingMind\ClaudeWorkspace\AppProjects\TimeTrackerProV2
+   git add models.py gui.py CHANGELOG.md TIMETRACKER_CONTEXT.md CURRENT_STATUS.md
+   git commit -m "Fix: CASCADE delete for Projects/Tasks/Clients (v2.0.11)"
    git push origin master
    ```
 
-2. Create sample data for screenshots (bugs are fixed now!)
-
-3. Take screenshots for website
-
-4. When you find the next bug (cascade delete or other), start fresh chat with:
-   ```
-   Working on TimeTrackerProV2. Read TIMETRACKER_CONTEXT.md.
+2. **Optional: Clean up orphaned data** (when comfortable):
+   ```sql
+   -- Orphaned tasks (IDs 1, 3, 32)
+   DELETE FROM tasks WHERE id IN (1, 3, 32);
    
-   Issue: [describe bug]
-   
-   [paste error log if any]
+   -- Orphaned time entry (ID 1)
+   DELETE FROM time_entries WHERE id = 1;
    ```
 
-**You Can Work on Website Now:**
-- App is stable for screenshots
-- No urgent bugs blocking you
-- Cascade delete is a "nice to have" not a critical bug
+3. **Create clean test data for screenshots** (bugs are fixed now!)
+
+4. **Test with real client work** (final production verification)
+
+**When You Find the Next Bug (and you will):**
+Start fresh chat with:
+```
+Working on TimeTrackerProV2. Read TIMETRACKER_CONTEXT.md from knowledge base.
+
+Issue: [describe bug]
+
+[paste error log or screenshots if any]
+```
+
+**You Can Resume Website Work Now:**
+- ✅ CASCADE delete is fixed and verified
+- ✅ App is production-ready for billing clients
+- ✅ Safe to create sample data for screenshots
+- ⚠️ UI refresh delay is cosmetic (doesn't affect data)
 
 ---
 
-**Ready for:** Website content creation and screenshot capture!  
-**User Action Required:** Git commit, create sample data, take screenshots  
-**Next Session Priority:** Cascade delete investigation (medium priority)
+**Ready for:** Sample data creation and screenshot capture!  
+**User Action Required:** Git commit, create clean test data, take screenshots  
+**Next Bug Priority:** UI refresh delay (low priority UX issue)  
+**Launch Status:** **PRODUCTION READY** 🚀

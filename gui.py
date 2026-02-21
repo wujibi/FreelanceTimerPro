@@ -140,6 +140,7 @@ class TimeTrackerApp:
         """Load saved theme preference from database"""
         try:
             conn = sqlite3.connect(self.db.db_path)
+            conn.execute("PRAGMA foreign_keys = ON")  # ENABLE FOREIGN KEYS
             cursor = conn.cursor()
             cursor.execute("SELECT value FROM settings WHERE key = 'theme'")
             result = cursor.fetchone()
@@ -152,6 +153,7 @@ class TimeTrackerApp:
         """Save theme preference to database"""
         try:
             conn = sqlite3.connect(self.db.db_path)
+            conn.execute("PRAGMA foreign_keys = ON")  # ENABLE FOREIGN KEYS
             cursor = conn.cursor()
             # Create settings table if doesn't exist
             cursor.execute('''

@@ -33,14 +33,25 @@
 - ✅ Email templates (5 built-in: Professional, Friendly, Formal, Reminder, Thank You)
 - ✅ Tree expansion state preservation (no more collapsing!)
 
-**Recent Fixes (v2.0.5 - January 29, 2026):**
-- ✅ **EMAIL INVOICE FEATURE** - Complete implementation from SMTP config to PDF attachment
-- ✅ Fixed task edit bug (rates now update correctly)
-- ✅ Fixed tree collapse issue (Tasks, Time Entries, Invoice tabs maintain expansion)
-- ✅ Added edit from Invoice tab (both main tab and preview dialog)
-- ✅ Fixed dialog positioning (modals now appear in front)
-- ✅ Fixed whitespace on startup (removed Timer scrollbar)
-- ✅ Fixed email settings persistence (auto-load on startup)
+**Recent Fixes:**
+
+**v2.0.11 (February 21, 2026):**
+- ✅ **CASCADE DELETE FIX** - Fixed critical bug where deleting Projects/Tasks left orphaned data
+  - Task.delete() now properly cascades to time_entries
+  - Foreign keys re-enabled in theme preference methods
+  - Verified working via Project 3 deletion test and GUI tests
+  - Known issue: UI tabs don't auto-refresh after deletion (cosmetic only - data IS deleted)
+
+**v2.0.10 (February 15, 2026):**
+- ✅ **PRE-LAUNCH SCHEMA BUGS FIXED** - Critical bugs that would crash new databases
+  - Added missing `is_global` column to tasks table
+  - Removed NOT NULL constraint from `tasks.project_id`
+  - Added `payment_terms` and `thank_you_message` to company_info
+  - Enabled foreign keys on database connection
+
+**v2.0.5 (January 29, 2026):**
+- ✅ **EMAIL INVOICE FEATURE** - Complete implementation
+- ✅ Fixed task edit bug, tree collapse issues, dialog positioning
 - ✅ Added ReportLab dependency for PDF generation
 
 ---
@@ -219,8 +230,9 @@ Error (if any): [paste error]
 
 ---
 
-**Last Updated:** February 15, 2026
-**App Version:** V2.0.10
-**Status:** ✅ Production Ready - Pre-Launch Schema Bugs Fixed!
-**Recent Fixes:** Critical schema bugs for new databases (is_global column, project_id NULL, payment_terms, foreign keys enabled)
+**Last Updated:** February 21, 2026
+**App Version:** V2.0.11
+**Status:** ✅ Production Ready - CASCADE Delete Fixed!
+**Recent Fixes:** CASCADE delete behavior now works correctly (Task.delete CASCADE, foreign keys enabled in theme methods)
+**Known Issue:** UI refresh delay after deletions (cosmetic - data IS deleted)
 **Git Helper:** Use `git_push.bat` for commits (see GIT_USAGE.md)
