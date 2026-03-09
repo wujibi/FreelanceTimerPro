@@ -1,17 +1,39 @@
 """
-Configuration file for Time Tracker App
+Configuration file for Freelance Timer Pro
 """
 import os
+from pathlib import Path
 
-# Database path - Using Google Drive for sync between computers
-# The r"..." prefix handles the spaces in "My Drive" correctly
-DB_PATH = r"C:\Users\briah\My Drive\TimeTrackerApp\data\time_tracker.db"
 
-# Verify the directory exists
-db_dir = os.path.dirname(DB_PATH)
-if not os.path.exists(db_dir):
-    print(f"[CONFIG] WARNING: Google Drive directory not found: {db_dir}")
-    print(f"[CONFIG] Falling back to local database")
-    DB_PATH = os.path.abspath("data/time_tracker.db")
-else:
-    print(f"[CONFIG] Using Google Drive database: {DB_PATH}")
+def get_db_path():
+    """
+    Determine database path.
+    Checks common Google Drive locations first, falls back to local data folder.
+    """
+    possible_google_drive_paths = [
+        Path.home() / "My Drive" / "FreelanceTimerPro" / "data" / "time_tracker.db",
+        Path.home() / "Google Drive" / "FreelanceTimerPro" / "data" / "time_tracker.db",
+        Path("G:/My Drive/FreelanceTimerPro/data/time_tracker.db"),
+    ]
+
+    for path in possible_google_drive_paths:
+        if path.parent.exists():
+            path.parent.mkdir(parents=True, exist_ok=True)
+            print(f"[CONFIG] Using Google Drive database: {path}")
+            return str(path)
+
+    # Default: store alongside the app in a local data folder
+    if getattr(__import__('sys'), 'frozen', False):
+        # Running as a PyInstaller .exe
+        app_dir = Path(os.path.dirname(__import__('sys').executable))
+    else:
+        # Running as normal Python script
+        app_dir = Path(__file__).parent
+
+    local_path = app_dir / "data" / "time_tracker.db"
+    local_path.parent.mkdir(parents=True, exist_ok=True)
+    print(f"[CONFIG] Using local database: {local_path}")
+    return str(local_path)
+
+
+DB_PATH = get_db_path()

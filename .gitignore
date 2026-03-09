@@ -49,4 +49,34 @@ Thumbs.db
 # Chat backups (temporary)
 Old_Chats/
 
-# Add to existing .gitignore
+# Internal dev/session docs
+SESSION_*.md
+TIMETRACKER_CONTEXT.md
+CURRENT_STATUS.md
+SESSION_END_TEMPLATE.md
+APP_RENAME_GUIDE.md
+LIGHT_THEME_ADDED.md
+BURNT_ORANGE_COLOR_MAP.html
+PUBLIC_RELEASE_CHECKLIST.md
+GIT_USAGE.md
+
+# Dev scripts
+cleanup_*.py
+update_*.py
+DELETE_OBSOLETE_FILES.bat
+git_commit_*.bat
+
+# Test files
+test_*.py
+test_*.bat
+
+# Orphaned files
+3.6.0)
+*.lnk
+
+# Installer build output
+dist/
+build/
+*.spec
+build_exe.bat
+*.iss

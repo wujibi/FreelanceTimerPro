@@ -1,0 +1,458 @@
+Index: TimeTrackerApp_NEW_CHAT_GUIDE.md
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/TimeTrackerApp_NEW_CHAT_GUIDE.md b/TimeTrackerApp_NEW_CHAT_GUIDE.md
+new file mode 100644
+--- /dev/null	(date 1766688913598)
++++ b/TimeTrackerApp_NEW_CHAT_GUIDE.md	(date 1766688913598)
+@@ -0,0 +1,448 @@
++# Time Tracker App - New Chat Session Guide
++
++**Last Updated:** December 16, 2025  
++**Version:** 1.0 (Google Drive Sync Edition)  
++**Status:** ✅ Working with known issues
++
++---
++
++## 🚀 Quick Start for New Chat
++
++### Step 1: Share Context Files
++In your new chat, attach or reference these files:
++1. **This file** (`TimeTrackerApp_NEW_CHAT_GUIDE.md`)
++2. **TECHNICAL_DOCS.md** (from GitHub repo)
++3. **PROJECT_STATUS.md** (from GitHub repo)
++
++**Or simply say:**
++> "I'm working on Time Tracker Pro. Access my GitHub repo: wujibi/TimeTrackerApp and read the technical docs."
++
++### Step 2: MCP Access
++**MCP servers are already configured globally in TypingMind:**
++- ✅ **Filesystem MCP** - Access to local workspace
++- ✅ **GitHub MCP** - Access to repo: `wujibi/TimeTrackerApp`
++
++**Test with:**
++> "Read the main.py file from my TimeTrackerApp repo"
++
++### Step 3: Current Status
++> "The app is working on desktop but database sync to laptop is NOT working. See current issues below."
++
++---
++
++## 📋 Current Known Issues
++
++### 🔴 HIGH PRIORITY - Database Sync Not Working on Laptop
++
++**Issue:** Database syncs via Google Drive on desktop but NOT on laptop
++
++**What's Configured:**
++```python
++# config.py
++DB_PATH = r"C:\Users\briah\My Drive\TimeTrackerApp\data\time_tracker.db"
++```
++
++**Symptoms:**
++- Desktop: Works fine, database updates sync to Google Drive
++- Laptop: [Describe symptoms when you encounter them]
++
++**Possible Causes:**
++1. Google Drive path different on laptop (`C:\Users\[different_username]\My Drive\...`)
++2. Google Drive Desktop not installed/configured on laptop
++3. Sync folder not set up correctly
++4. Path permissions issue
++
++**What to Check:**
++```bash
++# On laptop, check these paths:
++dir "C:\Users\briah\My Drive\TimeTrackerApp\data\time_tracker.db"
++dir "C:\Users\[laptop_username]\My Drive\TimeTrackerApp\data\time_tracker.db"
++```
++
++**Fix Strategy:**
++1. Verify Google Drive Desktop installed on laptop
++2. Confirm Google Drive path on laptop (may be different username)
++3. Update `config.py` with correct laptop path OR use environment variable
++4. Test database access before running app
++
++---
++
++## 🎯 Requested New Features
++
++### Feature 1: Decimal Time Entry for Manual Edits
++
++**Current Behavior:**
++- Manual time entry uses start/end times (HH:MM AM/PM format)
++- Duration calculated automatically
++
++**Requested:**
++- Allow direct entry of decimal hours (e.g., 2.5 hours, 0.75 hours)
++- Useful for quick entries when exact start/end times unknown
++
++**Implementation Notes:**
++- Add option in manual entry form: "Enter duration directly"
++- Input field for decimal hours (validate: positive number, max 24)
++- Calculate start_time = date + current time, end_time = start + duration
++- Update `gui.py` manual entry section
++- Update `models.py` TimeEntry.add_manual_entry() to accept duration option
++
++**Priority:** Medium  
++**Complexity:** Low (form update + calculation logic)
++
++---
++
++### Feature 2: Invoice Preview & Approval Mode
++
++**Current Behavior:**
++- Generate invoice → immediately marks time entries as billed
++- No verification step before billing
++- Can't undo billing once saved
++
++**Requested:**
++- **Preview Mode** - Generate invoice WITHOUT marking as billed
++- **Approval Step** - User must explicitly approve before billing
++- **Audit Opportunity** - Review items, edit if needed, then approve
++- **Cancel Option** - Discard preview without billing
++
++**Implementation Notes:**
++
++**Phase 1: Preview Mode**
++```python
++# New flow:
++1. User selects entries → "Generate Preview"
++2. Display invoice in preview mode (entries NOT marked billed)
++3. Show warning: "PREVIEW MODE - Not yet billed"
++4. Allow edits to invoice items
++5. Two buttons: "Approve & Bill" or "Cancel Preview"
++```
++
++**Phase 2: Approval**
++```python
++# On "Approve & Bill":
++1. Show confirmation dialog
++2. Mark entries as billed
++3. Save to billing_history
++4. Generate PDF
++5. Update UI to show [BILLED] status
++```
++
++**Phase 3: Cancel**
++```python
++# On "Cancel Preview":
++1. Clear invoice preview
++2. Entries remain unbilled
++3. User can regenerate with different selections
++```
++
++**UI Changes:**
++- `gui.py` invoice tab: Add "PREVIEW MODE" banner
++- Change button labels: "Generate Invoice" → "Generate Preview"
++- Add "Approve & Bill" button (only active in preview mode)
++- Add "Cancel Preview" button
++- Disable PDF export until approved
++
++**Database Changes:**
++- NO changes needed - just delay the `mark_entries_billed()` call
++- Only execute after "Approve & Bill" clicked
++
++**Priority:** HIGH (prevents accidental billing errors)  
++**Complexity:** Medium (UI changes + workflow logic)
++
++---
++
++## 🗂️ Project File Structure
++
++### GitHub Repository: `wujibi/TimeTrackerApp`
++```
++TimeTrackerApp/
++├── launcher.py           # Entry point
++├── main.py              # App launcher  
++├── config.py            # Database path configuration ⚠️ CRITICAL
++├── db_manager.py        # Database operations (was database.py)
++├── gui.py               # Main GUI (78KB - large file)
++├── models.py            # Data models
++├── invoice_generator.py # PDF generation
++├── data/                # Local backup (not in use currently)
++├── TECHNICAL_DOCS.md    # Full technical documentation
++├── CHANGELOG.md         # Version history
++└── README.md           # User guide
++```
++
++### Google Drive Sync Location
++```
++C:\Users\briah\My Drive\TimeTrackerApp\
++└── data\
++    └── time_tracker.db  # Active database (synced)
++```
++
++### Local MCP Workspace
++```
++C:\Users\briah\OneDrive\TypingMind\ClaudeWorkspace\
++├── TimeTrackerApp_NEW_CHAT_GUIDE.md (this file)
++└── (other project files)
++```
++
++---
++
++## 🔧 How to Start Fresh Development Session
++
++### Option 1: Quick Context (Recommended)
++```
++"I'm working on Time Tracker Pro app. 
++
++GitHub repo: wujibi/TimeTrackerApp
++Read TECHNICAL_DOCS.md for full context.
++
++Current issues:
++1. Database sync not working on laptop
++2. Need to add decimal time entry for manual edits
++3. Need invoice preview/approval mode before billing
++
++Where should we start?"
++```
++
++### Option 2: Detailed Context
++Share this entire file plus:
++1. Specific error messages from laptop (if any)
++2. Console output showing sync issue
++3. Which feature to tackle first
++
++---
++
++## 🐛 Debugging Database Sync Issue
++
++### Information Needed:
++1. **Laptop username:** `C:\Users\[???]\`
++2. **Google Drive path on laptop:** Run this command on laptop:
++   ```bash
++   dir "C:\Users\%USERNAME%\My Drive\TimeTrackerApp"
++   ```
++3. **Console output when running app on laptop:**
++   ```bash
++   python launcher.py
++   ```
++4. **Error messages:** Full traceback if app crashes
++
++### Diagnosis Steps:
++```python
++# 1. Check config.py path
++print(f"Config DB_PATH: {DB_PATH}")
++print(f"Path exists: {os.path.exists(DB_PATH)}")
++print(f"Path is file: {os.path.isfile(DB_PATH)}")
++
++# 2. Check Google Drive folder
++import os
++gdrive_paths = [
++    r"C:\Users\briah\My Drive",
++    r"C:\Users\briah\Google Drive",
++    f"C:\\Users\\{os.environ['USERNAME']}\\My Drive"
++]
++for path in gdrive_paths:
++    print(f"{path}: {os.path.exists(path)}")
++
++# 3. List TimeTrackerApp data folder
++data_dir = os.path.dirname(DB_PATH)
++if os.path.exists(data_dir):
++    print(f"Files in {data_dir}:")
++    for f in os.listdir(data_dir):
++        print(f"  - {f}")
++```
++
++### Potential Fixes:
++
++**Fix 1: Environment Variable Approach**
++```python
++# config.py - Use environment-aware path
++import os
++
++USERNAME = os.environ.get('USERNAME', 'briah')
++DB_PATH = rf"C:\Users\{USERNAME}\My Drive\TimeTrackerApp\data\time_tracker.db"
++
++# Verify and fallback
++if not os.path.exists(os.path.dirname(DB_PATH)):
++    print(f"[CONFIG] Google Drive not found at: {DB_PATH}")
++    DB_PATH = os.path.abspath("data/time_tracker.db")
++    print(f"[CONFIG] Falling back to local: {DB_PATH}")
++```
++
++**Fix 2: Check Multiple Paths**
++```python
++# config.py - Try common Google Drive locations
++import os
++
++GDRIVE_PATHS = [
++    r"C:\Users\briah\My Drive\TimeTrackerApp\data\time_tracker.db",
++    rf"C:\Users\{os.environ['USERNAME']}\My Drive\TimeTrackerApp\data\time_tracker.db",
++    r"G:\My Drive\TimeTrackerApp\data\time_tracker.db",
++]
++
++DB_PATH = None
++for path in GDRIVE_PATHS:
++    if os.path.exists(os.path.dirname(path)):
++        DB_PATH = path
++        print(f"[CONFIG] Found Google Drive at: {path}")
++        break
++
++if DB_PATH is None:
++    DB_PATH = os.path.abspath("data/time_tracker.db")
++    print(f"[CONFIG] Google Drive not found, using local: {DB_PATH}")
++```
++
++**Fix 3: Manual Configuration File**
++```python
++# Create user_config.py (gitignored)
++# Each machine has its own user_config.py
++
++# Desktop user_config.py:
++DB_PATH = r"C:\Users\briah\My Drive\TimeTrackerApp\data\time_tracker.db"
++
++# Laptop user_config.py:
++DB_PATH = r"C:\Users\laptop_name\My Drive\TimeTrackerApp\data\time_tracker.db"
++
++# Then in config.py:
++try:
++    from user_config import DB_PATH
++    print(f"[CONFIG] Using user-specific path: {DB_PATH}")
++except ImportError:
++    # Default path
++    DB_PATH = r"C:\Users\briah\My Drive\TimeTrackerApp\data\time_tracker.db"
++```
++
++---
++
++## ⚙️ Key Technical Details
++
++### Critical Code Sections:
++
++**Database Initialization** (`db_manager.py` lines 14-49)
++- Must initialize `self.conn = None` FIRST
++- Use `@contextmanager` with try/finally for `get_connection()`
++- No duplicate class/method declarations
++
++**Config Path** (`config.py`)
++- Uses raw string `r"..."` for Windows paths with spaces
++- Fallback to local database if Google Drive not found
++- Currently hardcoded to desktop path
++
++**GUI Database Usage** (`gui.py` line 14-60)
++- Accepts `db_path` parameter in `__init__`
++- Passes path to `DatabaseManager(db_path)`
++- Has error handling with traceback
++
++### Import Structure:
++```python
++# All files use:
++from db_manager import DatabaseManager  # NOT "database"
++from config import DB_PATH
++```
++
++### Database Schema:
++- SQLite with FTS (Full Text Search)
++- 8 main tables + views
++- Automatic schema migration on startup
++- Billing history tracks invoiced entries
++
++---
++
++## 📝 Development Workflow
++
++### Making Changes:
++1. **Local Development:**
++   - Edit files in: `C:\Users\briah\Custom Apps\TimetrackerAppV1\`
++   - Test with: `python launcher.py`
++
++2. **Commit to GitHub:**
++   ```bash
++   git add .
++   git commit -m "Description of changes"
++   git push origin master
++   ```
++
++3. **Update Documentation:**
++   - Update CHANGELOG.md with changes
++   - Update TECHNICAL_DOCS.md if architecture changes
++   - Regenerate CODE_SNAPSHOT.md at end of session
++
++### Testing Checklist:
++- [ ] App launches without errors
++- [ ] All tabs display correctly  
++- [ ] Can add/edit clients, projects, tasks
++- [ ] Timer starts/stops successfully
++- [ ] Manual time entry works
++- [ ] Invoice generation works
++- [ ] PDF export works
++- [ ] Database persists changes
++- [ ] Works on both desktop and laptop ⚠️
++
++---
++
++## 🎯 Session Goals Template
++
++**Use this template when starting new development chat:**
++
++```
++Time Tracker Pro - Development Session
++
++CONTEXT:
++- GitHub: wujibi/TimeTrackerApp
++- Status: Working on desktop, sync broken on laptop
++- Python 3.13.9, tkinter GUI, SQLite database
++
++CURRENT ISSUES:
++1. [Priority] Database sync not working on laptop
++2. [Medium] Need decimal time entry for manual edits  
++3. [High] Need invoice preview/approval before billing
++
++TODAY'S GOAL:
++[Choose one to focus on]
++
++QUESTIONS:
++1. [Any specific questions about the issue]
++2. [Any error messages to investigate]
++
++Ready to proceed!
++```
++
++---
++
++## 💾 Files to Have Ready
++
++**For Bug Fixes:**
++1. Console output showing error
++2. Relevant code section (I can read from GitHub)
++3. Steps to reproduce
++
++**For New Features:**
++1. User workflow description
++2. UI mockup or description
++3. Database changes needed (if any)
++
++**For Laptop Sync Issue:**
++1. Laptop username
++2. Output of path check commands
++3. Google Drive Desktop version/status
++
++---
++
++## 🔗 Quick Links
++
++- **GitHub Repo:** https://github.com/wujibi/TimeTrackerApp
++- **Local Project:** `C:\Users\briah\Custom Apps\TimetrackerAppV1\`
++- **Google Drive DB:** `C:\Users\briah\My Drive\TimeTrackerApp\data\`
++- **Documentation:** See TECHNICAL_DOCS.md in repo
++
++---
++
++## 📞 Tips for Effective Development Sessions
++
++1. **Start with one issue** - Don't try to fix everything at once
++2. **Test incrementally** - Small changes, test, commit
++3. **Use MCP** - I can read files directly, no pasting needed
++4. **Save working versions** - Commit before major changes
++5. **Document as you go** - Update CHANGELOG.md
++
++---
++
++**Ready to develop? Start a new chat and share this file!** 🚀
++
++**Remember:** MCP servers are already configured - I can access your files immediately in any new chat!
