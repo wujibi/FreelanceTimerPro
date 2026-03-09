@@ -86,7 +86,7 @@ The app automatically stores your database locally in the `data/` folder.
 
 See [CHANGELOG.md](CHANGELOG.md) for full version history.
 
-**Current version:** 2.0.9
+**Current version:** 2.0.9 
 
 ---
 
@@ -103,4 +103,4 @@ See [CHANGELOG.md](CHANGELOG.md) for full version history.
 
 MIT License — see [LICENSE](LICENSE) for details.
 
-Copyright (c) 2026 Brian Hood
+Copyright (c) 2026 Brian Hood 
