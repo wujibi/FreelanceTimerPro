@@ -1,68 +1,106 @@
-# ⏰ Time Tracker Pro v2.0
+# ⏱️ Freelance Timer Pro
 
-Professional desktop time tracking and invoicing application built with Python and tkinter.
+Free, open source time tracking and invoicing for Windows freelancers.
 
-## ✨ Key Features
+**[Download the Installer](https://github.com/wujibi/FreelanceTimerPro/releases/latest)** | **[Website](https://freelancetimer.pro)**
 
-- **Timer & Manual Entry** - Track time with start/stop timer or enter hours manually (decimal format supported)
-- **Global Tasks** - Create reusable tasks available across all projects (e.g., "Meeting", "Admin")
-- **Client Management** - Store client contacts, companies, and project details
-- **Flexible Billing** - Support for hourly rates and lump sum projects
-- **PDF Invoices** - Generate professional branded invoices with company logo
-- **Excel Export** - Export time entries to .xlsx spreadsheets with professional formatting
-- **Smart Filtering** - Filter time entries by Unbilled/Billed/All status
-- **Payment Tracking** - Mark invoices as paid with payment dates
-- **Google Drive Sync** - Sync database across multiple computers
-- **Hierarchical Views** - Organized display of tasks and time entries by Client → Project → Task
+---
 
-## 🚀 Quick Start
+## ✨ Features
 
-1. **Install Python 3.8+** if not already installed
-2. **Clone repository:**
+- **Timer & Manual Entry** — Track time with start/stop timer or enter hours manually
+- **Client Management** — Store client contacts, companies, and project details
+- **Global Tasks** — Reusable tasks available across all projects (e.g., "Meeting", "Admin")
+- **Flexible Billing** — Hourly rates and lump sum project support
+- **PDF Invoices** — Generate professional branded invoices with your company logo
+- **Email Invoicing** — Send invoices directly via Gmail
+- **Excel Export** — Export time entries to .xlsx spreadsheets
+- **Smart Filtering** — Filter time entries by Unbilled/Billed/All status
+- **Payment Tracking** — Mark invoices as paid with payment dates
+- **Google Drive Sync** — Optional sync across multiple computers
+- **Themes** — Built-in color themes with live switcher
+
+---
+
+## 💻 Installation
+
+**Easiest way — download the installer:**
+👉 [FreelanceTimerPro_Setup_v2.0.9.exe](https://github.com/wujibi/FreelanceTimerPro/releases/latest)
+
+Run the installer, follow the wizard, launch from Start Menu. Done.
+
+> **Note:** Windows Defender may show a security warning for unsigned apps.
+> Click "More info" → "Run anyway". This is normal for free open source software.
+
+---
+
+## 🛠️ Run from Source
+
+1. **Clone the repository:**
    ```bash
-   git clone https://github.com/wujibi/TimeTrackerApp.git
-   cd TimeTrackerApp
-3. **Install dependencies:**
+   git clone https://github.com/wujibi/FreelanceTimerPro.git
+   cd FreelanceTimerPro
+   ```
+
+2. **Install dependencies:**
    ```bash
    pip install -r requirements.txt
-4. **Run application:**
+   ```
+
+3. **Run the app:**
    ```bash
    python main.py
-   
-## 📖 Basic Workflow
-1. **Company Info** - Set up your business details and logo
-2. **Clients** - Add client contact information
-3. **Projects** - Create projects with hourly or lump sum billing
-4. **Tasks**- Define tasks (project-specific or global)
-5. **Timer** - Track time or add manual entries
-6. **Invoices** - Generate PDF invoices from unbilled hours
-7. **Billed Invoices** - Track payment status
+   ```
+
+**Requirements:** Python 3.8+, Windows 10/11
+
+---
 
 ## 📁 Project Structure
-- main.py / launcher.pyw - Application entry points
-- gui.py - Main UI (4100+ lines)
-- models.py - Database models
-- db_manager.py - Database connection manager
-- invoice_generator.py - PDF generation
-- config.py - Database path configuration
-- data/time_tracker.db - SQLite database
+
+```
+FreelanceTimerPro/
+├── main.py              # Application entry point
+├── gui.py               # Main UI
+├── models.py            # Database models
+├── db_manager.py        # Database connection manager
+├── invoice_generator.py # PDF generation
+├── email_sender.py      # Email functionality
+├── config.py            # Database path configuration
+├── themes/              # Color theme modules
+├── assets/              # Icons and images
+└── data/                # Local database (created on first run)
+```
+
+---
 
 ## 🔧 Configuration
-Edit config.py to set database location:
 
-- Default: Google Drive sync location
-- Fallback: Local ./data/time_tracker.db
+The app automatically stores your database locally in the `data/` folder.
 
-## 📝 Recent Updates (v2.0.1)
-- **Excel Export** - Export time entries to spreadsheets (filter or selection based)
-- New clock icon across all application instances
-- Time entries filter (Unbilled/Billed/All)
-- Global tasks feature with hierarchical display
-- Enhanced timer integration
+**Optional Google Drive sync:** If a `My Drive/FreelanceTimerPro/data/` folder exists on your machine, the app will use that instead — syncing your data across computers automatically.
+
+---
+
+## 📝 Version History
 
 See [CHANGELOG.md](CHANGELOG.md) for full version history.
 
-## 📫 Contact
-Brian Hood - briahood@gmail.com
+**Current version:** 2.0.9
 
-License: Proprietary - All Rights Reserved
+---
+
+## 📫 Contact & Support
+
+- **Website:** [freelancetimer.pro](https://freelancetimer.pro)
+- **Email:** support@freelancetimer.pro
+- **Issues:** [GitHub Issues](https://github.com/wujibi/FreelanceTimerPro/issues)
+- **Author:** Brian Hood
+
+---
+
+## 📄 License
+
+MIT License — see [LICENSE](LICENSE) for details.
+
+Copyright (c) 2026 Brian Hood
