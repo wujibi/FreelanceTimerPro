@@ -1,72 +1,34 @@
 @echo off
-REM Generic Git Push Script for Time Tracker Pro
-REM This script guides you through committing and pushing changes to GitHub
-
-echo ========================================
-echo Time Tracker Pro - Git Push Helper
-echo ========================================
+echo ============================================================
+echo  FreelanceTimerPro - Git Commit and Push
+echo ============================================================
 echo.
 
-REM Change to project directory
-cd /d "C:\Users\briah\OneDrive\TypingMind\ClaudeWorkspace\AppProjects\TimeTrackerProV2"
+cd /d "%~dp0"
 
-echo Step 1: Current Git Status
-echo ========================================
-git status
+echo Current changes:
 echo.
+git status --short
 echo.
 
-set /p CONTINUE="Continue with commit? (y/n): "
-if /i not "%CONTINUE%"=="y" goto :END
-echo.
+REM Prompt for commit message
+set /p MSG="Enter commit message (or press Enter for default): "
+if "%MSG%"=="" set MSG=Update FreelanceTimerPro
 
-echo Step 2: Staging Files
-echo ========================================
-git add .
-echo All changes staged.
 echo.
-echo.
+echo [1/3] Staging all changes...
+git add -A
 
-set /p VERSION="Enter version (e.g., 2.0.6): "
-set /p TITLE="Enter brief title (e.g., UI improvements): "
-echo.
-echo Enter detailed changes (press Enter twice when done):
-set /p DETAIL1="- "
-set /p DETAIL2="- "
-set /p DETAIL3="- "
-echo.
+echo [2/3] Committing: "%MSG%"
+git commit -m "%MSG%"
 
-echo Step 3: Committing Changes
-echo ========================================
-if "%DETAIL3%"=="" (
-    if "%DETAIL2%"=="" (
-        git commit -m "Version %VERSION% - %TITLE%" -m "- %DETAIL1%"
-    ) else (
-        git commit -m "Version %VERSION% - %TITLE%" -m "- %DETAIL1%" -m "- %DETAIL2%"
-    )
-) else (
-    git commit -m "Version %VERSION% - %TITLE%" -m "- %DETAIL1%" -m "- %DETAIL2%" -m "- %DETAIL3%"
-)
-echo.
-echo Commit complete!
-echo.
-echo.
-
-set /p PUSH="Push to GitHub now? (y/n): "
-if /i not "%PUSH%"=="y" goto :END
-echo.
-
-echo Step 4: Pushing to GitHub
-echo ========================================
+echo [3/3] Pushing to GitHub...
 git push origin master
-echo.
-echo.
 
-echo ========================================
-echo SUCCESS! Changes pushed to GitHub.
-echo ========================================
-goto :END
-
-:END
+echo.
+echo ============================================================
+echo  Done! Changes are now live on GitHub.
+echo  https://github.com/wujibi/FreelanceTimerPro
+echo ============================================================
 echo.
 pause
