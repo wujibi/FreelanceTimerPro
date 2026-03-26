@@ -4,11 +4,14 @@ Handles all database operations including time entries, clients, projects, and b
 """
 import os
 import sqlite3
+import logging
 
 from datetime import datetime, timedelta
 from pathlib import Path
 from contextlib import contextmanager
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 
 class DatabaseManager:

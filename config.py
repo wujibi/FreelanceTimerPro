@@ -10,6 +10,13 @@ def get_db_path():
     Determine database path.
     Checks common Google Drive locations first, falls back to local data folder.
     """
+    override = os.environ.get("FREELANCETIMERPRO_DB_PATH")
+    if override:
+        override_path = Path(override)
+        override_path.parent.mkdir(parents=True, exist_ok=True)
+        print(f"[CONFIG] Using overridden database path: {override_path}")
+        return str(override_path)
+
     possible_google_drive_paths = [
         Path.home() / "My Drive" / "FreelanceTimerPro" / "data" / "time_tracker.db",
         Path.home() / "Google Drive" / "FreelanceTimerPro" / "data" / "time_tracker.db",
