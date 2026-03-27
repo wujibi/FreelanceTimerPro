@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, messagebox
 
 
 class EmailTabMixin:
@@ -285,3 +285,267 @@ class EmailTabMixin:
             command=self.send_test_template_email,
             style="Accent.TButton",
         ).pack(side="right", padx=5)
+
+    # Email settings methods
+    def on_email_provider_select(self):
+        provider = self.email_provider_var.get()
+        if provider == "gmail":
+            self.smtp_server_entry.delete(0, tk.END)
+            self.smtp_server_entry.insert(0, "smtp.gmail.com")
+            self.smtp_port_entry.delete(0, tk.END)
+            self.smtp_port_entry.insert(0, "587")
+        elif provider == "outlook":
+            self.smtp_server_entry.delete(0, tk.END)
+            self.smtp_server_entry.insert(0, "smtp-mail.outlook.com")
+            self.smtp_port_entry.delete(0, tk.END)
+            self.smtp_port_entry.insert(0, "587")
+
+    def toggle_password_visibility(self):
+        if self.show_password_var.get():
+            self.email_password_entry.config(show="")
+        else:
+            self.email_password_entry.config(show="*")
+
+    def save_email_settings(self):
+        smtp_server = self.smtp_server_entry.get().strip()
+        smtp_port = self.smtp_port_entry.get().strip()
+        email_address = self.email_address_entry.get().strip()
+        email_password = self.email_password_entry.get().strip()
+        from_name = self.email_from_name_entry.get().strip()
+
+        if not smtp_server or not smtp_port or not email_address or not email_password:
+            messagebox.showerror("Error", "Please fill in all required fields")
+            return
+
+        try:
+            port = int(smtp_port)
+        except ValueError:
+            messagebox.showerror("Error", "SMTP port must be a number")
+            return
+
+        success = self.db.save_email_settings(
+            smtp_server=smtp_server,
+            smtp_port=port,
+            email_address=email_address,
+            email_password=email_password,
+            from_name=from_name if from_name else None,
+            send_copy_to_self=self.send_copy_to_self_var.get(),
+            show_preview_before_send=self.show_preview_var.get(),
+        )
+
+        if success:
+            messagebox.showinfo("Success", "Email settings saved successfully!")
+        else:
+            messagebox.showerror("Error", "Failed to save email settings")
+
+    def load_email_settings(self):
+        settings = self.db.get_email_settings()
+        if not settings:
+            messagebox.showinfo("No Settings", "No email settings found. Please configure your email.")
+            return
+        self._populate_email_settings(settings)
+        messagebox.showinfo("Success", "Email settings loaded successfully!")
+
+    def load_email_settings_silent(self):
+        settings = self.db.get_email_settings()
+        if not settings:
+            return
+        self._populate_email_settings(settings)
+
+    def _populate_email_settings(self, settings):
+        self.smtp_server_entry.delete(0, tk.END)
+        self.smtp_port_entry.delete(0, tk.END)
+        self.email_address_entry.delete(0, tk.END)
+        self.email_password_entry.delete(0, tk.END)
+        self.email_from_name_entry.delete(0, tk.END)
+
+        self.smtp_server_entry.insert(0, settings[1])
+        self.smtp_port_entry.insert(0, str(settings[2]))
+        self.email_address_entry.insert(0, settings[3])
+        self.email_password_entry.insert(0, settings[4])
+        if settings[5]:
+            self.email_from_name_entry.insert(0, settings[5])
+
+        if len(settings) > 6:
+            self.send_copy_to_self_var.set(bool(settings[6]))
+        if len(settings) > 7:
+            self.show_preview_var.set(bool(settings[7]))
+
+        smtp_server = settings[1].lower()
+        if "gmail" in smtp_server:
+            self.email_provider_var.set("gmail")
+        elif "outlook" in smtp_server:
+            self.email_provider_var.set("outlook")
+        else:
+            self.email_provider_var.set("custom")
+
+    def test_email_connection(self):
+        smtp_server = self.smtp_server_entry.get().strip()
+        smtp_port = self.smtp_port_entry.get().strip()
+        email_address = self.email_address_entry.get().strip()
+        email_password = self.email_password_entry.get().strip()
+        if not smtp_server or not smtp_port or not email_address or not email_password:
+            messagebox.showerror("Error", "Please fill in all required fields before testing")
+            return
+
+        try:
+            port = int(smtp_port)
+        except ValueError:
+            messagebox.showerror("Error", "SMTP port must be a number")
+            return
+
+        from email_sender import EmailSender
+
+        sender = EmailSender(smtp_server, port, email_address, email_password)
+        success, message = sender.test_connection()
+        if success:
+            messagebox.showinfo("Connection Successful", message)
+        else:
+            messagebox.showerror("Connection Failed", message)
+
+    # Email template methods
+    def on_template_select(self, event=None):
+        del event
+
+    def load_selected_template(self):
+        from email_sender import EmailTemplate
+
+        template_name = self.template_combo.get()
+        if not template_name:
+            messagebox.showerror("Error", "Please select a template")
+            return
+
+        db_template = self.db.get_email_template(template_name=template_name)
+        if db_template:
+            self.template_subject_entry.delete(0, tk.END)
+            self.template_subject_entry.insert(0, db_template[2])
+            self.template_body_text.delete("1.0", tk.END)
+            self.template_body_text.insert("1.0", db_template[3])
+            self.update_template_preview()
+            messagebox.showinfo("Loaded", f"Template '{template_name}' loaded (CUSTOM VERSION)")
+        else:
+            template = EmailTemplate.get_template(template_name)
+            if not template:
+                messagebox.showerror("Error", f"Template '{template_name}' not found")
+                return
+            self.template_subject_entry.delete(0, tk.END)
+            self.template_subject_entry.insert(0, template["subject"])
+            self.template_body_text.delete("1.0", tk.END)
+            self.template_body_text.insert("1.0", template["body"])
+            self.update_template_preview()
+            messagebox.showinfo("Loaded", f"Template '{template_name}' loaded (DEFAULT VERSION)")
+
+    def reset_template_to_default(self):
+        template_name = self.template_combo.get()
+        if not template_name:
+            messagebox.showerror("Error", "Please select a template first")
+            return
+        if messagebox.askyesno(
+            "Confirm Reset", f"Reset '{template_name}' template to default?\n\nAny custom changes will be lost."
+        ):
+            self.load_selected_template()
+
+    def insert_variable(self, variable):
+        self.template_body_text.insert(tk.INSERT, variable)
+
+    def update_template_preview(self):
+        from email_sender import EmailTemplate
+        import html
+        import re
+
+        subject = self.template_subject_entry.get()
+        body = self.template_body_text.get("1.0", tk.END)
+
+        variables = {
+            "client_name": "John Smith",
+            "client_company": "Smith Industries",
+            "client_email": "john@example.com",
+            "invoice_number": "INV-20260129-123456",
+            "invoice_date": "January 29, 2026",
+            "invoice_total": "$1,234.56",
+            "payment_terms": "Net 30",
+            "due_date": "February 28, 2026",
+            "date_range": "01/01/26 - 01/29/26",
+            "company_name": "Your Company",
+            "company_email": "billing@yourcompany.com",
+            "company_phone": "(555) 123-4567",
+            "company_website": "www.yourcompany.com",
+        }
+
+        preview_subject = EmailTemplate.render_template(subject, variables)
+        preview_body = EmailTemplate.render_template(body, variables)
+        preview_body = preview_body.replace("<br>", "\n").replace("<br/>", "\n").replace("<br />", "\n")
+        preview_body = preview_body.replace("</p>", "\n\n")
+        preview_body = re.sub("<[^<]+?>", "", preview_body)
+        preview_body = html.unescape(preview_body)
+        preview_body = "\n".join(line.strip() for line in preview_body.split("\n"))
+        preview_body = re.sub("\n{3,}", "\n\n", preview_body)
+
+        self.template_preview_text.config(state="normal")
+        self.template_preview_text.delete("1.0", tk.END)
+        self.template_preview_text.insert("1.0", f"Subject: {preview_subject}\n\n{preview_body.strip()}")
+        self.template_preview_text.config(state="disabled")
+
+    def save_current_template(self):
+        template_name = self.template_combo.get()
+        if not template_name:
+            messagebox.showerror("Error", "Please select a template to save")
+            return
+
+        subject = self.template_subject_entry.get().strip()
+        body = self.template_body_text.get("1.0", tk.END).strip()
+        if not subject or not body:
+            messagebox.showerror("Error", "Subject and body cannot be empty")
+            return
+
+        success = self.db.save_email_template(template_name, subject, body, is_default=False)
+        if success:
+            messagebox.showinfo("Success", f"Template '{template_name}' saved successfully!")
+        else:
+            messagebox.showerror("Error", "Failed to save template")
+
+    def send_test_template_email(self):
+        settings = self.db.get_email_settings()
+        if not settings:
+            messagebox.showerror(
+                "Error", "Email settings not configured.\n\nPlease configure email settings in the Email Settings tab first."
+            )
+            return
+
+        subject = self.template_subject_entry.get().strip()
+        body = self.template_body_text.get("1.0", tk.END).strip()
+        if not subject or not body:
+            messagebox.showerror("Error", "Subject and body cannot be empty")
+            return
+
+        from email_sender import EmailSender, EmailTemplate
+
+        variables = {
+            "client_name": "Test Client",
+            "invoice_number": "INV-TEST-123",
+            "invoice_total": "$100.00",
+            "company_name": "Your Company",
+        }
+
+        rendered_subject = EmailTemplate.render_template(subject, variables)
+        rendered_body = EmailTemplate.render_template(body, variables)
+        sender = EmailSender(settings[1], settings[2], settings[3], settings[4])
+        success, message = sender.send_email(
+            to_address=settings[3],
+            subject=f"TEST: {rendered_subject}",
+            body_html=rendered_body,
+            from_name=settings[5] if len(settings) > 5 else None,
+        )
+        if success:
+            messagebox.showinfo("Test Sent", f"Test email sent to {settings[3]}!\n\nCheck your inbox.")
+        else:
+            messagebox.showerror("Send Failed", message)
+
+    def refresh_email_templates(self):
+        if hasattr(self, "template_combo"):
+            from email_sender import EmailTemplate
+
+            template_names = EmailTemplate.get_template_names()
+            self.template_combo["values"] = template_names
+            if template_names:
+                self.template_combo.set(template_names[0])
