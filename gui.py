@@ -3,6 +3,14 @@ import os
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 from datetime import datetime, timedelta
+from core.client_resolution import resolve_client_id_by_name
+from core.project_resolution import resolve_project_id_by_names
+from core.task_list_builders import build_task_displays_for_project
+from core.task_resolution import (
+    GLOBAL_TASK_PREFIX,
+    format_task_display,
+    resolve_task_id_for_timer,
+)
 from db_manager import DatabaseManager
 from models import Client, Project, Task, TimeEntry, CompanyInfo
 from themes import AVAILABLE_THEMES
@@ -10,7 +18,14 @@ import sqlite3
 import threading
 import time
 import tempfile
-import os
+from config import (
+    APP_ICON_FILENAME,
+    APP_TITLE,
+    ASSETS_DIRNAME,
+    DEFAULT_MIN_WINDOW_SIZE,
+    DEFAULT_THEME_NAME,
+    DEFAULT_WINDOW_GEOMETRY,
+)
 from ui_helpers import (
     center_dialog,
     center_window,
@@ -49,17 +64,17 @@ class TimeTrackerApp(
         try:
             print("[DEBUG] TimeTrackerApp.__init__ starting...")
             self.root = root
-            self.root.title("Freelance Timer Pro V2.0 - Professional Time & Invoice Management")
+            self.root.title(APP_TITLE)
             
             # Modern window setup
-            self.root.geometry("1200x800")
-            self.root.minsize(600, 400)  # Much more flexible for small screens
+            self.root.geometry(DEFAULT_WINDOW_GEOMETRY)
+            self.root.minsize(*DEFAULT_MIN_WINDOW_SIZE)  # Much more flexible for small screens
             
             # Try to set custom icon (if exists)
             try:
                 # Get absolute path to icon file relative to this script
                 script_dir = os.path.dirname(os.path.abspath(__file__))
-                icon_path = os.path.join(script_dir, "assets", "icon.ico")
+                icon_path = os.path.join(script_dir, ASSETS_DIRNAME, APP_ICON_FILENAME)
                 if os.path.exists(icon_path):
                     self.root.iconbitmap(icon_path)
             except Exception as e:
@@ -152,7 +167,7 @@ class TimeTrackerApp(
         print("[DEBUG] Theme styles applied successfully")
     
     def load_theme_preference(self):
-        return load_theme_preference(self.db.db_path, default_theme="Burnt Orange Pro V3")
+        return load_theme_preference(self.db.db_path, default_theme=DEFAULT_THEME_NAME)
     
     def save_theme_preference(self, theme_name):
         try:
@@ -222,40 +237,15 @@ class TimeTrackerApp(
         client_name = self.timer_client_combo.get()
         project_name = self.timer_project_combo.get()
 
-        # Check if it's a global task
-        if task_text.startswith('[GLOBAL] '):
-            # Extract task name from "[GLOBAL] TaskName"
-            task_name = task_text.replace('[GLOBAL] ', '')
-
-            # Find the global task
-            global_tasks = self.task_model.get_global_tasks()
-            self.current_task_id = None
-
-            for task in global_tasks:
-                if task[2] == task_name:
-                    self.current_task_id = task[0]
-                    break
-        else:
-            # Regular project-specific task
-            # Extract task name from "Client - Project - Task" format
-            parts = task_text.split(' - ')
-            if len(parts) >= 3:
-                task_name = ' - '.join(parts[2:])
-            else:
-                messagebox.showerror("Error", "Invalid task format")
-                return
-
-            # Find the task by matching client, project, and task names
-            tasks = self.task_model.get_all()
-            self.current_task_id = None
-
-            for task in tasks:
-                if task[9] == client_name and task[8] == project_name and task[2] == task_name:
-                    self.current_task_id = task[0]
-                    break
-
-        if not self.current_task_id:
-            messagebox.showerror("Error", f"Could not find task: {task_name}")
+        self.current_task_id, _, resolution_error = resolve_task_id_for_timer(
+            task_text=task_text,
+            client_name=client_name,
+            project_name=project_name,
+            all_tasks=self.task_model.get_all(),
+            global_tasks=self.task_model.get_global_tasks(),
+        )
+        if resolution_error:
+            messagebox.showerror("Error", resolution_error)
             return
 
         try:
@@ -352,20 +342,11 @@ class TimeTrackerApp(
     def on_timer_client_select(self, event):
         client_name = self.timer_client_combo.get()
         if client_name:
-            # Get client ID
-            clients = self.client_model.get_all()
-            client_id = None
-            for client in clients:
-                if client[1] == client_name:
-                    client_id = client[0]
-                    break
-
-            if client_id:
-                # Load projects for this client
-                projects = self.project_model.get_by_client(client_id)
-                self.timer_project_combo['values'] = [p[2] for p in projects]
-                self.timer_project_combo.set('')
-                self.timer_task_combo.set('')
+            self._populate_projects_for_client(
+                client_name=client_name,
+                project_combo=self.timer_project_combo,
+                task_combo=self.timer_task_combo,
+            )
 
     def on_timer_project_select(self, event):
         project_name = self.timer_project_combo.get()
@@ -374,28 +355,18 @@ class TimeTrackerApp(
         if project_name and client_name:
             # Get project ID by matching client and project names
             projects = self.project_model.get_all()
-            project_id = None
-            for project in projects:
-                proj_client_name = project[9] if len(project) > 9 else None
-                if proj_client_name == client_name and project[2] == project_name:
-                    project_id = project[0]
-                    break
+            project_id = resolve_project_id_by_names(projects, client_name, project_name)
 
             if project_id:
                 # Load tasks for this project AND global tasks
                 project_tasks = self.task_model.get_by_project(project_id)
                 global_tasks = self.task_model.get_global_tasks()
-
-                # Combine both lists
-                all_tasks = list(global_tasks) + list(project_tasks)
-
-                # Format task displays
-                task_displays = []
-                for t in all_tasks:
-                    if t[1] is None:  # project_id is None means it's global
-                        task_displays.append(f"[GLOBAL] {t[2]}")
-                    else:
-                        task_displays.append(f"{client_name} - {project_name} - {t[2]}")
+                task_displays = build_task_displays_for_project(
+                    project_tasks=project_tasks,
+                    global_tasks=global_tasks,
+                    client_name=client_name,
+                    project_name=project_name,
+                )
 
                 self.timer_task_combo['values'] = task_displays
                 self.timer_task_combo.set('')
@@ -412,10 +383,7 @@ class TimeTrackerApp(
                 return None
             
             clients = self.client_model.get_all()
-            for client in clients:
-                if client[1] == client_name:
-                    return client[0]
-            return None
+            return resolve_client_id_by_name(clients, client_name)
         except:
             return None
     
@@ -430,12 +398,7 @@ class TimeTrackerApp(
             
             # Get all projects and find matching one
             projects = self.project_model.get_all()
-            for project in projects:
-                # project structure: [0:id, ..., 9:client_name]
-                proj_client_name = project[9] if len(project) > 9 else None
-                if proj_client_name == client_name and project[2] == project_name:
-                    return project[0]
-            return None
+            return resolve_project_id_by_names(projects, client_name, project_name)
         except:
             return None
     
@@ -656,35 +619,20 @@ class TimeTrackerApp(
                                  f"Invalid date/time format.\nUse MM/DD/YY for date and HH:MM AM/PM for time.\nError: {str(e)}")
             return
 
-        # Get task ID (handle both global and regular tasks)
-        task_id = None
-
-        # Check if it's a global task
-        if task_text.startswith('[GLOBAL] '):
-            task_name = task_text.replace('[GLOBAL] ', '')
-            global_tasks = self.task_model.get_global_tasks()
-            for task in global_tasks:
-                if task[2] == task_name:
-                    task_id = task[0]
-                    break
-        else:
-            # Regular project task
-            tasks = self.task_model.get_all()
-            for task in tasks:
-                client_name = task[9]
-                project_name = task[8]
-                task_display = f"{client_name} - {project_name} - {task[2]}"
-                if task_display == task_text:
-                    task_id = task[0]
-                    break
-
-        if not task_id:
+        task_id, _, resolution_error = resolve_task_id_for_timer(
+            task_text=task_text,
+            client_name=self.manual_client_combo.get(),
+            project_name=self.manual_project_combo.get(),
+            all_tasks=self.task_model.get_all(),
+            global_tasks=self.task_model.get_global_tasks(),
+        )
+        if resolution_error:
             messagebox.showerror("Error", "Invalid task selected")
             return
 
         # Get project_id for global tasks
         project_id_override = None
-        if task_text.startswith('[GLOBAL] '):
+        if task_text.startswith(GLOBAL_TASK_PREFIX):
             project_id_override = self.get_manual_entry_project_id()
             
         self.time_entry_model.add_manual_entry(task_id, start_time_obj, end_time_obj, description, project_id_override=project_id_override)
@@ -700,43 +648,7 @@ class TimeTrackerApp(
         today = datetime.now().date()
 
         if entry_date == today:
-            # Get client and project IDs from the manual entry form (works for both global and regular tasks)
-            client_id = None
-            project_id = None
-            
-            # Get client ID from manual entry form
-            client_name = self.manual_client_combo.get()
-            if client_name:
-                clients = self.client_model.get_all()
-                for client in clients:
-                    if client[1] == client_name:
-                        client_id = client[0]
-                        break
-            
-            # Get project ID from manual entry form
-            project_name = self.manual_project_combo.get()
-            if project_name and client_id:
-                projects = self.project_model.get_by_client(client_id)
-                for project in projects:
-                    if project[2] == project_name:
-                        project_id = project[0]
-                        break
-            
-            # Update daily totals if we found both client and project
-            if client_id and project_id:
-                # Update client totals
-                if client_id not in self.daily_client_totals:
-                    self.daily_client_totals[client_id] = 0
-                self.daily_client_totals[client_id] += duration_seconds
-
-                # Update project totals
-                key = (client_id, project_id)
-                if key not in self.daily_project_totals:
-                    self.daily_project_totals[key] = 0
-                self.daily_project_totals[key] += duration_seconds
-
-            # Refresh the daily totals display
-            self.update_daily_totals_display()
+            self._update_daily_totals_from_manual_entry(duration_seconds)
 
         # Show success message with details
         if mode == "decimal":
@@ -756,19 +668,58 @@ class TimeTrackerApp(
         """When client is selected in manual entry, populate projects"""
         client_name = self.manual_client_combo.get()
         if client_name:
-            # Get client ID
+            self._populate_projects_for_client(
+                client_name=client_name,
+                project_combo=self.manual_project_combo,
+                task_combo=self.manual_task_combo,
+            )
+
+    def _populate_projects_for_client(self, client_name, project_combo, task_combo=None):
+        """Load projects for a selected client and reset dependent controls."""
+        clients = self.client_model.get_all()
+        client_id = resolve_client_id_by_name(clients, client_name)
+        if not client_id:
+            project_combo['values'] = []
+            project_combo.set('')
+            if task_combo is not None:
+                task_combo.set('')
+            return
+
+        projects = self.project_model.get_by_client(client_id)
+        project_combo['values'] = [p[2] for p in projects]
+        project_combo.set('')
+        if task_combo is not None:
+            task_combo.set('')
+
+    def _update_daily_totals_from_manual_entry(self, duration_seconds):
+        """Update session daily totals using the manual entry form selections."""
+        client_id = None
+        project_id = None
+
+        client_name = self.manual_client_combo.get()
+        if client_name:
             clients = self.client_model.get_all()
-            client_id = None
-            for client in clients:
-                if client[1] == client_name:
-                    client_id = client[0]
+            client_id = resolve_client_id_by_name(clients, client_name)
+
+        project_name = self.manual_project_combo.get()
+        if project_name and client_id:
+            projects = self.project_model.get_by_client(client_id)
+            for project in projects:
+                if project[2] == project_name:
+                    project_id = project[0]
                     break
 
-            if client_id:
-                projects = self.project_model.get_by_client(client_id)
-                self.manual_project_combo['values'] = [p[2] for p in projects]
-                self.manual_project_combo.set('')
-                self.manual_task_combo.set('')
+        if client_id and project_id:
+            if client_id not in self.daily_client_totals:
+                self.daily_client_totals[client_id] = 0
+            self.daily_client_totals[client_id] += duration_seconds
+
+            key = (client_id, project_id)
+            if key not in self.daily_project_totals:
+                self.daily_project_totals[key] = 0
+            self.daily_project_totals[key] += duration_seconds
+
+        self.update_daily_totals_display()
 
     def on_manual_project_select(self, event):
         """When project is selected in manual entry, populate tasks"""
@@ -777,24 +728,17 @@ class TimeTrackerApp(
 
         if project_name and client_name:
             projects = self.project_model.get_all()
-            project_id = None
-            for project in projects:
-                proj_client_name = project[9] if len(project) > 9 else None
-                if proj_client_name == client_name and project[2] == project_name:
-                    project_id = project[0]
-                    break
+            project_id = resolve_project_id_by_names(projects, client_name, project_name)
 
             if project_id:
                 project_tasks = self.task_model.get_by_project(project_id)
                 global_tasks = self.task_model.get_global_tasks()
-                all_tasks = list(global_tasks) + list(project_tasks)
-                
-                task_displays = []
-                for t in all_tasks:
-                    if t[1] is None:
-                        task_displays.append(f"[GLOBAL] {t[2]}")
-                    else:
-                        task_displays.append(f"{client_name} - {project_name} - {t[2]}")
+                task_displays = build_task_displays_for_project(
+                    project_tasks=project_tasks,
+                    global_tasks=global_tasks,
+                    client_name=client_name,
+                    project_name=project_name,
+                )
 
                 self.manual_task_combo['values'] = task_displays
                 self.manual_task_combo.set('')
@@ -809,11 +753,7 @@ class TimeTrackerApp(
                 return None
             
             projects = self.project_model.get_all()
-            for project in projects:
-                proj_client_name = project[9] if len(project) > 9 else None
-                if proj_client_name == client_name and project[2] == project_name:
-                    return project[0]
-            return None
+            return resolve_project_id_by_names(projects, client_name, project_name)
         except:
             return None
 
@@ -1085,12 +1025,7 @@ class TimeTrackerApp(
 
             # Get project ID by matching client and project names
             projects = self.project_model.get_all()
-            project_id = None
-            for project in projects:
-                client_name = project[9] if len(project) > 9 else None
-                if client_name == client_text and project[2] == project_text:
-                    project_id = project[0]
-                    break
+            project_id = resolve_project_id_by_names(projects, client_text, project_text)
 
             if not project_id:
                 messagebox.showerror("Error", "Invalid project selected")
@@ -2541,17 +2476,8 @@ class TimeTrackerApp(
         tasks = self.task_model.get_all()
         global_tasks = self.task_model.get_global_tasks()
         
-        task_displays = []
-        
-        # Add global tasks first with [GLOBAL] prefix
-        for task in global_tasks:
-            task_displays.append(f"[GLOBAL] {task[2]}")
-        
-        # Add regular project tasks
-        for task in tasks:
-            client_name = task[9] if len(task) > 9 else "Unknown"
-            project_name = task[8] if len(task) > 8 else "Unknown"
-            task_displays.append(f"{client_name} - {project_name} - {task[2]}")
+        task_displays = [format_task_display(task) for task in global_tasks]
+        task_displays.extend(format_task_display(task) for task in tasks)
         
         self.manual_task_combo['values'] = task_displays
 

@@ -3,9 +3,8 @@ Time Tracker Pro - Main Application Entry Point
 """
 import sys
 import os
-import tkinter as tk
-from gui import TimeTrackerApp
 from config import DB_PATH
+from ui.tk import run_tk_app
 
 
 def main():
@@ -18,15 +17,9 @@ def main():
     db_path = DB_PATH
     print(f"[DEBUG] Using database: {db_path}")
     
-    # Create the main window
-    root = tk.Tk()
-    
     try:
-        # Initialize the application with the database path
-        app = TimeTrackerApp(root, db_path=db_path)
-        
-        # Start the GUI event loop
-        root.mainloop()
+        # Initialize and run the Tkinter UI with the database path
+        run_tk_app(db_path=db_path)
         
     except Exception as e:
         print(f"\nFATAL ERROR: {e}")
