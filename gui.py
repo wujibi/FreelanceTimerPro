@@ -234,56 +234,6 @@ class TimeTrackerApp(
         self.create_invoice_tab()
         self.create_email_tab()
     
-    def generate_invoice_data(self, client_id, start_date, end_date):
-        conn = self.db.get_connection()
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-
-        cursor.execute('''
-                       SELECT *
-                       FROM invoice_view
-                       WHERE client_id = ?
-                         AND DATE (start_time) BETWEEN ?
-                         AND ?
-                         AND (is_billed = 0
-                          OR is_billed IS NULL)
-                       ''', (client_id, start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d")))
-
-        entries = cursor.fetchall()
-        conn.row_factory = None
-
-        if not entries:
-            messagebox.showinfo("No Unbilled Hours", "No unbilled hours found for the selected client and date range.")
-            return None
-
-        self.pending_entry_ids = [row['entry_id'] for row in entries]
-        invoice_items = []
-
-        # Simple task grouping
-        tasks = {}
-        for row in entries:
-            key = f"{row['project_name']} - {row['task_name']}"
-            if key not in tasks:
-                tasks[key] = {'minutes': 0, 'rate': row['task_rate'] or row['project_rate']}
-            tasks[key]['minutes'] += row['duration_minutes'] or 0
-
-        for task_name, data in tasks.items():
-            hours = data['minutes'] / 60.0
-            invoice_items.append({
-                'description': task_name,
-                'quantity': f"{hours:.2f} hrs",
-                'rate': f"${data['rate']:.2f}/hr",
-                'amount': hours * data['rate']
-            })
-
-        return {
-            'client_id': client_id,
-            'start_date': start_date,
-            'end_date': end_date,
-            'items': invoice_items,
-            'total': sum(item['amount'] for item in invoice_items)
-        }
-
     # Refresh methods
     def refresh_clients(self):
         # Clear tree
@@ -1201,6 +1151,9 @@ class TimeTrackerApp(
                             WHERE id IN ({placeholders})
                         ''', [invoice_number, invoice_date.strftime("%Y-%m-%d")] + entry_ids)
                         conn.commit()
+
+                        # Persist invoice so it appears in billing history views.
+                        self.db.save_billing_history(self.current_invoice_data, invoice_number, filename)
                         
                         print(f"[DEBUG] Marked {len(entry_ids)} entries as billed")
                         
@@ -1580,6 +1533,9 @@ class TimeTrackerApp(
                             WHERE id IN ({placeholders})
                         ''', [invoice_number, invoice_date.strftime("%Y-%m-%d")] + entry_ids)
                         conn.commit()
+
+                        # Persist invoice for billed history even when sent by email.
+                        self.db.save_billing_history(invoice_data, invoice_number, None)
                         
                         # Refresh displays
                         self.refresh_time_entries()

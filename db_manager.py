@@ -92,6 +92,9 @@ class DatabaseManager:
         # Validate and fix schema (only adds missing columns, doesn't drop data)
         self.validate_and_fix_schema()
 
+        # Backfill legacy billed invoices that were not persisted to billing_history.
+        self.backfill_missing_billing_history()
+
         # Debug output
         self.debug_schema()
 
@@ -624,6 +627,102 @@ class DatabaseManager:
             params.append(paid_status)
         query += ' ORDER BY invoice_date DESC'
         return self.fetch_all(query, params)
+
+    def backfill_missing_billing_history(self):
+        """Create billing_history rows for legacy billed entries missing invoice records."""
+        import json
+
+        cursor = self.conn.cursor()
+        cursor.execute(
+            """
+            SELECT
+                te.invoice_number,
+                COALESCE(te.client_id, p.client_id) AS client_id,
+                COALESCE(c.name, te.client_name, 'Unknown') AS client_name,
+                MIN(DATE(te.start_time)) AS period_start,
+                MAX(DATE(te.start_time)) AS period_end,
+                COALESCE(MAX(te.billing_date), MAX(DATE(te.start_time)), DATE('now')) AS invoice_date,
+                COUNT(*) AS entry_count,
+                SUM(COALESCE(te.duration_minutes, 0)) / 60.0 AS total_hours,
+                SUM((COALESCE(te.duration_minutes, 0) / 60.0) * COALESCE(t.hourly_rate, p.hourly_rate, 0)) AS total_amount
+            FROM time_entries te
+            LEFT JOIN tasks t ON te.task_id = t.id
+            LEFT JOIN projects p ON te.project_id = p.id
+            LEFT JOIN clients c ON c.id = COALESCE(te.client_id, p.client_id)
+            WHERE te.is_billed = 1
+              AND te.invoice_number IS NOT NULL
+              AND TRIM(te.invoice_number) != ''
+              AND te.invoice_number NOT IN (SELECT invoice_number FROM billing_history)
+            GROUP BY te.invoice_number, COALESCE(te.client_id, p.client_id), COALESCE(c.name, te.client_name, 'Unknown')
+            """
+        )
+        missing_invoices = cursor.fetchall()
+
+        if not missing_invoices:
+            return 0
+
+        created_count = 0
+        for row in missing_invoices:
+            invoice_number = row[0]
+            client_id = row[1]
+            client_name = row[2] or "Unknown"
+            period_start = row[3] or row[5]
+            period_end = row[4] or row[5]
+            invoice_date = row[5] or datetime.now().strftime("%Y-%m-%d")
+            entry_count = row[6] or 0
+            total_hours = row[7] or 0.0
+            total_amount = row[8] or 0.0
+
+            if client_id is None:
+                continue
+
+            invoice_items = json.dumps(
+                [
+                    {
+                        "description": f"Backfilled from {entry_count} billed time entries",
+                        "quantity": f"{total_hours:.2f} hrs",
+                        "rate": "$0.00/hr",
+                        "amount": total_amount,
+                    }
+                ]
+            )
+
+            cursor.execute(
+                """
+                INSERT OR IGNORE INTO billing_history
+                (invoice_number, client_id, client_name, invoice_date, period_start, period_end,
+                 total_amount, total_hours, invoice_items, pdf_path)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    invoice_number,
+                    client_id,
+                    client_name,
+                    invoice_date,
+                    period_start,
+                    period_end,
+                    total_amount,
+                    total_hours,
+                    invoice_items,
+                    None,
+                ),
+            )
+            created_count += cursor.rowcount
+
+            cursor.execute(
+                """
+                INSERT OR IGNORE INTO billing_entry_link (invoice_number, time_entry_id)
+                SELECT ?, te.id
+                FROM time_entries te
+                WHERE te.invoice_number = ?
+                """,
+                (invoice_number, invoice_number),
+            )
+
+        self.conn.commit()
+        if created_count:
+            print(f"[INFO] Backfilled {created_count} missing invoice record(s) into billing_history")
+        return created_count
     
     def mark_invoice_paid(self, invoice_number, date_paid):
         """Mark an invoice as paid with the payment date
