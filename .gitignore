@@ -26,6 +26,9 @@ wheels/
 *.iml
 *.ipr
 
+# Cursor
+.cursor/
+
 # Database
 *.db
 *.sqlite
