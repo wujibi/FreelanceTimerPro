@@ -52,6 +52,8 @@ Run the installer, follow the wizard, launch from Start Menu. Done.
    python main.py
    ```
 
+   **Windows shortcut/double-click option:** use `launcher.pyw` from the project root.
+
 **Requirements:** Python 3.8+, Windows 10/11
 
 ---
@@ -60,7 +62,8 @@ Run the installer, follow the wizard, launch from Start Menu. Done.
 
 ```
 FreelanceTimerPro/
-├── main.py              # Application entry point
+├── main.py              # Canonical application entry point
+├── launcher.pyw         # Windows launcher (double-click/shortcut)
 ├── gui.py               # Main UI
 ├── models.py            # Database models
 ├── db_manager.py        # Database connection manager
