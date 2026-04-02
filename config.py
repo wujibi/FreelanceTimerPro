@@ -46,7 +46,7 @@ def get_db_path():
 DB_PATH = get_db_path()
 
 # UI bootstrap constants (used by Tkinter frontend)
-APP_TITLE = "Freelance Timer Pro V2.0 - Professional Time & Invoice Management"
+APP_TITLE = "Freelance Timer Pro V3 - Professional Time & Invoice Management"
 DEFAULT_WINDOW_GEOMETRY = "1200x800"
 DEFAULT_MIN_WINDOW_SIZE = (600, 400)
 ASSETS_DIRNAME = "assets"
