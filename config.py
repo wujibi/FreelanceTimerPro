@@ -45,8 +45,16 @@ def get_db_path():
 
 DB_PATH = get_db_path()
 
+# Main window title — V3 = current Tk line; V4 = CustomTkinter refit branch.
+# Optional override: set FREELANCETIMERPRO_DISPLAY_VERSION (e.g. for a quick label test).
+APP_DISPLAY_VERSION = "V4"
+_title_env = os.environ.get("FREELANCETIMERPRO_DISPLAY_VERSION", "").strip()
+_effective_title_version = _title_env if _title_env else APP_DISPLAY_VERSION
+APP_TITLE = (
+    f"Freelance Timer Pro {_effective_title_version} - Professional Time & Invoice Management"
+)
+
 # UI bootstrap constants (used by Tkinter frontend)
-APP_TITLE = "Freelance Timer Pro V3 - Professional Time & Invoice Management"
 DEFAULT_WINDOW_GEOMETRY = "1200x800"
 DEFAULT_MIN_WINDOW_SIZE = (600, 400)
 ASSETS_DIRNAME = "assets"
