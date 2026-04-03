@@ -17,7 +17,11 @@ def get_db_path():
         print(f"[CONFIG] Using overridden database path: {override_path}")
         return str(override_path)
 
+    # Prefer *_DEV when that folder exists (git V3/V4 runs parallel to installed V2).
     possible_google_drive_paths = [
+        Path.home() / "My Drive" / "FreelanceTimerPro_DEV" / "data" / "time_tracker.db",
+        Path.home() / "Google Drive" / "FreelanceTimerPro_DEV" / "data" / "time_tracker.db",
+        Path("G:/My Drive/FreelanceTimerPro_DEV/data/time_tracker.db"),
         Path.home() / "My Drive" / "FreelanceTimerPro" / "data" / "time_tracker.db",
         Path.home() / "Google Drive" / "FreelanceTimerPro" / "data" / "time_tracker.db",
         Path("G:/My Drive/FreelanceTimerPro/data/time_tracker.db"),
