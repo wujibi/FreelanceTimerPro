@@ -3,13 +3,14 @@ Database Manager for Time Tracking App
 Handles all database operations including time entries, clients, projects, and billing
 """
 import os
+import re
 import sqlite3
 import logging
 
 from datetime import datetime, timedelta
 from pathlib import Path
 from contextlib import contextmanager
-from typing import Optional
+from typing import Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -141,20 +142,43 @@ class DatabaseManager:
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", (table_name,))
         return cursor.fetchone() is not None
 
+    def _column_def_for_alter_table(self, column_definition: str) -> Tuple[str, bool]:
+        """
+        SQLite ADD COLUMN only allows constant defaults. CURRENT_TIMESTAMP / datetime('now')
+        often fail with "Cannot add a column with non-constant default".
+        Returns (definition_for_alter, needs_timestamp_backfill).
+        """
+        s = column_definition.strip()
+        s = s.replace('PRIMARY KEY AUTOINCREMENT', '').replace('AUTOINCREMENT', '')
+        backfill = False
+        if re.search(r"DEFAULT\s+CURRENT_TIMESTAMP", s, re.IGNORECASE):
+            s = re.sub(r"\s+DEFAULT\s+CURRENT_TIMESTAMP\s*", " ", s, flags=re.IGNORECASE).strip()
+            backfill = True
+        if re.search(r"DEFAULT\s+datetime\s*\(\s*'now'\s*\)", s, re.IGNORECASE):
+            s = re.sub(
+                r"\s+DEFAULT\s+datetime\s*\(\s*'now'\s*\)\s*",
+                " ",
+                s,
+                flags=re.IGNORECASE,
+            ).strip()
+            backfill = True
+        return s, backfill
+
     def add_column_if_missing(self, table_name, column_name, column_definition):
         """Add column to table if it doesn't exist"""
         columns = self.get_table_columns(table_name)
         if column_name not in columns:
-            # Clean up the column definition
-            clean_definition = column_definition.replace('PRIMARY KEY AUTOINCREMENT', '')
-            clean_definition = clean_definition.replace('AUTOINCREMENT', '')
-
-            try:
-                query = f"ALTER TABLE {table_name} ADD COLUMN {column_name} {clean_definition}"
-                self.execute_query(query)
+            alter_def, backfill_ts = self._column_def_for_alter_table(column_definition)
+            query = f"ALTER TABLE {table_name} ADD COLUMN {column_name} {alter_def}"
+            if self.execute_query(query):
                 print(f"Added column {column_name} to {table_name}")
-            except sqlite3.Error as e:
-                print(f"Note: Could not add {column_name} to {table_name}: {e}")
+                if backfill_ts:
+                    self.execute_query(
+                        f"UPDATE {table_name} SET {column_name} = datetime('now') "
+                        f"WHERE {column_name} IS NULL"
+                    )
+            else:
+                print(f"Note: Could not add {column_name} to {table_name}")
 
     def debug_schema(self):
         """Print current schema for debugging"""
