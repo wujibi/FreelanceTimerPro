@@ -13,6 +13,7 @@ import tkinter as tk
 import customtkinter as ctk
 
 from models import TimeEntry
+from ui.ctk.ttk_theme import get_tree_ui_font, get_tree_ui_font_bold
 from ui_helpers import center_dialog, restore_tree_state, save_tree_state
 
 
@@ -98,21 +99,26 @@ class CtkTimeEntriesTab:
             "client_row",
             background="#e8f4f8",
             foreground="#13100f",
-            font=("Segoe UI", 10, "bold"),
+            font=get_tree_ui_font_bold(self.root),
         )
         self.entries_tree.tag_configure(
             "project_row",
             background="#e8f4f8",
             foreground="#13100f",
-            font=("Segoe UI", 9, "bold"),
+            font=get_tree_ui_font_bold(self.root),
         )
         self.entries_tree.tag_configure(
             "task_row",
             background="#e8f4f8",
             foreground="#13100f",
-            font=("Segoe UI", 9),
+            font=get_tree_ui_font(self.root),
         )
-        self.entries_tree.tag_configure("entry_row", background="white", foreground="#222", font=("Segoe UI", 9))
+        self.entries_tree.tag_configure(
+            "entry_row",
+            background="white",
+            foreground="#222",
+            font=get_tree_ui_font(self.root),
+        )
 
     def refresh(self) -> None:
         expanded_items = save_tree_state(self.entries_tree)
@@ -223,10 +229,10 @@ class CtkTimeEntriesTab:
                             tags=("entry", f"entry_id_{entry[0]}", "entry_row"),
                         )
 
-        self.entries_tree.tag_configure("client", font=("Segoe UI", 10, "bold"))
-        self.entries_tree.tag_configure("project", font=("Segoe UI", 9, "bold"))
-        self.entries_tree.tag_configure("task", font=("Segoe UI", 9))
-        self.entries_tree.tag_configure("entry", font=("Segoe UI", 8))
+        self.entries_tree.tag_configure("client", font=get_tree_ui_font_bold(self.root))
+        self.entries_tree.tag_configure("project", font=get_tree_ui_font_bold(self.root))
+        self.entries_tree.tag_configure("task", font=get_tree_ui_font(self.root))
+        self.entries_tree.tag_configure("entry", font=get_tree_ui_font(self.root))
         restore_tree_state(self.entries_tree, expanded_items, expand_all=True)
 
     def edit_time_entry(self) -> None:

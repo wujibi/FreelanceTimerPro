@@ -13,6 +13,7 @@ import customtkinter as ctk
 
 from models import Client, CompanyInfo, Project
 from ui.ctk.invoice_dialogs import show_invoice_preview_dialog_ctk
+from ui.ctk.ttk_theme import get_tree_ui_font, get_tree_ui_font_bold
 from ui_helpers import center_dialog, restore_tree_state, save_tree_state
 
 
@@ -528,26 +529,26 @@ class CtkInvoicesTab:
         except Exception:
             pass
 
-        self.invoice_entries_tree.tag_configure("project", font=("Arial", 10, "bold"))
-        self.invoice_entries_tree.tag_configure("task", font=("Arial", 9, "bold"))
-        self.invoice_entries_tree.tag_configure("entry", font=("Arial", 9))
+        self.invoice_entries_tree.tag_configure("project", font=get_tree_ui_font_bold(self.root))
+        self.invoice_entries_tree.tag_configure("task", font=get_tree_ui_font_bold(self.root))
+        self.invoice_entries_tree.tag_configure("entry", font=get_tree_ui_font(self.root))
         self.invoice_entries_tree.tag_configure(
             "project_row",
             background=self._TREE_COLORS["group_heading"],
             foreground=self._TREE_COLORS["group_text"],
-            font=("Arial", 10, "bold"),
+            font=get_tree_ui_font_bold(self.root),
         )
         self.invoice_entries_tree.tag_configure(
             "task_row",
             background=self._TREE_COLORS["group_heading"],
             foreground=self._TREE_COLORS["group_text"],
-            font=("Arial", 9, "bold"),
+            font=get_tree_ui_font_bold(self.root),
         )
         self.invoice_entries_tree.tag_configure(
             "entry_row",
             background="white",
             foreground=self._TREE_COLORS["text"],
-            font=("Arial", 9),
+            font=get_tree_ui_font(self.root),
         )
         restore_tree_state(self.invoice_entries_tree, expanded_items, expand_all=True)
         self.invoice_summary_label.configure(

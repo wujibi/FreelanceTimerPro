@@ -11,6 +11,7 @@ import customtkinter as ctk
 
 from core.project_resolution import resolve_project_id_by_names
 from models import Client, Project, Task
+from ui.ctk.ttk_theme import get_tree_ui_font, get_tree_ui_font_bold
 from ui_helpers import restore_tree_state, save_tree_state
 
 
@@ -214,10 +215,10 @@ class CtkTasksTab:
                     tags=("task", f"task_id_{task[0]}"),
                 )
 
-        self.task_tree.tag_configure("client", font=("Segoe UI", 10, "bold"))
-        self.task_tree.tag_configure("project", font=("Segoe UI", 9, "bold"))
-        self.task_tree.tag_configure("task", font=("Segoe UI", 9))
-        self.task_tree.tag_configure("global", font=("Segoe UI", 10, "bold"), foreground="#10b981")
+        self.task_tree.tag_configure("client", font=get_tree_ui_font_bold(self.root))
+        self.task_tree.tag_configure("project", font=get_tree_ui_font_bold(self.root))
+        self.task_tree.tag_configure("task", font=get_tree_ui_font(self.root))
+        self.task_tree.tag_configure("global", font=get_tree_ui_font_bold(self.root), foreground="#10b981")
         restore_tree_state(self.task_tree, expanded_items, expand_all=True)
 
     def toggle_task_project_field(self) -> None:

@@ -11,6 +11,7 @@ from tkinter import filedialog, messagebox, ttk
 
 import tkinter as tk
 
+from ui.ctk.ttk_theme import get_tree_ui_font, get_tree_ui_font_bold
 from ui_helpers import center_dialog
 
 
@@ -380,8 +381,8 @@ def show_invoice_preview_dialog_ctk(
             amount_display = f"${item['amount']:.2f}" if isinstance(item["amount"], (int, float)) else ""
             items_tree.insert("", "end", values=(item["description"], item["quantity"], item["rate"], amount_display))
 
-    items_tree.tag_configure("header", font=("Arial", 10, "bold"), background="#e8f4f8")
-    items_tree.tag_configure("subtotal", font=("Arial", 9, "bold"), background="#f0f0f0")
+    items_tree.tag_configure("header", font=get_tree_ui_font_bold(root), background="#e8f4f8")
+    items_tree.tag_configure("subtotal", font=get_tree_ui_font_bold(root), background="#f0f0f0")
     items_tree.pack(fill="both", expand=True, padx=10, pady=10)
 
     total_frame = ttk.Frame(preview_dialog)

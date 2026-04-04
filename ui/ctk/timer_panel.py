@@ -149,7 +149,7 @@ class CtkTimerTab:
         ctk.CTkLabel(daily, text="Today's Time by Client", font=ctk.CTkFont(size=14, weight="bold")).pack(
             anchor="w", padx=10, pady=(8, 4)
         )
-        self.daily_totals_text = ctk.CTkTextbox(daily, height=180, font=ctk.CTkFont(family="Consolas", size=12))
+        self.daily_totals_text = ctk.CTkTextbox(daily, height=180, font=ctk.CTkFont(family="Consolas", size=14))
         self.daily_totals_text.pack(fill="both", expand=True, padx=10, pady=4)
         self.daily_totals_text.configure(state="disabled")
 
@@ -262,7 +262,7 @@ class CtkTimerTab:
         ctk.CTkLabel(mdaily, text="Today's Time by Client", font=ctk.CTkFont(size=14, weight="bold")).pack(
             anchor="w", padx=10, pady=(8, 4)
         )
-        self.manual_daily_totals_text = ctk.CTkTextbox(mdaily, height=140, font=ctk.CTkFont(family="Consolas", size=12))
+        self.manual_daily_totals_text = ctk.CTkTextbox(mdaily, height=140, font=ctk.CTkFont(family="Consolas", size=14))
         self.manual_daily_totals_text.pack(fill="both", expand=True, padx=10, pady=4)
         self.manual_daily_totals_text.configure(state="disabled")
 
