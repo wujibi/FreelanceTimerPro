@@ -12,8 +12,12 @@ from config import (
     DEFAULT_WINDOW_GEOMETRY,
 )
 from db_manager import DatabaseManager
+from ui_helpers import load_ctk_ui_preferences
 
 from ui.ctk.clients_panel import CtkClientsTab
+from ui.ctk.company_panel import CtkCompanyTab
+from ui.ctk.email_panel import CtkEmailTab
+from ui.ctk.invoices_panel import CtkInvoicesTab
 from ui.ctk.projects_panel import CtkProjectsTab
 from ui.ctk.tasks_panel import CtkTasksTab
 from ui.ctk.time_entries_panel import CtkTimeEntriesTab
@@ -47,17 +51,10 @@ class CtkApp:
         self.timer_tab.reload_clients_if_needed()
         self.projects_tab.refresh_all()
         self.tasks_tab.refresh_all()
+        if hasattr(self, "invoices_tab"):
+            self.invoices_tab.on_data_changed_external()
 
     def run(self) -> None:
-        ctk.set_appearance_mode("system")
-        ctk.set_default_color_theme("blue")
-
-        self.root = ctk.CTk()
-        self.root.title(APP_TITLE)
-        self.root.geometry(DEFAULT_WINDOW_GEOMETRY)
-        self.root.minsize(*DEFAULT_MIN_WINDOW_SIZE)
-        _apply_icon(self.root)
-
         if self.db_path:
             print(f"[DEBUG] CTk initializing DatabaseManager with path: {self.db_path}")
             self.db = DatabaseManager(self.db_path)
@@ -65,13 +62,22 @@ class CtkApp:
             print("[DEBUG] CTk initializing DatabaseManager with default path")
             self.db = DatabaseManager()
 
+        _mode, _theme = load_ctk_ui_preferences(self.db.db_path)
+        ctk.set_appearance_mode(_mode)
+        ctk.set_default_color_theme(_theme)
+
+        self.root = ctk.CTk()
+        self.root.title(APP_TITLE)
+        self.root.geometry(DEFAULT_WINDOW_GEOMETRY)
+        self.root.minsize(*DEFAULT_MIN_WINDOW_SIZE)
+        _apply_icon(self.root)
+
         banner = ctk.CTkFrame(self.root, fg_color=("gray85", "gray20"))
         banner.pack(fill="x", padx=12, pady=(12, 0))
         ctk.CTkLabel(
             banner,
             text=(
-                "V4 CustomTkinter preview — Timer, Clients, Projects, Tasks, and Time Entries are in CTk. "
-                "Company, Invoices, and Email remain in classic Tk (same database)."
+                "V4 CustomTkinter — full main tabs in CTk. Footer shows the database file in use; set FREELANCETIMERPRO_DB_PATH if data looks wrong."
             ),
             wraplength=920,
             justify="left",
@@ -87,6 +93,9 @@ class CtkApp:
         tab_projects = tabview.add("Projects")
         tab_tasks = tabview.add("Tasks")
         tab_entries = tabview.add("Time Entries")
+        tab_company = tabview.add("Company")
+        tab_invoices = tabview.add("Invoices")
+        tab_email = tabview.add("Email")
 
         self.entries_tab = CtkTimeEntriesTab(tab_entries, self.root, self.db)
         self.timer_tab = CtkTimerTab(
@@ -113,10 +122,19 @@ class CtkApp:
             self.db,
             on_data_changed=self._notify_data_changed,
         )
+        self.company_tab = CtkCompanyTab(tab_company, self.root, self.db)
+        self.invoices_tab = CtkInvoicesTab(
+            tab_invoices,
+            self.root,
+            self.db,
+            self.entries_tab,
+            on_data_changed=self._notify_data_changed,
+        )
+        self.email_tab = CtkEmailTab(tab_email, self.root, self.db)
 
         footer = ctk.CTkLabel(
             self.root,
-            text=f"DB: {self.db_path or '(default)'}  ·  unset FREELANCETIMERPRO_UI to use classic Tk",
+            text=f"DB: {self.db.db_path}  ·  unset FREELANCETIMERPRO_UI for classic Tk",
             text_color=("gray30", "gray70"),
             font=ctk.CTkFont(size=12),
         )

@@ -61,6 +61,62 @@ def save_theme_preference(db_path: str, theme_name: str) -> None:
     conn.close()
 
 
+def load_ctk_ui_preferences(db_path: str | None) -> tuple[str, str]:
+    """Load CustomTkinter appearance mode and color theme from settings (CTk UI only)."""
+    defaults = ("system", "blue")
+    if not db_path:
+        return defaults
+    try:
+        conn = sqlite3.connect(db_path)
+        conn.execute("PRAGMA foreign_keys = ON")
+        cursor = conn.cursor()
+        cursor.execute("SELECT value FROM settings WHERE key = 'ctk_appearance_mode'")
+        row_m = cursor.fetchone()
+        cursor.execute("SELECT value FROM settings WHERE key = 'ctk_color_theme'")
+        row_t = cursor.fetchone()
+        conn.close()
+        mode = (row_m[0] if row_m else defaults[0]).strip().lower()
+        theme = (row_t[0] if row_t else defaults[1]).strip().lower()
+        if mode not in ("system", "light", "dark"):
+            mode = defaults[0]
+        if theme not in ("blue", "green", "dark-blue"):
+            theme = defaults[1]
+        return (mode, theme)
+    except Exception:
+        return defaults
+
+
+def save_ctk_ui_preferences(db_path: str, appearance_mode: str, color_theme: str) -> None:
+    """Persist CustomTkinter UI preferences alongside other settings."""
+    conn = sqlite3.connect(db_path)
+    conn.execute("PRAGMA foreign_keys = ON")
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS settings (
+            key TEXT PRIMARY KEY,
+            value TEXT
+        )
+        """
+    )
+    cursor.execute(
+        """
+        INSERT OR REPLACE INTO settings (key, value)
+        VALUES ('ctk_appearance_mode', ?)
+        """,
+        (appearance_mode.strip().lower(),),
+    )
+    cursor.execute(
+        """
+        INSERT OR REPLACE INTO settings (key, value)
+        VALUES ('ctk_color_theme', ?)
+        """,
+        (color_theme.strip().lower(),),
+    )
+    conn.commit()
+    conn.close()
+
+
 def save_tree_state(tree: ttk.Treeview) -> Set[str]:
     expanded: Set[str] = set()
 

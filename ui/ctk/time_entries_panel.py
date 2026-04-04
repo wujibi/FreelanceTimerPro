@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Callable
 from datetime import datetime, timedelta
 from tkinter import filedialog, messagebox, ttk
 from typing import Any
@@ -253,16 +254,34 @@ class CtkTimeEntriesTab:
 
         self._open_edit_time_entry_dialog(entry_id)
 
-    def _open_edit_time_entry_dialog(self, entry_id: int) -> None:
+    def open_edit_entry_dialog(
+        self,
+        entry_id: int,
+        after_save: Callable[[], None] | None = None,
+    ) -> None:
+        """Open the standard edit dialog; optional callback runs after a successful save."""
+        self._open_edit_time_entry_dialog(entry_id, after_save=after_save)
+
+    def _open_edit_time_entry_dialog(
+        self,
+        entry_id: int,
+        after_save: Callable[[], None] | None = None,
+    ) -> None:
         edit_window = tk.Toplevel(self.root)
         edit_window.title("Edit Time Entry")
         center_dialog(self.root, edit_window, 500, 400)
         edit_window.transient(self.root)
         edit_window.lift()
         edit_window.focus_force()
-        self._build_edit_dialog_content(edit_window, entry_id, lambda: edit_window.destroy())
+        self._build_edit_dialog_content(edit_window, entry_id, lambda: edit_window.destroy(), after_save=after_save)
 
-    def _build_edit_dialog_content(self, edit_window, entry_id, close_callback) -> None:
+    def _build_edit_dialog_content(
+        self,
+        edit_window,
+        entry_id,
+        close_callback,
+        after_save: Callable[[], None] | None = None,
+    ) -> None:
         with self.db.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT * FROM time_entries WHERE id = ?", (entry_id,))
@@ -408,6 +427,8 @@ class CtkTimeEntriesTab:
 
                 self.time_entry_model.update(entry_id, start_time, end_time, description)
                 self.refresh()
+                if after_save:
+                    after_save()
                 close_callback()
                 messagebox.showinfo(
                     "Success",
