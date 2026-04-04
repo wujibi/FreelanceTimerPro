@@ -7,6 +7,14 @@ from config import DB_PATH
 from ui.tk import run_tk_app
 
 
+def _ui_backend() -> str:
+    """Tk remains default; set FREELANCETIMERPRO_UI=ctk for the CTk scaffold."""
+    raw = os.environ.get("FREELANCETIMERPRO_UI", "").strip().lower()
+    if raw in ("ctk", "customtkinter"):
+        return "ctk"
+    return "tk"
+
+
 def main():
     """Main application entry point"""
     # Print current working directory for debugging
@@ -18,8 +26,20 @@ def main():
     print(f"[DEBUG] Using database: {db_path}")
     
     try:
-        # Initialize and run the Tkinter UI with the database path
-        run_tk_app(db_path=db_path)
+        backend = _ui_backend()
+        if backend == "ctk":
+            try:
+                from ui.ctk import run_ctk_app
+            except ImportError as exc:
+                print(
+                    "[WARN] FREELANCETIMERPRO_UI=ctk but CustomTkinter is not available "
+                    f"({exc!r}); falling back to Tk. Install: pip install customtkinter"
+                )
+                run_tk_app(db_path=db_path)
+            else:
+                run_ctk_app(db_path=db_path)
+        else:
+            run_tk_app(db_path=db_path)
         
     except Exception as e:
         print(f"\nFATAL ERROR: {e}")
