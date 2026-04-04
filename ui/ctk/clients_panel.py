@@ -190,3 +190,8 @@ class CtkClientsTab:
         self.client_phone_entry.insert(0, client[4] or "")
         self.client_address_text.delete("1.0", "end")
         self.client_address_text.insert("1.0", client[5] or "")
+
+    def sync_embedded_tk_widgets(self) -> None:
+        from ui.ctk.ttk_theme import embedded_tk_frame_bg
+
+        self._tree_host.configure(bg=embedded_tk_frame_bg(), highlightthickness=0)

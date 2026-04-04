@@ -652,3 +652,8 @@ class CtkTimeEntriesTab:
             import traceback
 
             traceback.print_exc()
+
+    def sync_embedded_tk_widgets(self) -> None:
+        from ui.ctk.ttk_theme import embedded_tk_frame_bg
+
+        self._tree_host.configure(bg=embedded_tk_frame_bg(), highlightthickness=0)

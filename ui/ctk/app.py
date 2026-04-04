@@ -17,6 +17,7 @@ from ui_helpers import load_ctk_ui_preferences
 from ui.ctk.clients_panel import CtkClientsTab
 from ui.ctk.company_panel import CtkCompanyTab
 from ui.ctk.email_panel import CtkEmailTab
+from ui.ctk.ttk_theme import apply_ctk_aligned_ttk_theme
 from ui.ctk.invoices_panel import CtkInvoicesTab
 from ui.ctk.projects_panel import CtkProjectsTab
 from ui.ctk.tasks_panel import CtkTasksTab
@@ -53,6 +54,20 @@ class CtkApp:
         self.tasks_tab.refresh_all()
         if hasattr(self, "invoices_tab"):
             self.invoices_tab.on_data_changed_external()
+
+    def _apply_ttk_tree_theme(self) -> None:
+        """Keep embedded ttk trees/scrollbars in sync with CTk light/dark."""
+        apply_ctk_aligned_ttk_theme(self.root)
+        for tab in (
+            self.clients_tab,
+            self.projects_tab,
+            self.tasks_tab,
+            self.entries_tab,
+            self.invoices_tab,
+            self.email_tab,
+        ):
+            if hasattr(tab, "sync_embedded_tk_widgets"):
+                tab.sync_embedded_tk_widgets()
 
     def run(self) -> None:
         if self.db_path:
@@ -122,7 +137,12 @@ class CtkApp:
             self.db,
             on_data_changed=self._notify_data_changed,
         )
-        self.company_tab = CtkCompanyTab(tab_company, self.root, self.db)
+        self.company_tab = CtkCompanyTab(
+            tab_company,
+            self.root,
+            self.db,
+            on_appearance_applied=self._apply_ttk_tree_theme,
+        )
         self.invoices_tab = CtkInvoicesTab(
             tab_invoices,
             self.root,
@@ -131,6 +151,8 @@ class CtkApp:
             on_data_changed=self._notify_data_changed,
         )
         self.email_tab = CtkEmailTab(tab_email, self.root, self.db)
+
+        self._apply_ttk_tree_theme()
 
         footer = ctk.CTkLabel(
             self.root,

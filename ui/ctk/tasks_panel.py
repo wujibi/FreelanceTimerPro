@@ -434,3 +434,8 @@ class CtkTasksTab:
             self.task_billing_var.set("hourly")
             self.task_rate_entry.delete(0, tk.END)
             self.task_rate_entry.insert(0, str(task[4]))
+
+    def sync_embedded_tk_widgets(self) -> None:
+        from ui.ctk.ttk_theme import embedded_tk_frame_bg
+
+        self._tree_host.configure(bg=embedded_tk_frame_bg(), highlightthickness=0)

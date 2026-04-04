@@ -139,11 +139,11 @@ class CtkInvoicesTab:
             font=ctk.CTkFont(size=14, weight="bold"),
         ).pack(anchor="w", padx=8, pady=(12, 4))
 
-        tree_wrap = tk.Frame(self.invoice_create_frame)
-        tree_wrap.pack(fill="both", expand=True, padx=8, pady=4)
+        self.tree_wrap = tk.Frame(self.invoice_create_frame)
+        self.tree_wrap.pack(fill="both", expand=True, padx=8, pady=4)
 
         self.invoice_entries_tree = ttk.Treeview(
-            tree_wrap,
+            self.tree_wrap,
             columns=("Date", "Project", "Task", "Duration", "Description"),
             selectmode="extended",
         )
@@ -159,7 +159,7 @@ class CtkInvoicesTab:
         self.invoice_entries_tree.column("Task", width=150)
         self.invoice_entries_tree.column("Duration", width=100)
         self.invoice_entries_tree.column("Description", width=250)
-        ys = ttk.Scrollbar(tree_wrap, orient="vertical", command=self.invoice_entries_tree.yview)
+        ys = ttk.Scrollbar(self.tree_wrap, orient="vertical", command=self.invoice_entries_tree.yview)
         self.invoice_entries_tree.configure(yscrollcommand=ys.set)
         self.invoice_entries_tree.pack(side="left", fill="both", expand=True)
         ys.pack(side="right", fill="y")
@@ -208,10 +208,10 @@ class CtkInvoicesTab:
         ).pack(side="left", padx=6)
         ctk.CTkButton(ctl, text="Refresh", command=self.refresh_billed_invoices).pack(side="right", padx=4)
 
-        list_fr = tk.Frame(self.invoice_billed_frame)
-        list_fr.pack(fill="both", expand=True, padx=8, pady=4)
+        self.list_fr = tk.Frame(self.invoice_billed_frame)
+        self.list_fr.pack(fill="both", expand=True, padx=8, pady=4)
         self.billed_invoices_tree = ttk.Treeview(
-            list_fr,
+            self.list_fr,
             columns=("Invoice", "Client", "Date", "Amount", "Status", "Paid Date"),
             show="headings",
             selectmode="extended",
@@ -226,7 +226,7 @@ class CtkInvoicesTab:
         ):
             self.billed_invoices_tree.heading(col, text=col if col != "Invoice" else "Invoice #")
             self.billed_invoices_tree.column(col, width=w)
-        vsb = ttk.Scrollbar(list_fr, orient="vertical", command=self.billed_invoices_tree.yview)
+        vsb = ttk.Scrollbar(self.list_fr, orient="vertical", command=self.billed_invoices_tree.yview)
         self.billed_invoices_tree.configure(yscrollcommand=vsb.set)
         self.billed_invoices_tree.pack(side="left", fill="both", expand=True)
         vsb.pack(side="right", fill="y")
@@ -643,3 +643,10 @@ class CtkInvoicesTab:
             open_edit_time_entry=lambda eid: self.entries_tab.open_edit_entry_dialog(eid),
             on_billing_updated=self.on_data_changed,
         )
+
+    def sync_embedded_tk_widgets(self) -> None:
+        from ui.ctk.ttk_theme import embedded_tk_frame_bg
+
+        bg = embedded_tk_frame_bg()
+        self.tree_wrap.configure(bg=bg, highlightthickness=0)
+        self.list_fr.configure(bg=bg, highlightthickness=0)

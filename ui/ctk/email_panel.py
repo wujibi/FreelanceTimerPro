@@ -192,11 +192,11 @@ class CtkEmailTab:
             ).pack(side="left", padx=2)
 
         ctk.CTkLabel(left, text="Body (HTML):").pack(anchor="w", pady=(8, 0))
-        body_host = tk.Frame(left)
-        body_host.pack(fill="both", expand=True, pady=4)
-        self.template_body_text = tk.Text(body_host, height=14, wrap="word")
+        self.template_body_host = tk.Frame(left)
+        self.template_body_host.pack(fill="both", expand=True, pady=4)
+        self.template_body_text = tk.Text(self.template_body_host, height=14, wrap="word")
         self.template_body_text.pack(side="left", fill="both", expand=True)
-        sb = ttk.Scrollbar(body_host, command=self.template_body_text.yview)
+        sb = ttk.Scrollbar(self.template_body_host, command=self.template_body_text.yview)
         self.template_body_text.configure(yscrollcommand=sb.set)
         sb.pack(side="right", fill="y")
 
@@ -209,17 +209,17 @@ class CtkEmailTab:
             font=ctk.CTkFont(size=11),
             text_color=("gray35", "gray65"),
         ).pack(anchor="w", pady=4)
-        prv_host = tk.Frame(right)
-        prv_host.pack(fill="both", expand=True, pady=4)
+        self.template_preview_host = tk.Frame(right)
+        self.template_preview_host.pack(fill="both", expand=True, pady=4)
         self.template_preview_text = tk.Text(
-            prv_host,
+            self.template_preview_host,
             height=14,
             wrap="word",
             state="disabled",
             background="#f5f5f5",
         )
         self.template_preview_text.pack(side="left", fill="both", expand=True)
-        psb = ttk.Scrollbar(prv_host, command=self.template_preview_text.yview)
+        psb = ttk.Scrollbar(self.template_preview_host, command=self.template_preview_text.yview)
         self.template_preview_text.configure(yscrollcommand=psb.set)
         psb.pack(side="right", fill="y")
 
@@ -488,3 +488,19 @@ class CtkEmailTab:
         self.template_combo.configure(values=template_names or [""])
         if template_names:
             self.template_combo.set(template_names[0])
+
+    def sync_embedded_tk_widgets(self) -> None:
+        from ui.ctk.ttk_theme import effective_appearance_is_dark, embedded_tk_frame_bg
+
+        host_bg = embedded_tk_frame_bg()
+        self.template_body_host.configure(bg=host_bg, highlightthickness=0)
+        self.template_preview_host.configure(bg=host_bg, highlightthickness=0)
+
+        dark = effective_appearance_is_dark()
+        body_bg = "#2b2b2b" if dark else "#ffffff"
+        body_fg = "#dce4ee" if dark else "#1a1a1a"
+        preview_bg = "#252526" if dark else "#f5f5f5"
+        self.template_body_text.configure(bg=body_bg, fg=body_fg, insertbackground=body_fg)
+        self.template_preview_text.configure(state="normal")
+        self.template_preview_text.configure(bg=preview_bg, fg=body_fg)
+        self.template_preview_text.configure(state="disabled")

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 import tkinter as tk
 from tkinter import filedialog, messagebox
 
@@ -16,10 +17,17 @@ _COLOR_THEMES = ("blue", "green", "dark-blue")
 
 
 class CtkCompanyTab:
-    def __init__(self, parent, root, db) -> None:
+    def __init__(
+        self,
+        parent,
+        root,
+        db,
+        on_appearance_applied: Callable[[], None] | None = None,
+    ) -> None:
         self.parent = parent
         self.root = root
         self.db = db
+        self.on_appearance_applied = on_appearance_applied
         self.company_model = CompanyInfo(self.db)
 
         self._build_ui()
@@ -220,6 +228,8 @@ class CtkCompanyTab:
         ctk.set_appearance_mode(mode)
         ctk.set_default_color_theme(color_theme)
         save_ctk_ui_preferences(self.db.db_path, mode, color_theme)
+        if self.on_appearance_applied:
+            self.on_appearance_applied()
         messagebox.showinfo(
             "Appearance",
             "CustomTkinter appearance settings saved.\n"
