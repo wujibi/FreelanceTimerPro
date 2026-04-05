@@ -19,6 +19,9 @@ from models import Client, Project, Task, TimeEntry
 # Client / Project / Task dropdown width — match Active and Manual views (no horizontal stretch on Active).
 _COMBO_WIDTH = 320
 
+# Vertical space from the view control / previous block to each bold section title (~15–20px).
+_SECTION_TITLE_TOP_PAD = 18
+
 
 class CtkTimerTab:
     """Timer + manual entry UI backed by the same models and rules as the Tk app."""
@@ -111,8 +114,7 @@ class CtkTimerTab:
         if which == "active":
             self._timer_top_bar.pack_configure(pady=(4, 2))
         else:
-            # Tighter under segmented control (Tk disallows negative pack pady).
-            self._timer_top_bar.pack_configure(pady=(2, 0))
+            self._timer_top_bar.pack_configure(pady=(4, 4))
 
         self._refresh_no_clients_hint_strip()
 
@@ -189,19 +191,17 @@ class CtkTimerTab:
         self._manual_outer = ctk.CTkFrame(self._view_host, fg_color="transparent")
 
         manual = ctk.CTkFrame(self._manual_outer)
-        manual.pack(fill="both", expand=True, padx=4, pady=(0, 6))
+        # Natural height only — do not stretch the form vertically (avoids a huge empty band above Add/Clear).
+        manual.pack(fill="x", expand=False, padx=4, pady=(_SECTION_TITLE_TOP_PAD, 0))
 
         ctk.CTkLabel(manual, text="Manual Time Entry", font=ctk.CTkFont(size=14, weight="bold")).pack(
-            anchor="w", padx=10, pady=(0, 4)
+            anchor="w", padx=10, pady=(0, 8)
         )
 
-        form = ctk.CTkScrollableFrame(
-            manual,
-            fg_color="transparent",
-            corner_radius=0,
-            border_width=0,
-        )
-        form.pack(fill="both", expand=True, padx=6, pady=(0, 0))
+        # Plain frame (not CTkScrollableFrame): scrollable's inner canvas is weighted to expand and
+        # left a ~100px+ empty band between fields and widgets packed below it.
+        form = ctk.CTkFrame(manual, fg_color="transparent")
+        form.pack(fill="x", expand=False, padx=6, pady=0)
 
         ctk.CTkLabel(form, text="Date (MM/DD/YY):").grid(row=0, column=0, sticky="w", pady=4)
         self.manual_date_entry = ctk.CTkEntry(form, width=200)
@@ -284,16 +284,23 @@ class CtkTimerTab:
 
         form.columnconfigure(1, weight=1)
 
-        mbtns = ctk.CTkFrame(manual, fg_color="transparent")
-        # Tight gap (~20px less) between Description and Add/Clear: no extra top pad on this row.
-        mbtns.pack(fill="x", padx=10, pady=(0, 8))
+        # Keep Add/Clear inside the form grid so they sit directly under Description (no stretched scroll body).
+        mbtns = ctk.CTkFrame(form, fg_color="transparent")
+        mbtns.grid(
+            row=8,
+            column=0,
+            columnspan=2,
+            sticky="w",
+            padx=10,
+            pady=(_SECTION_TITLE_TOP_PAD, 8),
+        )
         ctk.CTkButton(mbtns, text="Add Entry", command=self.add_manual_entry).pack(side="left", padx=4)
         ctk.CTkButton(mbtns, text="Clear", command=self.clear_manual_entry_form).pack(side="left", padx=4)
 
         mdaily = ctk.CTkFrame(self._manual_outer)
-        mdaily.pack(fill="x", expand=False, padx=4, pady=(6, 8))
+        mdaily.pack(fill="both", expand=True, padx=4, pady=(_SECTION_TITLE_TOP_PAD, 8))
         ctk.CTkLabel(mdaily, text="Today's Time by Client", font=ctk.CTkFont(size=14, weight="bold")).pack(
-            anchor="w", padx=10, pady=(4, 4)
+            anchor="w", padx=10, pady=(0, 8)
         )
         self.manual_daily_totals_text = ctk.CTkTextbox(
             mdaily, height=96, font=ctk.CTkFont(family="Consolas", size=14)
