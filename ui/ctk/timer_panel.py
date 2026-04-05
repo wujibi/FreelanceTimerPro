@@ -16,6 +16,9 @@ from core.task_list_builders import build_task_displays_for_project
 from core.task_resolution import GLOBAL_TASK_PREFIX, resolve_task_id_for_timer
 from models import Client, Project, Task, TimeEntry
 
+# Client / Project / Task dropdown width — match Active and Manual views (no horizontal stretch on Active).
+_COMBO_WIDTH = 320
+
 
 class CtkTimerTab:
     """Timer + manual entry UI backed by the same models and rules as the Tk app."""
@@ -63,7 +66,7 @@ class CtkTimerTab:
         )
 
         top = ctk.CTkFrame(self.parent, fg_color="transparent")
-        top.pack(fill="x", padx=8, pady=(4, 8))
+        top.pack(fill="x", padx=8, pady=(4, 2))
 
         ctk.CTkLabel(top, text="View:", font=ctk.CTkFont(weight="bold")).pack(side="left", padx=(0, 8))
         self._segment = ctk.CTkSegmentedButton(
@@ -74,7 +77,7 @@ class CtkTimerTab:
         self._segment.pack(side="left")
         self._segment.set("Active Timer")
 
-        self._no_clients_hint.pack(fill="x", padx=8, pady=(0, 4))
+        self._no_clients_hint.pack(fill="x", padx=8, pady=(0, 2))
 
         self._view_host = ctk.CTkFrame(self.parent, fg_color="transparent")
         self._view_host.pack(fill="both", expand=True)
@@ -101,10 +104,10 @@ class CtkTimerTab:
         self._active_outer = ctk.CTkFrame(self._view_host, fg_color="transparent")
 
         disp = ctk.CTkFrame(self._active_outer)
-        disp.pack(fill="x", padx=4, pady=8)
+        disp.pack(fill="x", padx=4, pady=4)
 
         ctk.CTkLabel(disp, text="Active Timer", font=ctk.CTkFont(size=14, weight="bold")).pack(
-            anchor="w", padx=10, pady=(8, 0)
+            anchor="w", padx=10, pady=(4, 0)
         )
         self.timer_label = ctk.CTkLabel(disp, text="00:00:00", font=self._large_font)
         self.timer_label.pack(pady=8)
@@ -117,25 +120,26 @@ class CtkTimerTab:
             grid,
             values=[],
             state="readonly",
-            width=360,
+            width=_COMBO_WIDTH,
             command=self._on_timer_client_selected,
         )
-        self.timer_client_combo.grid(row=0, column=1, sticky="ew", padx=8, pady=4)
+        self.timer_client_combo.grid(row=0, column=1, sticky="w", padx=8, pady=4)
 
         ctk.CTkLabel(grid, text="Project:").grid(row=1, column=0, sticky="w", pady=4)
         self.timer_project_combo = ctk.CTkComboBox(
             grid,
             values=[],
             state="readonly",
-            width=360,
+            width=_COMBO_WIDTH,
             command=self._on_timer_project_selected,
         )
-        self.timer_project_combo.grid(row=1, column=1, sticky="ew", padx=8, pady=4)
+        self.timer_project_combo.grid(row=1, column=1, sticky="w", padx=8, pady=4)
 
         ctk.CTkLabel(grid, text="Task:").grid(row=2, column=0, sticky="w", pady=4)
-        self.timer_task_combo = ctk.CTkComboBox(grid, values=[], state="readonly", width=360)
-        self.timer_task_combo.grid(row=2, column=1, sticky="ew", padx=8, pady=4)
-        grid.columnconfigure(1, weight=1)
+        self.timer_task_combo = ctk.CTkComboBox(
+            grid, values=[], state="readonly", width=_COMBO_WIDTH
+        )
+        self.timer_task_combo.grid(row=2, column=1, sticky="w", padx=8, pady=4)
 
         btns = ctk.CTkFrame(disp, fg_color="transparent")
         btns.pack(pady=10)
@@ -164,14 +168,14 @@ class CtkTimerTab:
         self._manual_outer = ctk.CTkFrame(self._view_host, fg_color="transparent")
 
         manual = ctk.CTkFrame(self._manual_outer)
-        manual.pack(fill="both", expand=True, padx=4, pady=8)
+        manual.pack(fill="both", expand=True, padx=4, pady=(2, 6))
 
         ctk.CTkLabel(manual, text="Manual Time Entry", font=ctk.CTkFont(size=14, weight="bold")).pack(
-            anchor="w", padx=10, pady=(8, 4)
+            anchor="w", padx=10, pady=(2, 4)
         )
 
         form = ctk.CTkScrollableFrame(manual, fg_color="transparent")
-        form.pack(fill="both", expand=True, padx=6, pady=4)
+        form.pack(fill="both", expand=True, padx=6, pady=(0, 4))
 
         ctk.CTkLabel(form, text="Date (MM/DD/YY):").grid(row=0, column=0, sticky="w", pady=4)
         self.manual_date_entry = ctk.CTkEntry(form, width=200)
@@ -227,7 +231,7 @@ class CtkTimerTab:
             form,
             values=[],
             state="readonly",
-            width=320,
+            width=_COMBO_WIDTH,
             command=self._on_manual_client_selected,
         )
         self.manual_client_combo.grid(row=4, column=1, sticky="w", padx=8, pady=4)
@@ -237,17 +241,19 @@ class CtkTimerTab:
             form,
             values=[],
             state="readonly",
-            width=320,
+            width=_COMBO_WIDTH,
             command=self._on_manual_project_selected,
         )
         self.manual_project_combo.grid(row=5, column=1, sticky="w", padx=8, pady=4)
 
         ctk.CTkLabel(form, text="Task:").grid(row=6, column=0, sticky="w", pady=4)
-        self.manual_task_combo = ctk.CTkComboBox(form, values=[], state="readonly", width=320)
+        self.manual_task_combo = ctk.CTkComboBox(
+            form, values=[], state="readonly", width=_COMBO_WIDTH
+        )
         self.manual_task_combo.grid(row=6, column=1, sticky="w", padx=8, pady=4)
 
         ctk.CTkLabel(form, text="Description:").grid(row=7, column=0, sticky="nw", pady=4)
-        self.manual_desc_text = ctk.CTkTextbox(form, height=72, width=320)
+        self.manual_desc_text = ctk.CTkTextbox(form, height=72, width=_COMBO_WIDTH)
         self.manual_desc_text.grid(row=7, column=1, sticky="ew", padx=8, pady=4)
 
         form.columnconfigure(1, weight=1)
@@ -258,12 +264,14 @@ class CtkTimerTab:
         ctk.CTkButton(mbtns, text="Clear", command=self.clear_manual_entry_form).pack(side="left", padx=4)
 
         mdaily = ctk.CTkFrame(self._manual_outer)
-        mdaily.pack(fill="both", expand=True, padx=4, pady=8)
+        mdaily.pack(fill="x", expand=False, padx=4, pady=(6, 8))
         ctk.CTkLabel(mdaily, text="Today's Time by Client", font=ctk.CTkFont(size=14, weight="bold")).pack(
-            anchor="w", padx=10, pady=(8, 4)
+            anchor="w", padx=10, pady=(4, 4)
         )
-        self.manual_daily_totals_text = ctk.CTkTextbox(mdaily, height=140, font=ctk.CTkFont(family="Consolas", size=14))
-        self.manual_daily_totals_text.pack(fill="both", expand=True, padx=10, pady=4)
+        self.manual_daily_totals_text = ctk.CTkTextbox(
+            mdaily, height=96, font=ctk.CTkFont(family="Consolas", size=14)
+        )
+        self.manual_daily_totals_text.pack(fill="x", expand=False, padx=10, pady=4)
         self.manual_daily_totals_text.configure(state="disabled")
 
         mdbtns = ctk.CTkFrame(mdaily, fg_color="transparent")
