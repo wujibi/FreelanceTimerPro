@@ -1,2 +1,2 @@
-"""UI packages (Tkinter now; PyQt6 later)."""
+"""UI packages: classic Tk (`ui.tk`), CustomTkinter scaffold (`ui.ctk`)."""
 
