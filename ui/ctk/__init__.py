@@ -1,4 +1,4 @@
-"""CustomTkinter UI package (V4 scaffold; Tk remains default until parity)."""
+"""CustomTkinter UI package (default main window)."""
 
 from .app import CtkApp, run_ctk_app
 

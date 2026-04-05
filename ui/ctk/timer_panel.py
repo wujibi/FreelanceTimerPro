@@ -289,9 +289,8 @@ class CtkTimerTab:
         if not names:
             self._no_clients_hint.configure(
                 text=(
-                    "No clients in this database — dropdowns stay empty. "
-                    "Add Clients (then Projects and Tasks) in the classic Tk app: "
-                    "run with --tk or FREELANCETIMERPRO_UI=tk, then come back here."
+                    "No clients yet — dropdowns stay empty. "
+                    "Add Clients, then Projects and Tasks, from the tabs above."
                 )
             )
         else:

@@ -92,12 +92,12 @@ class CtkCompanyTab:
 
         ctk.CTkLabel(
             scroll,
-            text="Appearance (CustomTkinter UI)",
+            text="Appearance",
             font=ctk.CTkFont(size=14, weight="bold"),
         ).pack(anchor="w", pady=(20, 8))
         ctk.CTkLabel(
             scroll,
-            text="Classic Tk themes (Company tab in the standard UI) are separate. These settings apply to this CTk window.",
+            text="Light or dark mode and accent theme for this window.",
             wraplength=640,
             justify="left",
             text_color=("gray35", "gray65"),
@@ -232,6 +232,6 @@ class CtkCompanyTab:
             self.on_appearance_applied()
         messagebox.showinfo(
             "Appearance",
-            "CustomTkinter appearance settings saved.\n"
-            "If some colors look off, restart the app once for a full theme refresh.",
+            "Settings saved.\n"
+            "If colors look off, restart the app once for a full theme refresh.",
         )

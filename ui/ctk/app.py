@@ -1,4 +1,4 @@
-"""CustomTkinter application bootstrap — shell + Timer / Time Entries placeholders."""
+"""CustomTkinter application bootstrap — main window and tabs."""
 
 import os
 
@@ -39,7 +39,7 @@ def _apply_icon(root: ctk.CTk) -> None:
 
 
 class CtkApp:
-    """Minimal CustomTkinter shell for phased migration from Tk."""
+    """CustomTkinter main window: tabbed Timer, CRM, entries, invoicing, and settings."""
 
     def __init__(self, db_path=None):
         self.db_path = db_path
@@ -86,19 +86,6 @@ class CtkApp:
         self.root.geometry(DEFAULT_WINDOW_GEOMETRY)
         self.root.minsize(*DEFAULT_MIN_WINDOW_SIZE)
         _apply_icon(self.root)
-
-        banner = ctk.CTkFrame(self.root, fg_color=("gray85", "gray20"))
-        banner.pack(fill="x", padx=12, pady=(12, 0))
-        ctk.CTkLabel(
-            banner,
-            text=(
-                "V4 CustomTkinter — full main tabs in CTk. Footer shows the database file in use; set FREELANCETIMERPRO_DB_PATH if data looks wrong."
-            ),
-            wraplength=920,
-            justify="left",
-            font=ctk.CTkFont(size=12),
-            anchor="w",
-        ).pack(fill="x", padx=10, pady=8)
 
         tabview = ctk.CTkTabview(self.root)
         tabview.pack(fill="both", expand=True, padx=12, pady=12)
@@ -153,14 +140,6 @@ class CtkApp:
         self.email_tab = CtkEmailTab(tab_email, self.root, self.db)
 
         self._apply_ttk_tree_theme()
-
-        footer = ctk.CTkLabel(
-            self.root,
-            text=f"DB: {self.db.db_path}  ·  classic Tk: --tk or FREELANCETIMERPRO_UI=tk",
-            text_color=("gray30", "gray70"),
-            font=ctk.CTkFont(size=12),
-        )
-        footer.pack(side="bottom", fill="x", padx=12, pady=(0, 8))
 
         self.root.mainloop()
 
