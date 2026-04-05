@@ -98,7 +98,8 @@ class CtkTimerTab:
         if which == "active":
             self._active_outer.pack(fill="both", expand=True)
         else:
-            self._manual_outer.pack(fill="both", expand=True)
+            # Pull Manual view up ~20px vs Active (tighter gap under View segmented control).
+            self._manual_outer.pack(fill="both", expand=True, pady=(-20, 0))
 
     def _build_active_view(self) -> None:
         self._active_outer = ctk.CTkFrame(self._view_host, fg_color="transparent")
@@ -174,8 +175,13 @@ class CtkTimerTab:
             anchor="w", padx=10, pady=(2, 4)
         )
 
-        form = ctk.CTkScrollableFrame(manual, fg_color="transparent")
-        form.pack(fill="both", expand=True, padx=6, pady=(0, 4))
+        form = ctk.CTkScrollableFrame(
+            manual,
+            fg_color="transparent",
+            corner_radius=0,
+            border_width=0,
+        )
+        form.pack(fill="both", expand=True, padx=6, pady=(0, 0))
 
         ctk.CTkLabel(form, text="Date (MM/DD/YY):").grid(row=0, column=0, sticky="w", pady=4)
         self.manual_date_entry = ctk.CTkEntry(form, width=200)
@@ -254,12 +260,13 @@ class CtkTimerTab:
 
         ctk.CTkLabel(form, text="Description:").grid(row=7, column=0, sticky="nw", pady=4)
         self.manual_desc_text = ctk.CTkTextbox(form, height=72, width=_COMBO_WIDTH)
-        self.manual_desc_text.grid(row=7, column=1, sticky="ew", padx=8, pady=4)
+        self.manual_desc_text.grid(row=7, column=1, sticky="ew", padx=8, pady=(4, 0))
 
         form.columnconfigure(1, weight=1)
 
         mbtns = ctk.CTkFrame(manual, fg_color="transparent")
-        mbtns.pack(fill="x", padx=10, pady=8)
+        # Tight gap (~20px less) between Description and Add/Clear: no extra top pad on this row.
+        mbtns.pack(fill="x", padx=10, pady=(0, 8))
         ctk.CTkButton(mbtns, text="Add Entry", command=self.add_manual_entry).pack(side="left", padx=4)
         ctk.CTkButton(mbtns, text="Clear", command=self.clear_manual_entry_form).pack(side="left", padx=4)
 
