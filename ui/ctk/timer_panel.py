@@ -51,6 +51,7 @@ class CtkTimerTab:
         self.last_timer_project_id = None
 
         self._large_font = ctk.CTkFont(size=32, weight="bold")
+        self._timer_view: str = "active"
 
         self._build_shell()
         self._load_client_combos()
@@ -65,19 +66,19 @@ class CtkTimerTab:
             font=ctk.CTkFont(size=12),
         )
 
-        top = ctk.CTkFrame(self.parent, fg_color="transparent")
-        top.pack(fill="x", padx=8, pady=(4, 2))
+        self._timer_top_bar = ctk.CTkFrame(self.parent, fg_color="transparent")
+        self._timer_top_bar.pack(fill="x", padx=8, pady=(4, 2))
 
-        ctk.CTkLabel(top, text="View:", font=ctk.CTkFont(weight="bold")).pack(side="left", padx=(0, 8))
+        ctk.CTkLabel(self._timer_top_bar, text="View:", font=ctk.CTkFont(weight="bold")).pack(
+            side="left", padx=(0, 8)
+        )
         self._segment = ctk.CTkSegmentedButton(
-            top,
+            self._timer_top_bar,
             values=["Active Timer", "Manual Entry"],
             command=self._on_segment,
         )
         self._segment.pack(side="left")
         self._segment.set("Active Timer")
-
-        self._no_clients_hint.pack(fill="x", padx=8, pady=(0, 2))
 
         self._view_host = ctk.CTkFrame(self.parent, fg_color="transparent")
         self._view_host.pack(fill="both", expand=True)
@@ -92,14 +93,33 @@ class CtkTimerTab:
         else:
             self._show_view("manual")
 
+    def _refresh_no_clients_hint_strip(self) -> None:
+        """Show the warning strip only when there is text (empty label still reserved ~1 row otherwise)."""
+        self._no_clients_hint.pack_forget()
+        hint_text = (self._no_clients_hint.cget("text") or "").strip()
+        if not hint_text:
+            return
+        pady_bottom = 2 if self._timer_view == "active" else 0
+        self._no_clients_hint.pack(fill="x", padx=8, pady=(0, pady_bottom), before=self._view_host)
+
     def _show_view(self, which: str) -> None:
         self._active_outer.pack_forget()
         self._manual_outer.pack_forget()
+        self._no_clients_hint.pack_forget()
+        self._timer_view = which
+
+        if which == "active":
+            self._timer_top_bar.pack_configure(pady=(4, 2))
+        else:
+            # Tighter under segmented control (Tk disallows negative pack pady).
+            self._timer_top_bar.pack_configure(pady=(2, 0))
+
+        self._refresh_no_clients_hint_strip()
+
         if which == "active":
             self._active_outer.pack(fill="both", expand=True)
         else:
-            # Pull Manual view up ~20px vs Active (tighter gap under View segmented control).
-            self._manual_outer.pack(fill="both", expand=True, pady=(-20, 0))
+            self._manual_outer.pack(fill="both", expand=True)
 
     def _build_active_view(self) -> None:
         self._active_outer = ctk.CTkFrame(self._view_host, fg_color="transparent")
@@ -169,10 +189,10 @@ class CtkTimerTab:
         self._manual_outer = ctk.CTkFrame(self._view_host, fg_color="transparent")
 
         manual = ctk.CTkFrame(self._manual_outer)
-        manual.pack(fill="both", expand=True, padx=4, pady=(2, 6))
+        manual.pack(fill="both", expand=True, padx=4, pady=(0, 6))
 
         ctk.CTkLabel(manual, text="Manual Time Entry", font=ctk.CTkFont(size=14, weight="bold")).pack(
-            anchor="w", padx=10, pady=(2, 4)
+            anchor="w", padx=10, pady=(0, 4)
         )
 
         form = ctk.CTkScrollableFrame(
@@ -311,6 +331,7 @@ class CtkTimerTab:
         else:
             self._no_clients_hint.configure(text="")
 
+        self._refresh_no_clients_hint_strip()
         self.update_daily_totals_display()
 
     def _populate_projects_for_client(self, client_name: str, project_combo: ctk.CTkComboBox, task_combo) -> None:
