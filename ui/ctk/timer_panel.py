@@ -291,7 +291,7 @@ class CtkTimerTab:
                 text=(
                     "No clients in this database — dropdowns stay empty. "
                     "Add Clients (then Projects and Tasks) in the classic Tk app: "
-                    "open a shell without FREELANCETIMERPRO_UI, then come back here."
+                    "run with --tk or FREELANCETIMERPRO_UI=tk, then come back here."
                 )
             )
         else:

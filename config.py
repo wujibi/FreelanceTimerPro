@@ -49,7 +49,7 @@ def get_db_path():
 
 DB_PATH = get_db_path()
 
-# Main window title — V3 branch ships both classic Tk and CustomTkinter (FREELANCETIMERPRO_UI=ctk).
+# Main window title — V3 branch ships CustomTkinter by default; classic Tk via FREELANCETIMERPRO_UI=tk or --tk.
 # Optional override: set FREELANCETIMERPRO_DISPLAY_VERSION (e.g. for a quick label test).
 APP_DISPLAY_VERSION = "V3"
 _title_env = os.environ.get("FREELANCETIMERPRO_DISPLAY_VERSION", "").strip()

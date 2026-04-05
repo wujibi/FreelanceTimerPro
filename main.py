@@ -8,23 +8,25 @@ from ui.tk import run_tk_app
 
 
 def _ui_backend() -> str:
-    """Tk remains default. Use CTk via env FREELANCETIMERPRO_UI=ctk or args --ctk / --ui=ctk."""
+    """CustomTkinter is the default UI. Classic Tk: --tk / --ui=tk or FREELANCETIMERPRO_UI=tk."""
     for arg in sys.argv[1:]:
         a = arg.strip().lower()
         if a in ("--ctk", "--customtkinter"):
             return "ctk"
-        if a == "--tk":
+        if a in ("--tk", "--classic"):
             return "tk"
         if a.startswith("--ui="):
             v = a.split("=", 1)[1].strip()
             if v in ("ctk", "customtkinter"):
                 return "ctk"
-            if v == "tk":
+            if v in ("tk", "classic", "tkinter"):
                 return "tk"
     raw = os.environ.get("FREELANCETIMERPRO_UI", "").strip().lower()
+    if raw in ("tk", "classic", "tkinter"):
+        return "tk"
     if raw in ("ctk", "customtkinter"):
         return "ctk"
-    return "tk"
+    return "ctk"
 
 
 def main():
@@ -39,7 +41,7 @@ def main():
     
     try:
         backend = _ui_backend()
-        print(f"[DEBUG] UI backend: {backend} (use --ctk or FREELANCETIMERPRO_UI=ctk for CustomTkinter)")
+        print(f"[DEBUG] UI backend: {backend} (use --tk or FREELANCETIMERPRO_UI=tk for classic Tk)")
         if backend == "ctk":
             try:
                 from ui.ctk import run_ctk_app

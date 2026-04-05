@@ -156,7 +156,7 @@ class CtkApp:
 
         footer = ctk.CTkLabel(
             self.root,
-            text=f"DB: {self.db.db_path}  ·  unset FREELANCETIMERPRO_UI for classic Tk",
+            text=f"DB: {self.db.db_path}  ·  classic Tk: --tk or FREELANCETIMERPRO_UI=tk",
             text_color=("gray30", "gray70"),
             font=ctk.CTkFont(size=12),
         )
