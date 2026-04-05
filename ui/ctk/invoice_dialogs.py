@@ -11,8 +11,15 @@ from tkinter import filedialog, messagebox, ttk
 
 import tkinter as tk
 
-from ui.ctk.ttk_theme import get_tree_ui_font, get_tree_ui_font_bold
-from ui_helpers import center_dialog
+import customtkinter as ctk
+
+from ui.ctk.ttk_theme import (
+    apply_ctk_aligned_ttk_theme,
+    embedded_tk_frame_bg,
+    get_tree_ui_font,
+    get_tree_ui_font_bold,
+)
+from ui_helpers import center_dialog, center_dialog_clamped
 
 
 def _default_invoice_colors() -> dict[str, str]:
@@ -233,9 +240,16 @@ def show_invoice_preview_dialog_ctk(
     """Invoice preview / create PDF (adapted from InvoiceRuntimeMixin.show_invoice_preview_dialog)."""
     cols = colors or _default_invoice_colors()
 
+    # Keep ttk Treeview/Heading colors in sync with CTk appearance (Windows can look blank if style drifts).
+    apply_ctk_aligned_ttk_theme(root)
+
     preview_dialog = tk.Toplevel(root)
     preview_dialog.title(f"Invoice Preview - {client_name}")
-    center_dialog(root, preview_dialog, 800, 600)
+    host_bg = embedded_tk_frame_bg()
+    preview_dialog.configure(bg=host_bg)
+    preview_dialog.minsize(620, 500)
+    # Default fits most laptops; clamped to screen so height never exceeds usable work area.
+    center_dialog_clamped(root, preview_dialog, 760, 620)
 
     conn = db.conn
     conn.row_factory = sqlite3.Row
@@ -248,7 +262,7 @@ def show_invoice_preview_dialog_ctk(
                p.name as project_name, p.hourly_rate as project_rate, p.is_lump_sum as project_lump_sum,
                p.lump_sum_amount as project_lump_amount,
                t.name as task_name, t.hourly_rate as task_rate, t.is_lump_sum as task_lump_sum,
-               t.lump_sum_amount as task_lump_sum
+               t.lump_sum_amount as task_lump_amount
         FROM time_entries te
         JOIN tasks t ON te.task_id = t.id
         JOIN projects p ON te.project_id = p.id
@@ -351,16 +365,20 @@ def show_invoice_preview_dialog_ctk(
     }
 
     header_frame = ttk.Frame(preview_dialog)
-    header_frame.pack(fill="x", padx=20, pady=20)
 
     ttk.Label(header_frame, text="INVOICE PREVIEW", font=("Arial", 16, "bold")).pack()
     ttk.Label(header_frame, text=f"Client: {client_name}", font=("Arial", 12)).pack(pady=5)
     ttk.Label(header_frame, text=f"Date: {datetime.now().strftime('%B %d, %Y')}", font=("Arial", 10)).pack()
 
     items_frame = ttk.LabelFrame(preview_dialog, text="Invoice Items")
-    items_frame.pack(fill="both", expand=True, padx=20, pady=10)
 
-    items_tree = ttk.Treeview(items_frame, columns=("Description", "Quantity", "Rate", "Amount"), show="headings")
+    # Host ttk in a plain tk.Frame (same pattern as Invoices tab) so pack/expand reserves space reliably on Windows.
+    tree_host = tk.Frame(items_frame, bg=host_bg, highlightthickness=0)
+    tree_host.pack(fill="both", expand=True, padx=4, pady=4)
+
+    items_tree = ttk.Treeview(
+        tree_host, columns=("Description", "Quantity", "Rate", "Amount"), show="headings"
+    )
     items_tree.heading("Description", text="Description")
     items_tree.heading("Quantity", text="Quantity")
     items_tree.heading("Rate", text="Rate")
@@ -383,10 +401,15 @@ def show_invoice_preview_dialog_ctk(
 
     items_tree.tag_configure("header", font=get_tree_ui_font_bold(root), background="#e8f4f8")
     items_tree.tag_configure("subtotal", font=get_tree_ui_font_bold(root), background="#f0f0f0")
-    items_tree.pack(fill="both", expand=True, padx=10, pady=10)
+    # Cap visible rows so Treeview min height + header/totals/buttons fits the dialog; use scrollbar for the rest.
+    visible_rows = max(5, min(12, len(invoice_items) + 2))
+    items_tree.configure(height=visible_rows)
+    vsb = ttk.Scrollbar(tree_host, orient="vertical", command=items_tree.yview)
+    items_tree.configure(yscrollcommand=vsb.set)
+    items_tree.pack(side="left", fill="both", expand=True)
+    vsb.pack(side="right", fill="y")
 
     total_frame = ttk.Frame(preview_dialog)
-    total_frame.pack(fill="x", padx=20, pady=10)
     ttk.Label(
         total_frame,
         text=f"Total Hours: {total_hours:.2f} hrs",
@@ -395,8 +418,9 @@ def show_invoice_preview_dialog_ctk(
     ).pack(side="left")
     ttk.Label(total_frame, text=f"TOTAL: ${total_amount:.2f}", font=("Arial", 14, "bold")).pack(side="right")
 
-    button_frame = ttk.Frame(preview_dialog)
-    button_frame.pack(fill="x", padx=20, pady=20)
+    button_frame = ctk.CTkFrame(preview_dialog, fg_color="transparent")
+    _btn_font = ctk.CTkFont(size=13)
+    _btn_h = 34
 
     def create_invoice():
         if messagebox.askyesno(
@@ -595,7 +619,45 @@ def show_invoice_preview_dialog_ctk(
             on_billing_updated=on_billing_updated,
         )
 
-    ttk.Button(button_frame, text="Edit Entries", command=edit_time_entries_from_preview).pack(side="left", padx=5)
-    ttk.Button(button_frame, text="Email Invoice", command=email_invoice).pack(side="right", padx=5)
-    ttk.Button(button_frame, text="CREATE INVOICE", command=create_invoice).pack(side="right", padx=5)
-    ttk.Button(button_frame, text="Cancel", command=preview_dialog.destroy).pack(side="right", padx=5)
+    ctk.CTkButton(
+        button_frame,
+        text="Edit Entries",
+        width=118,
+        height=_btn_h,
+        font=_btn_font,
+        command=edit_time_entries_from_preview,
+    ).pack(side="left", padx=4)
+    ctk.CTkButton(
+        button_frame,
+        text="Cancel",
+        width=96,
+        height=_btn_h,
+        font=_btn_font,
+        command=preview_dialog.destroy,
+    ).pack(side="right", padx=4)
+    ctk.CTkButton(
+        button_frame,
+        text="Create invoice",
+        width=138,
+        height=_btn_h,
+        font=_btn_font,
+        command=create_invoice,
+    ).pack(side="right", padx=4)
+    ctk.CTkButton(
+        button_frame,
+        text="Email invoice",
+        width=124,
+        height=_btn_h,
+        font=_btn_font,
+        command=email_invoice,
+    ).pack(side="right", padx=4)
+
+    # Pack bottom chrome first so a tall Treeview cannot squeeze buttons to zero height (Windows + fixed geometry).
+    header_frame.pack(side="top", fill="x", padx=20, pady=20)
+    button_frame.pack(side="bottom", fill="x", padx=20, pady=20)
+    total_frame.pack(side="bottom", fill="x", padx=20, pady=10)
+    items_frame.pack(fill="both", expand=True, padx=20, pady=10)
+
+    preview_dialog.update_idletasks()
+    preview_dialog.lift()
+    preview_dialog.focus_force()

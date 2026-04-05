@@ -25,6 +25,31 @@ def center_dialog(root: tk.Tk, dialog: tk.Toplevel, width: int, height: int) -> 
     dialog.geometry(f"{width}x{height}+{x}+{y}")
 
 
+def center_dialog_clamped(
+    root: tk.Misc,
+    dialog: tk.Toplevel,
+    width: int,
+    height: int,
+    *,
+    margin: int = 48,
+) -> None:
+    """
+    Center a dialog relative to the main window; shrink size if it would exceed the screen
+    (helps 13–14 inch laptops and scaled displays). Position is clamped so the window stays on-screen.
+    """
+    root.update_idletasks()
+    dialog.update_idletasks()
+    sw = root.winfo_screenwidth()
+    sh = root.winfo_screenheight()
+    w = min(width, max(520, sw - 2 * margin))
+    h = min(height, max(400, sh - 2 * margin))
+    x = root.winfo_x() + (root.winfo_width() // 2) - (w // 2)
+    y = root.winfo_y() + (root.winfo_height() // 2) - (h // 2)
+    x = max(margin, min(x, sw - w - margin))
+    y = max(margin, min(y, sh - h - margin))
+    dialog.geometry(f"{w}x{h}+{x}+{y}")
+
+
 def load_theme_preference(db_path: str, default_theme: str = "Burnt Orange Pro V3") -> str:
     try:
         conn = sqlite3.connect(db_path)
