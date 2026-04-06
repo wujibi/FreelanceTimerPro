@@ -11,6 +11,7 @@ import customtkinter as ctk
 
 from core.project_resolution import resolve_project_id_by_names
 from models import Client, Project, Task
+from ui.ctk import style_tokens as st
 from ui.ctk.ttk_theme import get_tree_ui_font, get_tree_ui_font_bold
 from ui_helpers import restore_tree_state, save_tree_state
 
@@ -47,32 +48,32 @@ class CtkTasksTab:
 
     def _build_ui(self) -> None:
         form = ctk.CTkFrame(self.parent, fg_color="transparent")
-        form.pack(fill="x", padx=10, pady=8)
+        form.pack(fill="x", padx=st.PANEL_INNER_PAD_X, pady=st.SPACE_8)
 
         ctk.CTkLabel(form, text="Task information", font=ctk.CTkFont(size=14, weight="bold")).grid(
-            row=0, column=0, columnspan=2, sticky="w", pady=(0, 8)
+            row=0, column=0, columnspan=2, sticky="w", pady=(0, st.SECTION_TITLE_BOTTOM_PAD)
         )
 
         ctk.CTkLabel(form, text="Client:").grid(row=1, column=0, sticky="w", pady=4)
         self.task_client_combo = ctk.CTkComboBox(
             form,
             values=[],
-            width=320,
+            width=st.COMBO_WIDTH,
             state="readonly",
             command=self._on_task_client_selected,
         )
         self.task_client_combo.grid(row=1, column=1, sticky="ew", padx=8, pady=4)
 
         ctk.CTkLabel(form, text="Project:").grid(row=2, column=0, sticky="w", pady=4)
-        self.task_project_combo = ctk.CTkComboBox(form, values=[], width=320, state="readonly")
+        self.task_project_combo = ctk.CTkComboBox(form, values=[], width=st.COMBO_WIDTH, state="readonly")
         self.task_project_combo.grid(row=2, column=1, sticky="ew", padx=8, pady=4)
 
         ctk.CTkLabel(form, text="Name:").grid(row=3, column=0, sticky="w", pady=4)
-        self.task_name_entry = ctk.CTkEntry(form, width=320)
+        self.task_name_entry = ctk.CTkEntry(form, width=st.COMBO_WIDTH)
         self.task_name_entry.grid(row=3, column=1, sticky="ew", padx=8, pady=4)
 
         ctk.CTkLabel(form, text="Description:").grid(row=4, column=0, sticky="nw", pady=4)
-        self.task_desc_text = ctk.CTkTextbox(form, width=320, height=72)
+        self.task_desc_text = ctk.CTkTextbox(form, width=st.COMBO_WIDTH, height=st.TEXTBOX_SHORT_HEIGHT)
         self.task_desc_text.grid(row=4, column=1, sticky="ew", padx=8, pady=4)
 
         ctk.CTkCheckBox(
@@ -96,17 +97,26 @@ class CtkTasksTab:
         form.columnconfigure(1, weight=1)
 
         bf = ctk.CTkFrame(self.parent, fg_color="transparent")
-        bf.pack(fill="x", padx=10, pady=4)
+        bf.pack(fill="x", padx=st.PANEL_INNER_PAD_X, pady=st.BUTTON_ROW_PAD_Y)
         ctk.CTkButton(bf, text="Add Task", command=self.add_task).pack(side="left", padx=4)
         ctk.CTkButton(bf, text="Update Task", command=self.update_task).pack(side="left", padx=4)
         ctk.CTkButton(bf, text="Clear Form", command=self.clear_task_form).pack(side="left", padx=4)
 
         ctk.CTkLabel(self.parent, text="Tasks", font=ctk.CTkFont(size=14, weight="bold")).pack(
-            anchor="w", padx=10, pady=(12, 4)
+            anchor="w", padx=st.PANEL_INNER_PAD_X, pady=(st.SECTION_GAP, st.SPACE_4)
         )
 
-        self._tree_host = tk.Frame(self.parent)
-        self._tree_host.pack(fill="both", expand=True, padx=8, pady=4)
+        list_section = ctk.CTkFrame(self.parent, fg_color="transparent")
+        list_section.pack(fill="both", expand=True, padx=st.PANEL_PAD_X, pady=st.SPACE_4)
+
+        dbf = ctk.CTkFrame(list_section, fg_color="transparent")
+        dbf.pack(side="bottom", fill="x", pady=st.BUTTON_ROW_BOTTOM_PAD)
+        ctk.CTkButton(dbf, text="Delete Task", command=self.delete_task, fg_color="gray40").pack(
+            side="left", padx=st.BUTTON_PAD_X
+        )
+
+        self._tree_host = tk.Frame(list_section)
+        self._tree_host.pack(side="top", fill="both", expand=True)
 
         self.task_tree = ttk.Treeview(self._tree_host, columns=("Type", "ID", "Extra", "Billing", "Rate"))
         self.task_tree.heading("#0", text="Hierarchy")
@@ -129,9 +139,7 @@ class CtkTasksTab:
 
         self.task_tree.bind("<<TreeviewSelect>>", self.on_task_select)
 
-        dbf = ctk.CTkFrame(self.parent, fg_color="transparent")
-        dbf.pack(fill="x", padx=10, pady=8)
-        ctk.CTkButton(dbf, text="Delete Task", command=self.delete_task, fg_color="gray40").pack(side="left", padx=4)
+        
 
     def _on_task_client_selected(self, _choice: str | None = None) -> None:
         client_name = self.task_client_combo.get()

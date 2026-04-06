@@ -10,6 +10,7 @@ import tkinter as tk
 import customtkinter as ctk
 
 from models import Client
+from ui.ctk import style_tokens as st
 
 
 class CtkClientsTab:
@@ -31,10 +32,10 @@ class CtkClientsTab:
 
     def _build_ui(self) -> None:
         form = ctk.CTkFrame(self.parent, fg_color="transparent")
-        form.pack(fill="x", padx=10, pady=8)
+        form.pack(fill="x", padx=st.PANEL_INNER_PAD_X, pady=st.SPACE_8)
 
         ctk.CTkLabel(form, text="Client information", font=ctk.CTkFont(size=14, weight="bold")).grid(
-            row=0, column=0, columnspan=2, sticky="w", pady=(0, 8)
+            row=0, column=0, columnspan=2, sticky="w", pady=(0, st.SECTION_TITLE_BOTTOM_PAD)
         )
 
         ctk.CTkLabel(form, text="Name:").grid(row=1, column=0, sticky="w", pady=4)
@@ -54,23 +55,32 @@ class CtkClientsTab:
         self.client_phone_entry.grid(row=4, column=1, sticky="ew", padx=8, pady=4)
 
         ctk.CTkLabel(form, text="Address:").grid(row=5, column=0, sticky="nw", pady=4)
-        self.client_address_text = ctk.CTkTextbox(form, width=360, height=72)
+        self.client_address_text = ctk.CTkTextbox(form, width=360, height=st.TEXTBOX_SHORT_HEIGHT)
         self.client_address_text.grid(row=5, column=1, sticky="ew", padx=8, pady=4)
 
         form.columnconfigure(1, weight=1)
 
         bf = ctk.CTkFrame(self.parent, fg_color="transparent")
-        bf.pack(fill="x", padx=10, pady=4)
+        bf.pack(fill="x", padx=st.PANEL_INNER_PAD_X, pady=st.BUTTON_ROW_PAD_Y)
         ctk.CTkButton(bf, text="Add Client", command=self.add_client).pack(side="left", padx=4)
         ctk.CTkButton(bf, text="Update Client", command=self.update_client).pack(side="left", padx=4)
         ctk.CTkButton(bf, text="Clear Form", command=self.clear_client_form).pack(side="left", padx=4)
 
         ctk.CTkLabel(self.parent, text="Clients", font=ctk.CTkFont(size=14, weight="bold")).pack(
-            anchor="w", padx=10, pady=(12, 4)
+            anchor="w", padx=st.PANEL_INNER_PAD_X, pady=(st.SECTION_GAP, st.SPACE_4)
         )
 
-        self._tree_host = tk.Frame(self.parent)
-        self._tree_host.pack(fill="both", expand=True, padx=8, pady=4)
+        list_section = ctk.CTkFrame(self.parent, fg_color="transparent")
+        list_section.pack(fill="both", expand=True, padx=st.PANEL_PAD_X, pady=st.SPACE_4)
+
+        dbf = ctk.CTkFrame(list_section, fg_color="transparent")
+        dbf.pack(side="bottom", fill="x", pady=st.BUTTON_ROW_BOTTOM_PAD)
+        ctk.CTkButton(dbf, text="Delete Client", command=self.delete_client, fg_color="gray40").pack(
+            side="left", padx=st.BUTTON_PAD_X
+        )
+
+        self._tree_host = tk.Frame(list_section)
+        self._tree_host.pack(side="top", fill="both", expand=True)
 
         self.client_tree = ttk.Treeview(
             self._tree_host,
@@ -88,11 +98,7 @@ class CtkClientsTab:
 
         self.client_tree.bind("<<TreeviewSelect>>", self.on_client_select)
 
-        dbf = ctk.CTkFrame(self.parent, fg_color="transparent")
-        dbf.pack(fill="x", padx=10, pady=8)
-        ctk.CTkButton(dbf, text="Delete Client", command=self.delete_client, fg_color="gray40").pack(
-            side="left", padx=4
-        )
+        
 
     def refresh_tree(self) -> None:
         for item in self.client_tree.get_children():

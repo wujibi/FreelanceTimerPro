@@ -10,6 +10,7 @@ import tkinter as tk
 import customtkinter as ctk
 
 from models import Client, Project
+from ui.ctk import style_tokens as st
 
 
 class CtkProjectsTab:
@@ -44,22 +45,22 @@ class CtkProjectsTab:
 
     def _build_ui(self) -> None:
         form = ctk.CTkFrame(self.parent, fg_color="transparent")
-        form.pack(fill="x", padx=10, pady=8)
+        form.pack(fill="x", padx=st.PANEL_INNER_PAD_X, pady=st.SPACE_8)
 
         ctk.CTkLabel(form, text="Project information", font=ctk.CTkFont(size=14, weight="bold")).grid(
-            row=0, column=0, columnspan=2, sticky="w", pady=(0, 8)
+            row=0, column=0, columnspan=2, sticky="w", pady=(0, st.SECTION_TITLE_BOTTOM_PAD)
         )
 
         ctk.CTkLabel(form, text="Client:").grid(row=1, column=0, sticky="w", pady=4)
-        self.project_client_combo = ctk.CTkComboBox(form, values=[], width=320, state="readonly")
+        self.project_client_combo = ctk.CTkComboBox(form, values=[], width=st.COMBO_WIDTH, state="readonly")
         self.project_client_combo.grid(row=1, column=1, sticky="ew", padx=8, pady=4)
 
         ctk.CTkLabel(form, text="Name:").grid(row=2, column=0, sticky="w", pady=4)
-        self.project_name_entry = ctk.CTkEntry(form, width=320)
+        self.project_name_entry = ctk.CTkEntry(form, width=st.COMBO_WIDTH)
         self.project_name_entry.grid(row=2, column=1, sticky="ew", padx=8, pady=4)
 
         ctk.CTkLabel(form, text="Description:").grid(row=3, column=0, sticky="nw", pady=4)
-        self.project_desc_text = ctk.CTkTextbox(form, width=320, height=72)
+        self.project_desc_text = ctk.CTkTextbox(form, width=st.COMBO_WIDTH, height=st.TEXTBOX_SHORT_HEIGHT)
         self.project_desc_text.grid(row=3, column=1, sticky="ew", padx=8, pady=4)
 
         br = ctk.CTkFrame(form, fg_color="transparent")
@@ -84,17 +85,26 @@ class CtkProjectsTab:
         form.columnconfigure(1, weight=1)
 
         bf = ctk.CTkFrame(self.parent, fg_color="transparent")
-        bf.pack(fill="x", padx=10, pady=4)
+        bf.pack(fill="x", padx=st.PANEL_INNER_PAD_X, pady=st.BUTTON_ROW_PAD_Y)
         ctk.CTkButton(bf, text="Add Project", command=self.add_project).pack(side="left", padx=4)
         ctk.CTkButton(bf, text="Update Project", command=self.update_project).pack(side="left", padx=4)
         ctk.CTkButton(bf, text="Clear Form", command=self.clear_project_form).pack(side="left", padx=4)
 
         ctk.CTkLabel(self.parent, text="Projects", font=ctk.CTkFont(size=14, weight="bold")).pack(
-            anchor="w", padx=10, pady=(12, 4)
+            anchor="w", padx=st.PANEL_INNER_PAD_X, pady=(st.SECTION_GAP, st.SPACE_4)
         )
 
-        self._tree_host = tk.Frame(self.parent)
-        self._tree_host.pack(fill="both", expand=True, padx=8, pady=4)
+        list_section = ctk.CTkFrame(self.parent, fg_color="transparent")
+        list_section.pack(fill="both", expand=True, padx=st.PANEL_PAD_X, pady=st.SPACE_4)
+
+        dbf = ctk.CTkFrame(list_section, fg_color="transparent")
+        dbf.pack(side="bottom", fill="x", pady=st.BUTTON_ROW_BOTTOM_PAD)
+        ctk.CTkButton(dbf, text="Delete Project", command=self.delete_project, fg_color="gray40").pack(
+            side="left", padx=st.BUTTON_PAD_X
+        )
+
+        self._tree_host = tk.Frame(list_section)
+        self._tree_host.pack(side="top", fill="both", expand=True)
 
         self.project_tree = ttk.Treeview(
             self._tree_host,
@@ -114,11 +124,7 @@ class CtkProjectsTab:
 
         self.project_tree.bind("<<TreeviewSelect>>", self.on_project_select)
 
-        dbf = ctk.CTkFrame(self.parent, fg_color="transparent")
-        dbf.pack(fill="x", padx=10, pady=8)
-        ctk.CTkButton(dbf, text="Delete Project", command=self.delete_project, fg_color="gray40").pack(
-            side="left", padx=4
-        )
+        
 
     def refresh_tree(self) -> None:
         for item in self.project_tree.get_children():

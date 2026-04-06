@@ -15,12 +15,13 @@ from core.project_resolution import resolve_project_id_by_names
 from core.task_list_builders import build_task_displays_for_project
 from core.task_resolution import GLOBAL_TASK_PREFIX, resolve_task_id_for_timer
 from models import Client, Project, Task, TimeEntry
+from ui.ctk import style_tokens as st
 
 # Client / Project / Task dropdown width — match Active and Manual views (no horizontal stretch on Active).
-_COMBO_WIDTH = 320
+_COMBO_WIDTH = st.COMBO_WIDTH
 
 # Vertical space from the view control / previous block to each bold section title (~15–20px).
-_SECTION_TITLE_TOP_PAD = 18
+_SECTION_TITLE_TOP_PAD = st.SECTION_TITLE_TOP_PAD
 
 
 class CtkTimerTab:
@@ -70,7 +71,7 @@ class CtkTimerTab:
         )
 
         self._timer_top_bar = ctk.CTkFrame(self.parent, fg_color="transparent")
-        self._timer_top_bar.pack(fill="x", padx=8, pady=(4, 2))
+        self._timer_top_bar.pack(fill="x", padx=st.PANEL_PAD_X, pady=(st.SPACE_4, 2))
 
         ctk.CTkLabel(self._timer_top_bar, text="View:", font=ctk.CTkFont(weight="bold")).pack(
             side="left", padx=(0, 8)
@@ -103,7 +104,7 @@ class CtkTimerTab:
         if not hint_text:
             return
         pady_bottom = 2 if self._timer_view == "active" else 0
-        self._no_clients_hint.pack(fill="x", padx=8, pady=(0, pady_bottom), before=self._view_host)
+        self._no_clients_hint.pack(fill="x", padx=st.PANEL_PAD_X, pady=(0, pady_bottom), before=self._view_host)
 
     def _show_view(self, which: str) -> None:
         self._active_outer.pack_forget()
@@ -119,7 +120,8 @@ class CtkTimerTab:
         self._refresh_no_clients_hint_strip()
 
         if which == "active":
-            self._active_outer.pack(fill="both", expand=True)
+            # Keep Active view vertically compact; avoid large empty area below daily totals controls.
+            self._active_outer.pack(fill="x", expand=False, anchor="n")
         else:
             self._manual_outer.pack(fill="both", expand=True)
 
@@ -127,7 +129,7 @@ class CtkTimerTab:
         self._active_outer = ctk.CTkFrame(self._view_host, fg_color="transparent")
 
         disp = ctk.CTkFrame(self._active_outer)
-        disp.pack(fill="x", padx=4, pady=4)
+        disp.pack(fill="x", padx=st.SPACE_4, pady=st.SPACE_4)
 
         ctk.CTkLabel(disp, text="Active Timer", font=ctk.CTkFont(size=14, weight="bold")).pack(
             anchor="w", padx=10, pady=(4, 0)
@@ -172,16 +174,20 @@ class CtkTimerTab:
         self.stop_button.pack(side="left", padx=6)
 
         daily = ctk.CTkFrame(self._active_outer)
-        daily.pack(fill="both", expand=True, padx=4, pady=8)
+        daily.pack(fill="x", expand=False, padx=st.SPACE_4, pady=st.SPACE_8)
         ctk.CTkLabel(daily, text="Today's Time by Client", font=ctk.CTkFont(size=14, weight="bold")).pack(
             anchor="w", padx=10, pady=(8, 4)
         )
-        self.daily_totals_text = ctk.CTkTextbox(daily, height=180, font=ctk.CTkFont(family="Consolas", size=14))
-        self.daily_totals_text.pack(fill="both", expand=True, padx=10, pady=4)
+        self.daily_totals_text = ctk.CTkTextbox(
+            daily,
+            height=st.DAILY_TOTALS_ACTIVE_HEIGHT,
+            font=ctk.CTkFont(family="Consolas", size=14),
+        )
+        self.daily_totals_text.pack(fill="x", expand=False, padx=st.PANEL_INNER_PAD_X, pady=(st.SPACE_4, st.SPACE_16))
         self.daily_totals_text.configure(state="disabled")
 
         dbtns = ctk.CTkFrame(daily, fg_color="transparent")
-        dbtns.pack(fill="x", padx=10, pady=(0, 8))
+        dbtns.pack(fill="x", padx=st.PANEL_INNER_PAD_X, pady=(0, st.SPACE_8))
         ctk.CTkButton(dbtns, text="Refresh Totals", command=self.update_daily_totals_display).pack(
             side="left", padx=4
         )
@@ -192,7 +198,7 @@ class CtkTimerTab:
 
         manual = ctk.CTkFrame(self._manual_outer)
         # Natural height only — do not stretch the form vertically (avoids a huge empty band above Add/Clear).
-        manual.pack(fill="x", expand=False, padx=4, pady=(_SECTION_TITLE_TOP_PAD, 0))
+        manual.pack(fill="x", expand=False, padx=st.SPACE_4, pady=(_SECTION_TITLE_TOP_PAD, 0))
 
         ctk.CTkLabel(manual, text="Manual Time Entry", font=ctk.CTkFont(size=14, weight="bold")).pack(
             anchor="w", padx=10, pady=(0, 8)
@@ -279,7 +285,7 @@ class CtkTimerTab:
         self.manual_task_combo.grid(row=6, column=1, sticky="w", padx=8, pady=4)
 
         ctk.CTkLabel(form, text="Description:").grid(row=7, column=0, sticky="nw", pady=4)
-        self.manual_desc_text = ctk.CTkTextbox(form, height=72, width=_COMBO_WIDTH)
+        self.manual_desc_text = ctk.CTkTextbox(form, height=st.TEXTBOX_SHORT_HEIGHT, width=_COMBO_WIDTH)
         self.manual_desc_text.grid(row=7, column=1, sticky="ew", padx=8, pady=(4, 0))
 
         form.columnconfigure(1, weight=1)
@@ -298,18 +304,18 @@ class CtkTimerTab:
         ctk.CTkButton(mbtns, text="Clear", command=self.clear_manual_entry_form).pack(side="left", padx=4)
 
         mdaily = ctk.CTkFrame(self._manual_outer)
-        mdaily.pack(fill="both", expand=True, padx=4, pady=(_SECTION_TITLE_TOP_PAD, 8))
+        mdaily.pack(fill="both", expand=True, padx=st.SPACE_4, pady=(_SECTION_TITLE_TOP_PAD, st.SPACE_8))
         ctk.CTkLabel(mdaily, text="Today's Time by Client", font=ctk.CTkFont(size=14, weight="bold")).pack(
             anchor="w", padx=10, pady=(0, 8)
         )
         self.manual_daily_totals_text = ctk.CTkTextbox(
-            mdaily, height=96, font=ctk.CTkFont(family="Consolas", size=14)
+            mdaily, height=st.DAILY_TOTALS_MANUAL_HEIGHT, font=ctk.CTkFont(family="Consolas", size=14)
         )
-        self.manual_daily_totals_text.pack(fill="x", expand=False, padx=10, pady=4)
+        self.manual_daily_totals_text.pack(fill="x", expand=False, padx=st.PANEL_INNER_PAD_X, pady=st.SPACE_4)
         self.manual_daily_totals_text.configure(state="disabled")
 
         mdbtns = ctk.CTkFrame(mdaily, fg_color="transparent")
-        mdbtns.pack(fill="x", padx=10, pady=(0, 8))
+        mdbtns.pack(fill="x", padx=st.PANEL_INNER_PAD_X, pady=(0, st.SPACE_8))
         ctk.CTkButton(mdbtns, text="Refresh Totals", command=self.update_daily_totals_display).pack(
             side="left", padx=4
         )

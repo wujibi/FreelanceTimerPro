@@ -59,7 +59,7 @@ APP_TITLE = (
 )
 
 # UI bootstrap constants (used by Tkinter frontend)
-DEFAULT_WINDOW_GEOMETRY = "1200x800"
+DEFAULT_WINDOW_GEOMETRY = "1200x760"
 DEFAULT_MIN_WINDOW_SIZE = (600, 400)
 ASSETS_DIRNAME = "assets"
 APP_ICON_FILENAME = "icon.ico"
