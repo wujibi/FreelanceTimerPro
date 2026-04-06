@@ -308,14 +308,15 @@ class CtkTimerTab:
         ctk.CTkLabel(mdaily, text="Today's Time by Client", font=ctk.CTkFont(size=14, weight="bold")).pack(
             anchor="w", padx=10, pady=(0, 8)
         )
+        # Shorter than Active view: Manual form is tall; 130px here pushed bottom buttons off-screen at default geometry.
         self.manual_daily_totals_text = ctk.CTkTextbox(
-            mdaily, height=st.DAILY_TOTALS_ACTIVE_HEIGHT, font=ctk.CTkFont(family="Consolas", size=14)
+            mdaily, height=st.DAILY_TOTALS_MANUAL_HEIGHT, font=ctk.CTkFont(family="Consolas", size=14)
         )
         self.manual_daily_totals_text.pack(
             fill="x",
             expand=False,
             padx=st.PANEL_INNER_PAD_X,
-            pady=(st.SPACE_4, st.SPACE_16),
+            pady=(st.SPACE_4, st.SPACE_12),
         )
         self.manual_daily_totals_text.configure(state="disabled")
 
