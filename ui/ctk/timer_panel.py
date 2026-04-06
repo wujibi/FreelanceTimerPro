@@ -309,9 +309,14 @@ class CtkTimerTab:
             anchor="w", padx=10, pady=(0, 8)
         )
         self.manual_daily_totals_text = ctk.CTkTextbox(
-            mdaily, height=st.DAILY_TOTALS_MANUAL_HEIGHT, font=ctk.CTkFont(family="Consolas", size=14)
+            mdaily, height=st.DAILY_TOTALS_ACTIVE_HEIGHT, font=ctk.CTkFont(family="Consolas", size=14)
         )
-        self.manual_daily_totals_text.pack(fill="x", expand=False, padx=st.PANEL_INNER_PAD_X, pady=st.SPACE_4)
+        self.manual_daily_totals_text.pack(
+            fill="x",
+            expand=False,
+            padx=st.PANEL_INNER_PAD_X,
+            pady=(st.SPACE_4, st.SPACE_16),
+        )
         self.manual_daily_totals_text.configure(state="disabled")
 
         mdbtns = ctk.CTkFrame(mdaily, fg_color="transparent")
