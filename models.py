@@ -48,6 +48,28 @@ class Client:
         with self.db.get_connection() as conn:
             cursor = conn.cursor()
             
+            # Remove invoice/link-table rows that reference affected time entries first.
+            cursor.execute('''
+                DELETE FROM billing_entry_link
+                WHERE time_entry_id IN (
+                    SELECT te.id
+                    FROM time_entries te
+                    JOIN tasks t ON te.task_id = t.id
+                    JOIN projects p ON t.project_id = p.id
+                    WHERE p.client_id = ?
+                )
+            ''', (client_id,))
+            cursor.execute('''
+                DELETE FROM billing_time_entries
+                WHERE time_entry_id IN (
+                    SELECT te.id
+                    FROM time_entries te
+                    JOIN tasks t ON te.task_id = t.id
+                    JOIN projects p ON t.project_id = p.id
+                    WHERE p.client_id = ?
+                )
+            ''', (client_id,))
+
             # Manual CASCADE: Delete in reverse dependency order
             # 1. Delete time entries for all tasks under all projects for this client
             cursor.execute('''
@@ -140,6 +162,26 @@ class Project:
         with self.db.get_connection() as conn:
             cursor = conn.cursor()
             
+            # Remove invoice/link-table rows that reference affected time entries first.
+            cursor.execute('''
+                DELETE FROM billing_entry_link
+                WHERE time_entry_id IN (
+                    SELECT te.id
+                    FROM time_entries te
+                    JOIN tasks t ON te.task_id = t.id
+                    WHERE t.project_id = ?
+                )
+            ''', (project_id,))
+            cursor.execute('''
+                DELETE FROM billing_time_entries
+                WHERE time_entry_id IN (
+                    SELECT te.id
+                    FROM time_entries te
+                    JOIN tasks t ON te.task_id = t.id
+                    WHERE t.project_id = ?
+                )
+            ''', (project_id,))
+
             # Manual CASCADE: Delete in reverse dependency order
             # 1. Delete time entries for all tasks under this project
             cursor.execute('''
@@ -227,6 +269,25 @@ class Task:
             cursor.execute('SELECT * FROM tasks WHERE id = ?', (task_id,))
             return cursor.fetchone()
 
+    def get_time_entry_counts(self, task_id):
+        """Return (total_entries, billed_entries) for a task."""
+        with self.db.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                '''
+                SELECT
+                    COUNT(*) AS total_entries,
+                    SUM(CASE WHEN is_billed = 1 OR (invoice_number IS NOT NULL AND TRIM(invoice_number) != '') THEN 1 ELSE 0 END) AS billed_entries
+                FROM time_entries
+                WHERE task_id = ?
+                ''',
+                (task_id,),
+            )
+            row = cursor.fetchone()
+            total_entries = int(row[0] or 0) if row else 0
+            billed_entries = int(row[1] or 0) if row else 0
+            return total_entries, billed_entries
+
     def update(self, task_id, name, description="", hourly_rate=0, is_lump_sum=False, lump_sum_amount=0):
         with self.db.get_connection() as conn:
             cursor = conn.cursor()
@@ -246,6 +307,20 @@ class Task:
         with self.db.get_connection() as conn:
             cursor = conn.cursor()
             
+            # Remove invoice/link-table rows that reference affected time entries first.
+            cursor.execute('''
+                DELETE FROM billing_entry_link
+                WHERE time_entry_id IN (
+                    SELECT id FROM time_entries WHERE task_id = ?
+                )
+            ''', (task_id,))
+            cursor.execute('''
+                DELETE FROM billing_time_entries
+                WHERE time_entry_id IN (
+                    SELECT id FROM time_entries WHERE task_id = ?
+                )
+            ''', (task_id,))
+
             # Manual CASCADE: Delete time entries first
             cursor.execute('DELETE FROM time_entries WHERE task_id = ?', (task_id,))
             
@@ -472,6 +547,8 @@ class TimeEntry:
     def delete(self, entry_id):
         with self.db.get_connection() as conn:
             cursor = conn.cursor()
+            cursor.execute('DELETE FROM billing_entry_link WHERE time_entry_id = ?', (entry_id,))
+            cursor.execute('DELETE FROM billing_time_entries WHERE time_entry_id = ?', (entry_id,))
             cursor.execute('DELETE FROM time_entries WHERE id=?', (entry_id,))
             conn.commit()  # ADDED
 

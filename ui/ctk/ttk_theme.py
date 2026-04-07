@@ -99,6 +99,9 @@ def apply_ctk_aligned_ttk_theme(master: tk.Misc) -> ttk.Style:
         fieldbackground=tree_bg,
         foreground=tree_fg,
         borderwidth=0,
+        bordercolor=border,
+        lightcolor=border,
+        darkcolor=border,
         rowheight=_TREE_ROW_HEIGHT,
         font=body_font,
     )
@@ -111,8 +114,11 @@ def apply_ctk_aligned_ttk_theme(master: tk.Misc) -> ttk.Style:
         "Treeview.Heading",
         background=heading_bg,
         foreground=heading_fg,
-        relief="flat",
+        relief="raised",
         borderwidth=1,
+        bordercolor=border,
+        lightcolor=border,
+        darkcolor=border,
         padding=4,
         font=heading_font,
     )

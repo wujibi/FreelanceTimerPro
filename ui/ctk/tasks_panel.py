@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+import sqlite3
 from tkinter import messagebox, ttk
 
 import tkinter as tk
@@ -366,11 +367,36 @@ class CtkTasksTab:
             messagebox.showerror("Error", "Could not determine task ID")
             return
 
-        if messagebox.askyesno("Confirm", "Delete this task? This will also delete all associated time entries."):
-            self.task_model.delete(task_id)
-            self.refresh_all()
-            self.on_data_changed()
-            messagebox.showinfo("Success", "Task deleted successfully")
+        total_entries, billed_entries = self.task_model.get_time_entry_counts(task_id)
+        if billed_entries > 0:
+            messagebox.showwarning(
+                "Cannot Delete Task",
+                "This task has billed/invoiced time entries and cannot be deleted.\n\n"
+                f"Task has {total_entries} total entries ({billed_entries} billed). "
+                "Please keep this task for invoice history.",
+            )
+            return
+
+        confirm_msg = "Delete this task?"
+        if total_entries > 0:
+            confirm_msg += (
+                f"\n\nThis will also delete {total_entries} unbilled associated time entr"
+                f"{'y' if total_entries == 1 else 'ies'}."
+            )
+        if messagebox.askyesno("Confirm", confirm_msg):
+            try:
+                self.task_model.delete(task_id)
+                self.refresh_all()
+                self.on_data_changed()
+                messagebox.showinfo("Success", "Task deleted successfully")
+            except sqlite3.IntegrityError as exc:
+                messagebox.showerror(
+                    "Delete Blocked",
+                    "Could not delete this task due to linked billing/invoice records.\n\n"
+                    f"Details: {exc}",
+                )
+            except Exception as exc:
+                messagebox.showerror("Delete Failed", f"Unexpected error deleting task:\n\n{exc}")
 
     def clear_task_form(self) -> None:
         self.task_global_var.set(False)
