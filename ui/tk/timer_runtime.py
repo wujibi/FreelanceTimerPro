@@ -5,7 +5,7 @@ from tkinter import messagebox
 
 from core.client_resolution import resolve_client_id_by_name
 from core.project_resolution import resolve_project_id_by_names
-from core.task_list_builders import build_task_displays_for_project
+from core.task_list_builders import build_task_display_id_map_for_project, build_task_displays_for_project
 from core.task_resolution import resolve_task_id_for_timer
 
 
@@ -29,13 +29,17 @@ class TimerRuntimeMixin:
         client_name = self.timer_client_combo.get()
         project_name = self.timer_project_combo.get()
 
-        self.current_task_id, _, resolution_error = resolve_task_id_for_timer(
-            task_text=task_text,
-            client_name=client_name,
-            project_name=project_name,
-            all_tasks=self.task_model.get_all(),
-            global_tasks=self.task_model.get_global_tasks(),
-        )
+        task_id_map = getattr(self, "_timer_task_id_map", {})
+        self.current_task_id = task_id_map.get(task_text)
+        resolution_error = None
+        if not self.current_task_id:
+            self.current_task_id, _, resolution_error = resolve_task_id_for_timer(
+                task_text=task_text,
+                client_name=client_name,
+                project_name=project_name,
+                all_tasks=self.task_model.get_all(),
+                global_tasks=self.task_model.get_global_tasks(),
+            )
         if resolution_error:
             messagebox.showerror("Error", resolution_error)
             return
@@ -145,10 +149,17 @@ class TimerRuntimeMixin:
                     client_name=client_name,
                     project_name=project_name,
                 )
+                self._timer_task_id_map = build_task_display_id_map_for_project(
+                    project_tasks=project_tasks,
+                    global_tasks=global_tasks,
+                    client_name=client_name,
+                    project_name=project_name,
+                )
 
                 self.timer_task_combo["values"] = task_displays
                 self.timer_task_combo.set("")
             else:
+                self._timer_task_id_map = {}
                 self.timer_task_combo["values"] = []
                 self.timer_task_combo.set("")
 

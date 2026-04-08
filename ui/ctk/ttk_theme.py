@@ -71,6 +71,7 @@ def apply_ctk_aligned_ttk_theme(master: tk.Misc) -> ttk.Style:
         tree_bg = "#2b2b2b"
         tree_fg = "#dce4ee"
         heading_bg = "#3d3d3d"
+        heading_active_bg = "#424242"
         heading_fg = "#e8e8e8"
         select_bg = "#1f538d"
         select_fg = "#ffffff"
@@ -78,10 +79,14 @@ def apply_ctk_aligned_ttk_theme(master: tk.Misc) -> ttk.Style:
         scroll_bg = "#4a4a4a"
         scroll_active = "#5c5c5c"
         border = "#555555"
+        heading_divider = "#666666"
+        heading_light = "#686868"
+        heading_dark = "#626262"
     else:
         tree_bg = "#ffffff"
         tree_fg = "#1a1a1a"
         heading_bg = "#e8e8e8"
+        heading_active_bg = "#ededed"
         heading_fg = "#1a1a1a"
         select_bg = "#3b8ed0"
         select_fg = "#ffffff"
@@ -89,6 +94,9 @@ def apply_ctk_aligned_ttk_theme(master: tk.Misc) -> ttk.Style:
         scroll_bg = "#c4c4c4"
         scroll_active = "#a0a0a0"
         border = "#b0b0b0"
+        heading_divider = "#9d9d9d"
+        heading_light = "#a0a0a0"
+        heading_dark = "#9a9a9a"
 
     body_font = get_tree_ui_font(master)
     heading_font = get_tree_ui_font_bold(master)
@@ -116,13 +124,13 @@ def apply_ctk_aligned_ttk_theme(master: tk.Misc) -> ttk.Style:
         foreground=heading_fg,
         relief="raised",
         borderwidth=1,
-        bordercolor=border,
-        lightcolor=border,
-        darkcolor=border,
+        bordercolor=heading_divider,
+        lightcolor=heading_light,
+        darkcolor=heading_dark,
         padding=4,
         font=heading_font,
     )
-    style.map("Treeview.Heading", background=[("active", heading_bg)])
+    style.map("Treeview.Heading", background=[("active", heading_active_bg)])
 
     for sb in ("Vertical.TScrollbar", "Horizontal.TScrollbar"):
         style.configure(

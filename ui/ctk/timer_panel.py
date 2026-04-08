@@ -12,7 +12,7 @@ import customtkinter as ctk
 
 from core.client_resolution import resolve_client_id_by_name
 from core.project_resolution import resolve_project_id_by_names
-from core.task_list_builders import build_task_displays_for_project
+from core.task_list_builders import build_task_display_id_map_for_project, build_task_displays_for_project
 from core.task_resolution import GLOBAL_TASK_PREFIX, resolve_task_id_for_timer
 from models import Client, Project, Task, TimeEntry
 from ui.ctk import style_tokens as st
@@ -53,6 +53,8 @@ class CtkTimerTab:
         self.last_timer_elapsed = 0
         self.last_timer_client_id = None
         self.last_timer_project_id = None
+        self._timer_task_id_map = {}
+        self._manual_task_id_map = {}
 
         self._large_font = ctk.CTkFont(size=32, weight="bold")
         self._timer_view: str = "active"
@@ -354,6 +356,10 @@ class CtkTimerTab:
         self.update_daily_totals_display()
 
     def _populate_projects_for_client(self, client_name: str, project_combo: ctk.CTkComboBox, task_combo) -> None:
+        if task_combo is self.timer_task_combo:
+            self._timer_task_id_map = {}
+        elif task_combo is self.manual_task_combo:
+            self._manual_task_id_map = {}
         clients = self.client_model.get_all()
         client_id = resolve_client_id_by_name(clients, client_name)
         if not client_id:
@@ -390,9 +396,16 @@ class CtkTimerTab:
                     client_name=client_name,
                     project_name=project_name,
                 )
+                self._timer_task_id_map = build_task_display_id_map_for_project(
+                    project_tasks=project_tasks,
+                    global_tasks=global_tasks,
+                    client_name=client_name,
+                    project_name=project_name,
+                )
                 self.timer_task_combo.configure(values=task_displays)
                 self.timer_task_combo.set("")
             else:
+                self._timer_task_id_map = {}
                 self.timer_task_combo.configure(values=[])
                 self.timer_task_combo.set("")
 
@@ -420,9 +433,16 @@ class CtkTimerTab:
                     client_name=client_name,
                     project_name=project_name,
                 )
+                self._manual_task_id_map = build_task_display_id_map_for_project(
+                    project_tasks=project_tasks,
+                    global_tasks=global_tasks,
+                    client_name=client_name,
+                    project_name=project_name,
+                )
                 self.manual_task_combo.configure(values=task_displays)
                 self.manual_task_combo.set("")
             else:
+                self._manual_task_id_map = {}
                 self.manual_task_combo.configure(values=[])
                 self.manual_task_combo.set("")
 
@@ -450,13 +470,16 @@ class CtkTimerTab:
         client_name = self.timer_client_combo.get()
         project_name = self.timer_project_combo.get()
 
-        self.current_task_id, _, resolution_error = resolve_task_id_for_timer(
-            task_text=task_text,
-            client_name=client_name,
-            project_name=project_name,
-            all_tasks=self.task_model.get_all(),
-            global_tasks=self.task_model.get_global_tasks(),
-        )
+        self.current_task_id = self._timer_task_id_map.get(task_text)
+        resolution_error = None
+        if not self.current_task_id:
+            self.current_task_id, _, resolution_error = resolve_task_id_for_timer(
+                task_text=task_text,
+                client_name=client_name,
+                project_name=project_name,
+                all_tasks=self.task_model.get_all(),
+                global_tasks=self.task_model.get_global_tasks(),
+            )
         if resolution_error:
             messagebox.showerror("Error", resolution_error)
             return
@@ -737,13 +760,16 @@ class CtkTimerTab:
             )
             return
 
-        task_id, _, resolution_error = resolve_task_id_for_timer(
-            task_text=task_text,
-            client_name=self.manual_client_combo.get(),
-            project_name=self.manual_project_combo.get(),
-            all_tasks=self.task_model.get_all(),
-            global_tasks=self.task_model.get_global_tasks(),
-        )
+        task_id = self._manual_task_id_map.get(task_text)
+        resolution_error = None
+        if not task_id:
+            task_id, _, resolution_error = resolve_task_id_for_timer(
+                task_text=task_text,
+                client_name=self.manual_client_combo.get(),
+                project_name=self.manual_project_combo.get(),
+                all_tasks=self.task_model.get_all(),
+                global_tasks=self.task_model.get_global_tasks(),
+            )
         if resolution_error:
             messagebox.showerror("Error", "Invalid task selected")
             return

@@ -5,6 +5,11 @@ INVALID_TASK_FORMAT_ERROR = "Invalid task format"
 TASK_NOT_FOUND_ERROR_PREFIX = "Could not find task: "
 
 
+def _normalize_task_label(value):
+    """Normalize display labels for resilient matching."""
+    return " ".join((value or "").split()).casefold()
+
+
 def format_global_task_display(task_name):
     """Return display text for a global task."""
     return f"{GLOBAL_TASK_PREFIX}{task_name}"
@@ -34,9 +39,10 @@ def resolve_task_id_for_timer(task_text, client_name, project_name, all_tasks, g
         tuple[int | None, str | None, str | None]: (task_id, task_name, error_message)
     """
     if task_text.startswith(GLOBAL_TASK_PREFIX):
-        task_name = task_text.replace(GLOBAL_TASK_PREFIX, "")
+        task_name = task_text.replace(GLOBAL_TASK_PREFIX, "").strip()
+        normalized_task_name = _normalize_task_label(task_name)
         for task in global_tasks:
-            if task[2] == task_name:
+            if _normalize_task_label(task[2]) == normalized_task_name:
                 return task[0], task_name, None
         return None, task_name, f"{TASK_NOT_FOUND_ERROR_PREFIX}{task_name}"
 
@@ -44,9 +50,16 @@ def resolve_task_id_for_timer(task_text, client_name, project_name, all_tasks, g
     if len(parts) < 3:
         return None, None, INVALID_TASK_FORMAT_ERROR
 
-    task_name = " - ".join(parts[2:])
+    task_name = " - ".join(parts[2:]).strip()
+    normalized_client_name = _normalize_task_label(client_name)
+    normalized_project_name = _normalize_task_label(project_name)
+    normalized_task_name = _normalize_task_label(task_name)
     for task in all_tasks:
-        if task[9] == client_name and task[8] == project_name and task[2] == task_name:
+        if (
+            _normalize_task_label(task[9]) == normalized_client_name
+            and _normalize_task_label(task[8]) == normalized_project_name
+            and _normalize_task_label(task[2]) == normalized_task_name
+        ):
             return task[0], task_name, None
 
     return None, task_name, f"{TASK_NOT_FOUND_ERROR_PREFIX}{task_name}"

@@ -119,17 +119,15 @@ class CtkTasksTab:
         self._tree_host = tk.Frame(list_section)
         self._tree_host.pack(side="top", fill="both", expand=True)
 
-        self.task_tree = ttk.Treeview(self._tree_host, columns=("Type", "ID", "Extra", "Billing", "Rate"))
+        self.task_tree = ttk.Treeview(self._tree_host, columns=("Type", "ID", "Billing", "Rate"))
         self.task_tree.heading("#0", text="Hierarchy")
         self.task_tree.heading("Type", text="Type")
         self.task_tree.heading("ID", text="ID")
-        self.task_tree.heading("Extra", text="")
         self.task_tree.heading("Billing", text="Billing")
         self.task_tree.heading("Rate", text="Rate")
         self.task_tree.column("#0", width=280)
         self.task_tree.column("Type", width=90)
         self.task_tree.column("ID", width=48)
-        self.task_tree.column("Extra", width=80)
         self.task_tree.column("Billing", width=90)
         self.task_tree.column("Rate", width=90)
 
@@ -180,7 +178,7 @@ class CtkTasksTab:
                 "",
                 "end",
                 text=f"📁 {client_name}",
-                values=("Client", "", "", "", ""),
+                values=("Client", "", "", ""),
                 tags=("client", "client_row"),
             )
 
@@ -189,7 +187,7 @@ class CtkTasksTab:
                     cid,
                     "end",
                     text=f"  📂 {project_name}",
-                    values=("Project", "", "", "", ""),
+                    values=("Project", "", "", ""),
                     tags=("project", "project_row"),
                 )
 
@@ -200,7 +198,7 @@ class CtkTasksTab:
                         pid,
                         "end",
                         text=f"    ⚙️ {task[2]}",
-                        values=("Task", task[0], "", billing_type, rate),
+                        values=("Task", task[0], billing_type, rate),
                         tags=("task", "task_row", f"task_id_{task[0]}"),
                     )
 
@@ -209,7 +207,7 @@ class CtkTasksTab:
                 "",
                 "end",
                 text="📁 [GLOBAL TASKS]",
-                values=("Global", "", "", "", ""),
+                values=("Global", "", "", ""),
                 tags=("global",),
             )
 
@@ -220,7 +218,7 @@ class CtkTasksTab:
                     global_node,
                     "end",
                     text=f"  ⚙️ {task[2]}",
-                    values=("Global Task", task[0], "", billing_type, rate),
+                    values=("Global Task", task[0], billing_type, rate),
                     tags=("task", f"task_id_{task[0]}"),
                 )
 

@@ -6,7 +6,7 @@ from tkinter import messagebox
 
 from core.client_resolution import resolve_client_id_by_name
 from core.project_resolution import resolve_project_id_by_names
-from core.task_list_builders import build_task_displays_for_project
+from core.task_list_builders import build_task_display_id_map_for_project, build_task_displays_for_project
 from core.task_resolution import GLOBAL_TASK_PREFIX, resolve_task_id_for_timer
 
 
@@ -96,13 +96,17 @@ class ManualEntryRuntimeMixin:
             )
             return
 
-        task_id, _, resolution_error = resolve_task_id_for_timer(
-            task_text=task_text,
-            client_name=self.manual_client_combo.get(),
-            project_name=self.manual_project_combo.get(),
-            all_tasks=self.task_model.get_all(),
-            global_tasks=self.task_model.get_global_tasks(),
-        )
+        task_id_map = getattr(self, "_manual_task_id_map", {})
+        task_id = task_id_map.get(task_text)
+        resolution_error = None
+        if not task_id:
+            task_id, _, resolution_error = resolve_task_id_for_timer(
+                task_text=task_text,
+                client_name=self.manual_client_combo.get(),
+                project_name=self.manual_project_combo.get(),
+                all_tasks=self.task_model.get_all(),
+                global_tasks=self.task_model.get_global_tasks(),
+            )
         if resolution_error:
             messagebox.showerror("Error", "Invalid task selected")
             return
@@ -163,6 +167,8 @@ class ManualEntryRuntimeMixin:
 
     def _populate_projects_for_client(self, client_name, project_combo, task_combo=None):
         """Load projects for a selected client and reset dependent controls."""
+        self._timer_task_id_map = {}
+        self._manual_task_id_map = {}
         clients = self.client_model.get_all()
         client_id = resolve_client_id_by_name(clients, client_name)
         if not client_id:
@@ -226,9 +232,17 @@ class ManualEntryRuntimeMixin:
                     client_name=client_name,
                     project_name=project_name,
                 )
+                self._manual_task_id_map = build_task_display_id_map_for_project(
+                    project_tasks=project_tasks,
+                    global_tasks=global_tasks,
+                    client_name=client_name,
+                    project_name=project_name,
+                )
 
                 self.manual_task_combo["values"] = task_displays
                 self.manual_task_combo.set("")
+            else:
+                self._manual_task_id_map = {}
 
     def get_manual_entry_project_id(self):
         """Get the project ID from manual entry form."""
