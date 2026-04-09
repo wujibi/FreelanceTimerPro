@@ -789,6 +789,41 @@ class DatabaseManager:
         '''
         return self.fetch_one(query, [invoice_number])
 
+    def delete_invoice(self, invoice_number):
+        """Delete an invoice and un-bill its linked time entries.
+
+        This removes invoice metadata and links, then clears billed flags
+        on any time entries that were assigned to the invoice number.
+        """
+        try:
+            cursor = self.conn.cursor()
+
+            cursor.execute(
+                '''
+                UPDATE time_entries
+                SET is_billed = 0,
+                    billing_date = NULL,
+                    invoice_number = NULL
+                WHERE invoice_number = ?
+                ''',
+                (invoice_number,),
+            )
+
+            cursor.execute(
+                'DELETE FROM billing_entry_link WHERE invoice_number = ?',
+                (invoice_number,),
+            )
+            cursor.execute(
+                'DELETE FROM billing_history WHERE invoice_number = ?',
+                (invoice_number,),
+            )
+            self.conn.commit()
+            return True
+        except sqlite3.Error as e:
+            print(f"Database error deleting invoice {invoice_number}: {e}")
+            self.conn.rollback()
+            return False
+
     def create_email_settings_table(self):
         """Create email settings table for SMTP configuration"""
         query = '''

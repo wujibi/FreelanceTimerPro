@@ -265,6 +265,7 @@ class InvoiceTabMixin:
             side="left", padx=5
         )
         ttk.Button(action_frame, text="Mark as UNPAID", command=self.mark_invoices_unpaid).pack(side="left", padx=5)
+        ttk.Button(action_frame, text="Delete Invoice(s)", command=self.delete_invoices).pack(side="left", padx=5)
 
         self.billed_summary_label = ttk.Label(action_frame, text="")
         self.billed_summary_label.pack(side="right", padx=10)
@@ -355,6 +356,46 @@ class InvoiceTabMixin:
 
             self.refresh_billed_invoices()
             messagebox.showinfo("Success", f"{len(selection)} invoice(s) marked as UNPAID")
+
+    def delete_invoices(self):
+        """Delete selected invoices and un-bill linked entries."""
+        selection = self.billed_invoices_tree.selection()
+        if not selection:
+            messagebox.showerror("Error", "Please select invoice(s) to delete")
+            return
+
+        invoice_numbers = []
+        for item in selection:
+            values = self.billed_invoices_tree.item(item)["values"]
+            if values:
+                invoice_numbers.append(values[0])
+
+        if not invoice_numbers:
+            messagebox.showerror("Error", "Could not determine selected invoice numbers")
+            return
+
+        if not messagebox.askyesno(
+            "Confirm Invoice Deletion",
+            f"Delete {len(invoice_numbers)} invoice(s)?\n\n"
+            "This will remove invoice history records and set linked time entries back to UNBILLED.",
+        ):
+            return
+
+        failed = []
+        for invoice_num in invoice_numbers:
+            if not self.db.delete_invoice(invoice_num):
+                failed.append(invoice_num)
+
+        self.refresh_billed_invoices()
+
+        if failed:
+            messagebox.showerror(
+                "Partial Delete",
+                "Some invoices could not be deleted:\n\n" + "\n".join(str(n) for n in failed),
+            )
+            return
+
+        messagebox.showinfo("Success", f"Deleted {len(invoice_numbers)} invoice(s)")
 
     def on_invoice_client_select(self, event):
         del event

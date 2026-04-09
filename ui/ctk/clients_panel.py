@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+import sqlite3
 from tkinter import messagebox, ttk
 
 import tkinter as tk
@@ -101,14 +102,27 @@ class CtkClientsTab:
         
 
     def refresh_tree(self) -> None:
+        selected_client_id = None
+        selected = self.client_tree.selection()
+        if selected:
+            values = self.client_tree.item(selected[0]).get("values", [])
+            if values:
+                selected_client_id = values[0]
+
         for item in self.client_tree.get_children():
             self.client_tree.delete(item)
+
+        client_ids = set()
         for client in self.client_model.get_all():
+            client_ids.add(client[0])
             self.client_tree.insert(
                 "",
                 "end",
                 values=(client[0], client[1], client[2] or "", client[3] or "", client[4] or ""),
             )
+
+        if selected_client_id is not None and selected_client_id not in client_ids:
+            self.clear_client_form()
 
     def add_client(self) -> None:
         name = self.client_name_entry.get().strip()
@@ -166,10 +180,20 @@ class CtkClientsTab:
             "Delete this client? This will also delete all associated projects, tasks, and time entries.",
         ):
             client_id = self.client_tree.item(selection[0])["values"][0]
-            self.client_model.delete(client_id)
-            self.refresh_tree()
-            self.on_data_changed()
-            messagebox.showinfo("Success", "Client deleted successfully")
+            try:
+                self.client_model.delete(client_id)
+                self.clear_client_form()
+                self.refresh_tree()
+                self.on_data_changed()
+                messagebox.showinfo("Success", "Client deleted successfully")
+            except sqlite3.IntegrityError as exc:
+                messagebox.showerror(
+                    "Delete Blocked",
+                    "Could not delete this client due to remaining linked records.\n\n"
+                    f"Details: {exc}",
+                )
+            except Exception as exc:
+                messagebox.showerror("Delete Failed", f"Unexpected error deleting client:\n\n{exc}")
 
     def clear_client_form(self) -> None:
         self.client_name_entry.delete(0, tk.END)
@@ -185,6 +209,7 @@ class CtkClientsTab:
         client_id = self.client_tree.item(selection[0])["values"][0]
         client = self.client_model.get_by_id(client_id)
         if not client:
+            self.clear_client_form()
             return
         self.client_name_entry.delete(0, tk.END)
         self.client_name_entry.insert(0, client[1])

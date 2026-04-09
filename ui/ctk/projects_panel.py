@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+import sqlite3
 from tkinter import messagebox, ttk
 
 import tkinter as tk
@@ -38,9 +39,14 @@ class CtkProjectsTab:
         self.refresh_tree()
 
     def _refresh_client_combo(self) -> None:
+        current = self.project_client_combo.get().strip()
         names = [c[1] for c in self.client_model.get_all()]
         self.project_client_combo.configure(values=names or [""])
-        if not names:
+        if current and current in names:
+            self.project_client_combo.set(current)
+        elif names:
+            self.project_client_combo.set(names[0])
+        else:
             self.project_client_combo.set("")
 
     def _build_ui(self) -> None:
@@ -233,10 +239,19 @@ class CtkProjectsTab:
             "Delete this project? This will also delete all associated tasks and time entries.",
         ):
             project_id = self.project_tree.item(selection[0])["values"][0]
-            self.project_model.delete(project_id)
-            self.refresh_all()
-            self.on_data_changed()
-            messagebox.showinfo("Success", "Project deleted successfully")
+            try:
+                self.project_model.delete(project_id)
+                self.refresh_all()
+                self.on_data_changed()
+                messagebox.showinfo("Success", "Project deleted successfully")
+            except sqlite3.IntegrityError as exc:
+                messagebox.showerror(
+                    "Delete Blocked",
+                    "Could not delete this project due to linked billing/invoice records.\n\n"
+                    f"Details: {exc}",
+                )
+            except Exception as exc:
+                messagebox.showerror("Delete Failed", f"Unexpected error deleting project:\n\n{exc}")
 
     def clear_project_form(self) -> None:
         self.project_client_combo.set("")

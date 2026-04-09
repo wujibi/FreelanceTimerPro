@@ -44,8 +44,16 @@ class CtkTasksTab:
         self.refresh_tree()
 
     def _refresh_client_combo(self) -> None:
+        current = self.task_client_combo.get().strip()
         names = [c[1] for c in self.client_model.get_all()]
         self.task_client_combo.configure(values=names or [""])
+        if current and current in names:
+            self.task_client_combo.set(current)
+        elif names:
+            self.task_client_combo.set(names[0])
+        else:
+            self.task_client_combo.set("")
+        self._on_task_client_selected()
 
     def _build_ui(self) -> None:
         form = ctk.CTkFrame(self.parent, fg_color="transparent")
@@ -143,6 +151,8 @@ class CtkTasksTab:
     def _on_task_client_selected(self, _choice: str | None = None) -> None:
         client_name = self.task_client_combo.get()
         if not client_name:
+            self.task_project_combo.configure(values=[])
+            self.task_project_combo.set("")
             return
         client_id = None
         for client in self.client_model.get_all():
@@ -151,7 +161,15 @@ class CtkTasksTab:
                 break
         if client_id:
             projects = self.project_model.get_by_client(client_id)
-            self.task_project_combo.configure(values=[p[2] for p in projects])
+            project_names = [p[2] for p in projects]
+            current_project = self.task_project_combo.get().strip()
+            self.task_project_combo.configure(values=project_names)
+            if current_project and current_project in project_names:
+                self.task_project_combo.set(current_project)
+            else:
+                self.task_project_combo.set(project_names[0] if project_names else "")
+        else:
+            self.task_project_combo.configure(values=[])
             self.task_project_combo.set("")
 
     def refresh_tree(self) -> None:

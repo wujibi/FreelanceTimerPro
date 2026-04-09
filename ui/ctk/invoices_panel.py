@@ -50,6 +50,7 @@ class CtkInvoicesTab:
 
     def on_data_changed_external(self) -> None:
         """Call after billing data changes elsewhere (e.g. Timer)."""
+        self.refresh_invoice_combos()
         self.refresh_billed_invoices()
 
     def _build_ui(self) -> None:
@@ -184,11 +185,19 @@ class CtkInvoicesTab:
         self.on_invoice_client_select()
 
     def _populate_invoice_client_combo(self) -> None:
+        current = self.invoice_client_combo.get().strip()
         names = [c[1] for c in self.client_model.get_all()]
         self.invoice_client_combo.configure(values=names or [""])
-        if names:
+        if current and current in names:
+            self.invoice_client_combo.set(current)
+            self.on_invoice_client_select()
+        elif names:
             self.invoice_client_combo.set(names[0])
             self.on_invoice_client_select()
+        else:
+            self.invoice_client_combo.set("")
+            self.invoice_project_combo.configure(values=[])
+            self.invoice_project_combo.set("")
 
     def _build_billed_view(self) -> None:
         self.invoice_billed_frame = ctk.CTkFrame(self.invoice_view_container, fg_color="transparent")
@@ -236,6 +245,9 @@ class CtkInvoicesTab:
         act.pack(fill="x", padx=8, pady=8)
         ctk.CTkButton(act, text="Mark as PAID", command=self.mark_invoices_paid_dialog).pack(side="left", padx=4)
         ctk.CTkButton(act, text="Mark as UNPAID", command=self.mark_invoices_unpaid).pack(side="left", padx=4)
+        ctk.CTkButton(act, text="Delete Invoice(s)", command=self.delete_invoices, fg_color="#b91c1c").pack(
+            side="left", padx=4
+        )
         self.billed_summary_label = ctk.CTkLabel(act, text="")
         self.billed_summary_label.pack(side="right", padx=8)
 
@@ -325,6 +337,47 @@ class CtkInvoicesTab:
             self.on_data_changed()
             messagebox.showinfo("Success", f"{len(selection)} invoice(s) marked as UNPAID")
 
+    def delete_invoices(self) -> None:
+        selection = self.billed_invoices_tree.selection()
+        if not selection:
+            messagebox.showerror("Error", "Please select invoice(s) to delete")
+            return
+
+        invoice_numbers = []
+        for item in selection:
+            values = self.billed_invoices_tree.item(item)["values"]
+            if values:
+                invoice_numbers.append(values[0])
+
+        if not invoice_numbers:
+            messagebox.showerror("Error", "Could not determine selected invoice numbers")
+            return
+
+        confirm = messagebox.askyesno(
+            "Confirm Invoice Deletion",
+            f"Delete {len(invoice_numbers)} invoice(s)?\n\n"
+            "This will remove invoice history records and set their linked time entries back to UNBILLED.",
+        )
+        if not confirm:
+            return
+
+        failed = []
+        for invoice_number in invoice_numbers:
+            if not self.db.delete_invoice(invoice_number):
+                failed.append(invoice_number)
+
+        self.refresh_billed_invoices()
+        self.on_data_changed()
+
+        if failed:
+            messagebox.showerror(
+                "Partial Delete",
+                "Some invoices could not be deleted:\n\n" + "\n".join(str(n) for n in failed),
+            )
+            return
+
+        messagebox.showinfo("Success", f"Deleted {len(invoice_numbers)} invoice(s)")
+
     def on_invoice_client_select(self) -> None:
         client_name = self.invoice_client_combo.get()
         if not client_name:
@@ -364,10 +417,14 @@ class CtkInvoicesTab:
             self.invoice_client_combo.set(current_client)
             self.on_invoice_client_select()
             self.load_invoiceable_entries()
+        elif client_names:
+            self.invoice_client_combo.set(client_names[0])
+            self.on_invoice_client_select()
+            self.load_invoiceable_entries()
         else:
+            self.invoice_client_combo.set("")
             self.invoice_project_combo.configure(values=[])
             self.invoice_project_combo.set("")
-            messagebox.showinfo("Refreshed", "Client list updated.")
 
     def load_invoiceable_entries(self) -> None:
         client_name = self.invoice_client_combo.get()

@@ -47,7 +47,31 @@ class Client:
         """Delete a client and all associated projects, tasks, and time entries."""
         with self.db.get_connection() as conn:
             cursor = conn.cursor()
-            
+
+            # Remove client invoice-history rows first (FK billing_history.client_id -> clients.id).
+            cursor.execute(
+                'SELECT invoice_number FROM billing_history WHERE client_id = ?',
+                (client_id,),
+            )
+            client_invoice_numbers = [row[0] for row in cursor.fetchall() if row and row[0]]
+            for invoice_number in client_invoice_numbers:
+                cursor.execute(
+                    '''
+                    UPDATE time_entries
+                    SET is_billed = 0,
+                        billing_date = NULL,
+                        invoice_number = NULL
+                    WHERE invoice_number = ?
+                    ''',
+                    (invoice_number,),
+                )
+                cursor.execute(
+                    'DELETE FROM billing_entry_link WHERE invoice_number = ?',
+                    (invoice_number,),
+                )
+            cursor.execute('DELETE FROM billing_history WHERE client_id = ?', (client_id,))
+            cursor.execute('DELETE FROM billing_records WHERE client_id = ?', (client_id,))
+
             # Remove invoice/link-table rows that reference affected time entries first.
             cursor.execute('''
                 DELETE FROM billing_entry_link
@@ -161,7 +185,10 @@ class Project:
         """Delete a project and all associated tasks and time entries."""
         with self.db.get_connection() as conn:
             cursor = conn.cursor()
-            
+
+            # Legacy billing table can reference projects directly.
+            cursor.execute('DELETE FROM billing_records WHERE project_id = ?', (project_id,))
+
             # Remove invoice/link-table rows that reference affected time entries first.
             cursor.execute('''
                 DELETE FROM billing_entry_link

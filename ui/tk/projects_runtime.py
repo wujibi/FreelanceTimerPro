@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import tkinter as tk
 from tkinter import messagebox
+import sqlite3
 
 
 class ProjectsRuntimeMixin:
@@ -96,10 +97,19 @@ class ProjectsRuntimeMixin:
             "Delete this project? This will also delete all associated tasks and time entries.",
         ):
             project_id = self.project_tree.item(selection[0])["values"][0]
-            self.project_model.delete(project_id)
-            self.refresh_projects()
-            self.refresh_combos()
-            messagebox.showinfo("Success", "Project deleted successfully")
+            try:
+                self.project_model.delete(project_id)
+                self.refresh_projects()
+                self.refresh_combos()
+                messagebox.showinfo("Success", "Project deleted successfully")
+            except sqlite3.IntegrityError as exc:
+                messagebox.showerror(
+                    "Delete Blocked",
+                    "Could not delete this project due to linked billing/invoice records.\n\n"
+                    f"Details: {exc}",
+                )
+            except Exception as exc:
+                messagebox.showerror("Delete Failed", f"Unexpected error deleting project:\n\n{exc}")
 
     def clear_project_form(self):
         self.project_client_combo.set("")

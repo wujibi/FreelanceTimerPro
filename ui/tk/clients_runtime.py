@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import tkinter as tk
 from tkinter import messagebox
+import sqlite3
 
 
 class ClientsRuntimeMixin:
@@ -64,10 +65,20 @@ class ClientsRuntimeMixin:
             "Delete this client? This will also delete all associated projects, tasks, and time entries.",
         ):
             client_id = self.client_tree.item(selection[0])["values"][0]
-            self.client_model.delete(client_id)
-            self.refresh_clients()
-            self.refresh_combos()
-            messagebox.showinfo("Success", "Client deleted successfully")
+            try:
+                self.client_model.delete(client_id)
+                self.clear_client_form()
+                self.refresh_clients()
+                self.refresh_combos()
+                messagebox.showinfo("Success", "Client deleted successfully")
+            except sqlite3.IntegrityError as exc:
+                messagebox.showerror(
+                    "Delete Blocked",
+                    "Could not delete this client due to remaining linked records.\n\n"
+                    f"Details: {exc}",
+                )
+            except Exception as exc:
+                messagebox.showerror("Delete Failed", f"Unexpected error deleting client:\n\n{exc}")
 
     def clear_client_form(self):
         self.client_name_entry.delete(0, tk.END)
@@ -96,3 +107,5 @@ class ClientsRuntimeMixin:
 
                 self.client_address_text.delete("1.0", tk.END)
                 self.client_address_text.insert("1.0", client[5] or "")
+            else:
+                self.clear_client_form()
