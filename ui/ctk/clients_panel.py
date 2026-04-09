@@ -175,11 +175,21 @@ class CtkClientsTab:
             messagebox.showerror("Error", "Please select a client to delete")
             return
 
-        if messagebox.askyesno(
-            "Confirm",
-            "Delete this client? This will also delete all associated projects, tasks, and time entries.",
-        ):
-            client_id = self.client_tree.item(selection[0])["values"][0]
+        client_id = self.client_tree.item(selection[0])["values"][0]
+        impact = self.client_model.get_delete_impact_counts(client_id)
+        confirm_msg = (
+            "Delete this client?\n\n"
+            f"This will delete {impact['projects']} project{'s' if impact['projects'] != 1 else ''}, "
+            f"{impact['tasks']} task{'s' if impact['tasks'] != 1 else ''}, and "
+            f"{impact['time_entries']} time entr{'y' if impact['time_entries'] == 1 else 'ies'}."
+        )
+        if impact["invoices"] > 0:
+            confirm_msg += (
+                f"\nIt will also remove {impact['invoices']} invoice histor"
+                f"{'y' if impact['invoices'] == 1 else 'ies'} for this client."
+            )
+
+        if messagebox.askyesno("Confirm", confirm_msg):
             try:
                 self.client_model.delete(client_id)
                 self.clear_client_form()

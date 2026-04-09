@@ -43,6 +43,46 @@ class Client:
                            ''', (name, company, email, phone, address, client_id))
             conn.commit()  # ADDED
 
+    def get_delete_impact_counts(self, client_id):
+        """Return dependency counts impacted by deleting a client."""
+        with self.db.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT COUNT(*) FROM projects WHERE client_id = ?', (client_id,))
+            projects = int((cursor.fetchone() or [0])[0] or 0)
+
+            cursor.execute(
+                '''
+                SELECT COUNT(*)
+                FROM tasks t
+                JOIN projects p ON t.project_id = p.id
+                WHERE p.client_id = ?
+                ''',
+                (client_id,),
+            )
+            tasks = int((cursor.fetchone() or [0])[0] or 0)
+
+            cursor.execute(
+                '''
+                SELECT COUNT(*)
+                FROM time_entries te
+                JOIN tasks t ON te.task_id = t.id
+                JOIN projects p ON t.project_id = p.id
+                WHERE p.client_id = ?
+                ''',
+                (client_id,),
+            )
+            time_entries = int((cursor.fetchone() or [0])[0] or 0)
+
+            cursor.execute('SELECT COUNT(*) FROM billing_history WHERE client_id = ?', (client_id,))
+            invoices = int((cursor.fetchone() or [0])[0] or 0)
+
+            return {
+                "projects": projects,
+                "tasks": tasks,
+                "time_entries": time_entries,
+                "invoices": invoices,
+            }
+
     def delete(self, client_id):
         """Delete a client and all associated projects, tasks, and time entries."""
         with self.db.get_connection() as conn:
@@ -180,6 +220,42 @@ class Project:
                            WHERE id = ?
                            ''', (client_id, name, description, hourly_rate, is_lump_sum, lump_sum_amount, project_id))
             conn.commit()  # ADDED
+
+    def get_delete_impact_counts(self, project_id):
+        """Return dependency counts impacted by deleting a project."""
+        with self.db.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT COUNT(*) FROM tasks WHERE project_id = ?', (project_id,))
+            tasks = int((cursor.fetchone() or [0])[0] or 0)
+
+            cursor.execute(
+                '''
+                SELECT COUNT(*)
+                FROM time_entries te
+                JOIN tasks t ON te.task_id = t.id
+                WHERE t.project_id = ?
+                ''',
+                (project_id,),
+            )
+            time_entries = int((cursor.fetchone() or [0])[0] or 0)
+
+            cursor.execute(
+                '''
+                SELECT COUNT(*)
+                FROM time_entries te
+                JOIN tasks t ON te.task_id = t.id
+                WHERE t.project_id = ?
+                  AND (te.is_billed = 1 OR (te.invoice_number IS NOT NULL AND TRIM(te.invoice_number) != ''))
+                ''',
+                (project_id,),
+            )
+            billed_entries = int((cursor.fetchone() or [0])[0] or 0)
+
+            return {
+                "tasks": tasks,
+                "time_entries": time_entries,
+                "billed_entries": billed_entries,
+            }
 
     def delete(self, project_id):
         """Delete a project and all associated tasks and time entries."""

@@ -472,7 +472,14 @@ class CtkTimeEntriesTab:
             messagebox.showerror("Error", "Could not find entry ID")
             return
 
-        if messagebox.askyesno("Confirm", "Delete this time entry?"):
+        entry_values = self.entries_tree.item(selected_item).get("values", [])
+        entry_type = entry_values[0] if len(entry_values) > 0 else ""
+        is_billed = isinstance(entry_type, str) and "BILLED" in entry_type.upper()
+        confirm_msg = "Delete this time entry?"
+        if is_billed:
+            confirm_msg += "\n\nThis entry is billed/invoiced and will be removed from invoice history links."
+
+        if messagebox.askyesno("Confirm", confirm_msg):
             self.time_entry_model.delete(entry_id)
             self.refresh()
             messagebox.showinfo("Success", "Time entry deleted successfully")

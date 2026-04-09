@@ -353,10 +353,15 @@ class CtkInvoicesTab:
             messagebox.showerror("Error", "Could not determine selected invoice numbers")
             return
 
+        total_linked_entries = 0
+        for invoice_number in invoice_numbers:
+            total_linked_entries += self.db.get_invoice_linked_entry_count(invoice_number)
+
         confirm = messagebox.askyesno(
             "Confirm Invoice Deletion",
             f"Delete {len(invoice_numbers)} invoice(s)?\n\n"
-            "This will remove invoice history records and set their linked time entries back to UNBILLED.",
+            f"This will set {total_linked_entries} linked time entr"
+            f"{'y' if total_linked_entries == 1 else 'ies'} back to UNBILLED and remove invoice history records.",
         )
         if not confirm:
             return
@@ -642,7 +647,9 @@ class CtkInvoicesTab:
         if len(selection) > 1:
             messagebox.showwarning(
                 "Multiple Selection",
-                "Please select only ONE entry at a time to edit.\n\n" + f"You have selected {len(selection)} entries.",
+                "Please select only ONE entry at a time to edit.\n\n"
+                f"You selected {len(selection)} entries.\n"
+                "Click OK to close this message. No changes were made.",
             )
             return
 

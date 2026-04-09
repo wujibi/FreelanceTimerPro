@@ -389,7 +389,8 @@ class CtkTasksTab:
                 "Cannot Delete Task",
                 "This task has billed/invoiced time entries and cannot be deleted.\n\n"
                 f"Task has {total_entries} total entries ({billed_entries} billed). "
-                "Please keep this task for invoice history.",
+                "Please keep this task for invoice history.\n\n"
+                "Click OK to close this message. No data will be deleted.",
             )
             return
 

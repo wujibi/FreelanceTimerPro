@@ -234,11 +234,20 @@ class CtkProjectsTab:
             messagebox.showerror("Error", "Please select a project to delete")
             return
 
-        if messagebox.askyesno(
-            "Confirm",
-            "Delete this project? This will also delete all associated tasks and time entries.",
-        ):
-            project_id = self.project_tree.item(selection[0])["values"][0]
+        project_id = self.project_tree.item(selection[0])["values"][0]
+        impact = self.project_model.get_delete_impact_counts(project_id)
+        confirm_msg = (
+            "Delete this project?\n\n"
+            f"This will delete {impact['tasks']} task{'s' if impact['tasks'] != 1 else ''} and "
+            f"{impact['time_entries']} time entr{'y' if impact['time_entries'] == 1 else 'ies'}."
+        )
+        if impact["billed_entries"] > 0:
+            confirm_msg += (
+                f"\nIncludes {impact['billed_entries']} billed/invoiced entr"
+                f"{'y' if impact['billed_entries'] == 1 else 'ies'}."
+            )
+
+        if messagebox.askyesno("Confirm", confirm_msg):
             try:
                 self.project_model.delete(project_id)
                 self.refresh_all()

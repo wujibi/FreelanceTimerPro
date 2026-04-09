@@ -504,7 +504,9 @@ class TimeEntriesRuntimeMixin:
         if billed_entries:
             messagebox.showwarning(
                 "Already Billed",
-                f"{len(billed_entries)} selected entry(ies) already billed and will be skipped.",
+                f"{len(billed_entries)} selected entr"
+                f"{'y is' if len(billed_entries) == 1 else 'ies are'} already billed and will be skipped.\n\n"
+                "Click OK to continue with unbilled entries only.",
             )
 
         if not entry_ids:

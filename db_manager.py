@@ -824,6 +824,18 @@ class DatabaseManager:
             self.conn.rollback()
             return False
 
+    def get_invoice_linked_entry_count(self, invoice_number):
+        """Return how many time entries are linked to an invoice number."""
+        row = self.fetch_one(
+            '''
+            SELECT COUNT(*)
+            FROM time_entries
+            WHERE invoice_number = ?
+            ''',
+            [invoice_number],
+        )
+        return int(row[0] or 0) if row else 0
+
     def create_email_settings_table(self):
         """Create email settings table for SMTP configuration"""
         query = '''
