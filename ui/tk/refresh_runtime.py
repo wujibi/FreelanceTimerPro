@@ -122,7 +122,9 @@ class RefreshRuntimeMixin:
         self.task_tree.tag_configure("project", font=("Arial", 9, "bold"))
         self.task_tree.tag_configure("task", font=("Arial", 9))
         self.task_tree.tag_configure("global", font=("Arial", 10, "bold"), foreground="#10b981")
-        self.restore_tree_state(self.task_tree, expanded_items, expand_all=True)
+        self.restore_tree_state(self.task_tree, expanded_items, expand_all=False)
+        for client_item in self.task_tree.get_children(""):
+            self.task_tree.item(client_item, open=True)
 
     def refresh_time_entries(self):
         expanded_items = self.save_tree_state(self.entries_tree)
@@ -179,7 +181,7 @@ class RefreshRuntimeMixin:
                 "",
                 "end",
                 text=f"📁 {client_name}",
-                values=("Client", "", "", f"{client_total_hours:.2f} hrs", ""),
+                values=("", f"{client_total_hours:.2f} hrs", ""),
                 tags=("client", "client_row"),
             )
 
@@ -194,7 +196,7 @@ class RefreshRuntimeMixin:
                     client_id,
                     "end",
                     text=f"  📂 {project_name}",
-                    values=("Project", "", "", f"{project_total_hours:.2f} hrs", ""),
+                    values=("", f"{project_total_hours:.2f} hrs", ""),
                     tags=("project", "project_row"),
                 )
 
@@ -209,26 +211,24 @@ class RefreshRuntimeMixin:
                         project_id,
                         "end",
                         text=f"    📋 {task_name}{billed_indicator}",
-                        values=("Task", f"{len(task_entries)} entries", "", f"{task_total_hours:.2f} hrs", ""),
+                        values=(f"{len(task_entries)} entries", f"{task_total_hours:.2f} hrs", ""),
                         tags=("task", "task_row"),
                     )
 
                     for entry in task_entries:
                         duration_minutes = entry[6] if entry[6] else 0
                         duration_hours = duration_minutes / 60.0
-                        start_time = entry[4]
+                        start_time = entry[4] or ""
                         try:
-                            dt = datetime.fromisoformat(start_time)
-                            start_display = dt.strftime("%m/%d/%y %I:%M %p")
+                            date_display = datetime.fromisoformat(start_time).strftime("%m/%d/%y")
                         except Exception:
-                            start_display = start_time
+                            date_display = start_time.split("T")[0] if "T" in start_time else start_time
 
-                        entry_billed = " [BILLED]" if entry[8] else ""
                         self.entries_tree.insert(
                             task_id,
                             "end",
                             text="      ⏱️ Entry",
-                            values=("Entry" + entry_billed, "", start_display, f"{duration_hours:.2f} hrs", entry[7] or ""),
+                            values=(date_display, f"{duration_hours:.2f} hrs", entry[7] or ""),
                             tags=("entry", f"entry_id_{entry[0]}", "entry_row"),
                         )
 
@@ -236,7 +236,9 @@ class RefreshRuntimeMixin:
         self.entries_tree.tag_configure("project", font=("Arial", 9, "bold"))
         self.entries_tree.tag_configure("task", font=("Arial", 9))
         self.entries_tree.tag_configure("entry", font=("Arial", 8))
-        self.restore_tree_state(self.entries_tree, expanded_items, expand_all=True)
+        self.restore_tree_state(self.entries_tree, expanded_items, expand_all=False)
+        for client_item in self.entries_tree.get_children(""):
+            self.entries_tree.item(client_item, open=True)
 
     def refresh_combos(self):
         clients = self.client_model.get_all()

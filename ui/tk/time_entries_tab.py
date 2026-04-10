@@ -79,24 +79,20 @@ class TimeEntriesTabMixin:
         # Create tree with hierarchical display
         self.entries_tree = ttk.Treeview(
             tree_container,
-            columns=("Type", "Name", "Start", "Duration", "Description"),
+            columns=("Name", "Duration", "Description"),
             selectmode="extended",
         )
 
         # Configure columns
         self.entries_tree.heading("#0", text="Hierarchy")  # Tree column
-        self.entries_tree.heading("Type", text="Type")
         self.entries_tree.heading("Name", text="Details")
-        self.entries_tree.heading("Start", text="Start Time")
         self.entries_tree.heading("Duration", text="Duration")
         self.entries_tree.heading("Description", text="Description")
 
         self.entries_tree.column("#0", width=250)  # Tree hierarchy column
-        self.entries_tree.column("Type", width=80)
-        self.entries_tree.column("Name", width=150)
-        self.entries_tree.column("Start", width=150)
+        self.entries_tree.column("Name", width=220)
         self.entries_tree.column("Duration", width=100)
-        self.entries_tree.column("Description", width=250)
+        self.entries_tree.column("Description", width=360)
 
         # Add scrollbar
         tree_scroll = ttk.Scrollbar(tree_container, orient="vertical", command=self.entries_tree.yview)

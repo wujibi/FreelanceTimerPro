@@ -345,7 +345,16 @@ class Task:
         with self.db.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute('''
-                           SELECT t.*, p.name as project_name, c.name as client_name
+                           SELECT t.id,
+                                  t.project_id,
+                                  t.name,
+                                  t.description,
+                                  t.hourly_rate,
+                                  t.is_lump_sum,
+                                  t.lump_sum_amount,
+                                  t.is_global,
+                                  p.name as project_name,
+                                  c.name as client_name
                            FROM tasks t
                                     JOIN projects p ON t.project_id = p.id
                                     JOIN clients c ON p.client_id = c.id
@@ -358,7 +367,16 @@ class Task:
         with self.db.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute('''
-                           SELECT t.*, p.name as project_name, c.name as client_name
+                           SELECT t.id,
+                                  t.project_id,
+                                  t.name,
+                                  t.description,
+                                  t.hourly_rate,
+                                  t.is_lump_sum,
+                                  t.lump_sum_amount,
+                                  t.is_global,
+                                  p.name as project_name,
+                                  c.name as client_name
                            FROM tasks t
                                     JOIN projects p ON t.project_id = p.id
                                     JOIN clients c ON p.client_id = c.id

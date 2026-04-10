@@ -130,12 +130,12 @@ class CtkTasksTab:
         self.task_tree = ttk.Treeview(self._tree_host, columns=("Type", "ID", "Billing", "Rate"))
         self.task_tree.heading("#0", text="Hierarchy")
         self.task_tree.heading("Type", text="Type")
-        self.task_tree.heading("ID", text="ID")
+        self.task_tree.heading("ID", text="")
         self.task_tree.heading("Billing", text="Billing")
         self.task_tree.heading("Rate", text="Rate")
         self.task_tree.column("#0", width=280)
         self.task_tree.column("Type", width=90)
-        self.task_tree.column("ID", width=48)
+        self.task_tree.column("ID", width=0, minwidth=0, stretch=False)
         self.task_tree.column("Billing", width=90)
         self.task_tree.column("Rate", width=90)
 
@@ -244,7 +244,9 @@ class CtkTasksTab:
         self.task_tree.tag_configure("project", font=get_tree_ui_font_bold(self.root))
         self.task_tree.tag_configure("task", font=get_tree_ui_font(self.root))
         self.task_tree.tag_configure("global", font=get_tree_ui_font_bold(self.root), foreground="#10b981")
-        restore_tree_state(self.task_tree, expanded_items, expand_all=True)
+        restore_tree_state(self.task_tree, expanded_items, expand_all=False)
+        for client_item in self.task_tree.get_children(""):
+            self.task_tree.item(client_item, open=True)
 
     def toggle_task_project_field(self) -> None:
         is_global = self.task_global_var.get()

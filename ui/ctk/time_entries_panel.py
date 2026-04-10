@@ -74,21 +74,17 @@ class CtkTimeEntriesTab:
 
         self.entries_tree = ttk.Treeview(
             self._tree_host,
-            columns=("Type", "Name", "Start", "Duration", "Description"),
+            columns=("Name", "Duration", "Description"),
             selectmode="extended",
         )
         self.entries_tree.heading("#0", text="Hierarchy")
-        self.entries_tree.heading("Type", text="Type")
         self.entries_tree.heading("Name", text="Details")
-        self.entries_tree.heading("Start", text="Start Time")
         self.entries_tree.heading("Duration", text="Duration")
         self.entries_tree.heading("Description", text="Description")
         self.entries_tree.column("#0", width=240)
-        self.entries_tree.column("Type", width=72)
-        self.entries_tree.column("Name", width=120)
-        self.entries_tree.column("Start", width=130)
+        self.entries_tree.column("Name", width=180)
         self.entries_tree.column("Duration", width=88)
-        self.entries_tree.column("Description", width=220)
+        self.entries_tree.column("Description", width=320)
 
         scroll = ttk.Scrollbar(self._tree_host, orient="vertical", command=self.entries_tree.yview)
         self.entries_tree.configure(yscrollcommand=scroll.set)
@@ -176,7 +172,7 @@ class CtkTimeEntriesTab:
                 "",
                 "end",
                 text=f"📁 {client_name}",
-                values=("Client", "", "", f"{client_total_hours:.2f} hrs", ""),
+                values=("", f"{client_total_hours:.2f} hrs", ""),
                 tags=("client", "client_row"),
             )
 
@@ -191,7 +187,7 @@ class CtkTimeEntriesTab:
                     client_id,
                     "end",
                     text=f"  📂 {project_name}",
-                    values=("Project", "", "", f"{project_total_hours:.2f} hrs", ""),
+                    values=("", f"{project_total_hours:.2f} hrs", ""),
                     tags=("project", "project_row"),
                 )
 
@@ -206,26 +202,24 @@ class CtkTimeEntriesTab:
                         project_id,
                         "end",
                         text=f"    📋 {task_name}{billed_indicator}",
-                        values=("Task", f"{len(task_entries)} entries", "", f"{task_total_hours:.2f} hrs", ""),
+                        values=(f"{len(task_entries)} entries", f"{task_total_hours:.2f} hrs", ""),
                         tags=("task", "task_row"),
                     )
 
                     for entry in task_entries:
                         duration_minutes = entry[6] if entry[6] else 0
                         duration_hours = duration_minutes / 60.0
-                        start_time = entry[4]
+                        start_time = entry[4] or ""
                         try:
-                            dt = datetime.fromisoformat(start_time)
-                            start_display = dt.strftime("%m/%d/%y %I:%M %p")
+                            date_display = datetime.fromisoformat(start_time).strftime("%m/%d/%y")
                         except Exception:
-                            start_display = start_time
+                            date_display = start_time.split("T")[0] if "T" in start_time else start_time
 
-                        entry_billed = " [BILLED]" if entry[8] else ""
                         self.entries_tree.insert(
                             task_id,
                             "end",
                             text="      ⏱️ Entry",
-                            values=("Entry" + entry_billed, "", start_display, f"{duration_hours:.2f} hrs", entry[7] or ""),
+                            values=(date_display, f"{duration_hours:.2f} hrs", entry[7] or ""),
                             tags=("entry", f"entry_id_{entry[0]}", "entry_row"),
                         )
 
@@ -233,7 +227,9 @@ class CtkTimeEntriesTab:
         self.entries_tree.tag_configure("project", font=get_tree_ui_font_bold(self.root))
         self.entries_tree.tag_configure("task", font=get_tree_ui_font(self.root))
         self.entries_tree.tag_configure("entry", font=get_tree_ui_font(self.root))
-        restore_tree_state(self.entries_tree, expanded_items, expand_all=True)
+        restore_tree_state(self.entries_tree, expanded_items, expand_all=False)
+        for client_item in self.entries_tree.get_children(""):
+            self.entries_tree.item(client_item, open=True)
 
     def edit_time_entry(self) -> None:
         selection = self.entries_tree.selection()
@@ -472,9 +468,23 @@ class CtkTimeEntriesTab:
             messagebox.showerror("Error", "Could not find entry ID")
             return
 
-        entry_values = self.entries_tree.item(selected_item).get("values", [])
-        entry_type = entry_values[0] if len(entry_values) > 0 else ""
-        is_billed = isinstance(entry_type, str) and "BILLED" in entry_type.upper()
+        is_billed = False
+        with self.db.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT is_billed, invoice_number
+                FROM time_entries
+                WHERE id = ?
+                """,
+                (entry_id,),
+            )
+            result = cursor.fetchone()
+            if result:
+                billed_flag = bool(result[0])
+                invoice_number = (result[1] or "").strip()
+                is_billed = billed_flag or bool(invoice_number)
+
         confirm_msg = "Delete this time entry?"
         if is_billed:
             confirm_msg += "\n\nThis entry is billed/invoiced and will be removed from invoice history links."
