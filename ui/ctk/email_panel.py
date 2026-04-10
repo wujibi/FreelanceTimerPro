@@ -11,6 +11,8 @@ from tkinter import messagebox, ttk
 
 import customtkinter as ctk
 
+from ui.ctk import style_tokens as st
+
 
 class CtkEmailTab:
     def __init__(self, parent: Any, root: Any, db) -> None:
@@ -28,7 +30,7 @@ class CtkEmailTab:
 
     def _build_ui(self) -> None:
         top = ctk.CTkFrame(self.parent, fg_color="transparent")
-        top.pack(fill="x", padx=8, pady=8)
+        top.pack(fill="x", padx=st.PANEL_PAD_X, pady=st.SPACE_8)
         ctk.CTkLabel(top, text="View:", font=ctk.CTkFont(size=12, weight="bold")).pack(side="left", padx=6)
         ctk.CTkButton(top, text="Settings", width=120, command=lambda: self.show_email_view("settings")).pack(
             side="left", padx=4
@@ -61,11 +63,11 @@ class CtkEmailTab:
             self.email_settings_frame,
             text="SMTP configuration",
             font=ctk.CTkFont(size=14, weight="bold"),
-        ).pack(anchor="w", pady=(0, 8))
+        ).pack(anchor="w", padx=st.PANEL_INNER_PAD_X, pady=(0, st.SECTION_TITLE_BOTTOM_PAD))
 
-        ctk.CTkLabel(self.email_settings_frame, text="Provider:").pack(anchor="w")
+        ctk.CTkLabel(self.email_settings_frame, text="Provider:").pack(anchor="w", padx=st.PANEL_INNER_PAD_X)
         pf = ctk.CTkFrame(self.email_settings_frame, fg_color="transparent")
-        pf.pack(fill="x", pady=4)
+        pf.pack(fill="x", padx=st.PANEL_INNER_PAD_X, pady=st.FIELD_PAD_Y)
         ctk.CTkRadioButton(
             pf,
             text="Gmail",
@@ -88,22 +90,22 @@ class CtkEmailTab:
             command=self.on_email_provider_select,
         ).pack(side="left", padx=8)
 
-        ctk.CTkLabel(self.email_settings_frame, text="SMTP server:").pack(anchor="w", pady=(8, 0))
+        ctk.CTkLabel(self.email_settings_frame, text="SMTP server:").pack(anchor="w", padx=st.PANEL_INNER_PAD_X, pady=(st.SPACE_8, 0))
         self.smtp_server_entry = ctk.CTkEntry(self.email_settings_frame, width=420)
-        self.smtp_server_entry.pack(anchor="w", pady=4)
+        self.smtp_server_entry.pack(anchor="w", padx=st.PANEL_INNER_PAD_X, pady=st.FIELD_PAD_Y)
 
-        ctk.CTkLabel(self.email_settings_frame, text="SMTP port:").pack(anchor="w")
+        ctk.CTkLabel(self.email_settings_frame, text="SMTP port:").pack(anchor="w", padx=st.PANEL_INNER_PAD_X)
         self.smtp_port_entry = ctk.CTkEntry(self.email_settings_frame, width=120)
-        self.smtp_port_entry.pack(anchor="w", pady=4)
+        self.smtp_port_entry.pack(anchor="w", padx=st.PANEL_INNER_PAD_X, pady=st.FIELD_PAD_Y)
         self.smtp_port_entry.insert(0, "587")
 
-        ctk.CTkLabel(self.email_settings_frame, text="Your email:").pack(anchor="w", pady=(8, 0))
+        ctk.CTkLabel(self.email_settings_frame, text="Your email:").pack(anchor="w", padx=st.PANEL_INNER_PAD_X, pady=(st.SPACE_8, 0))
         self.email_address_entry = ctk.CTkEntry(self.email_settings_frame, width=420)
-        self.email_address_entry.pack(anchor="w", pady=4)
+        self.email_address_entry.pack(anchor="w", padx=st.PANEL_INNER_PAD_X, pady=st.FIELD_PAD_Y)
 
-        ctk.CTkLabel(self.email_settings_frame, text="App password:").pack(anchor="w")
+        ctk.CTkLabel(self.email_settings_frame, text="App password:").pack(anchor="w", padx=st.PANEL_INNER_PAD_X)
         pw_row = ctk.CTkFrame(self.email_settings_frame, fg_color="transparent")
-        pw_row.pack(fill="x", pady=4)
+        pw_row.pack(fill="x", padx=st.PANEL_INNER_PAD_X, pady=st.FIELD_PAD_Y)
         self.email_password_entry = ctk.CTkEntry(pw_row, width=320, show="*")
         self.email_password_entry.pack(side="left", padx=(0, 8))
         ctk.CTkCheckBox(
@@ -122,37 +124,37 @@ class CtkEmailTab:
             justify="left",
         ).pack(anchor="w", pady=8)
 
-        ctk.CTkLabel(self.email_settings_frame, text="From name (optional):").pack(anchor="w")
+        ctk.CTkLabel(self.email_settings_frame, text="From name (optional):").pack(anchor="w", padx=st.PANEL_INNER_PAD_X)
         self.email_from_name_entry = ctk.CTkEntry(self.email_settings_frame, width=420)
-        self.email_from_name_entry.pack(anchor="w", pady=4)
+        self.email_from_name_entry.pack(anchor="w", padx=st.PANEL_INNER_PAD_X, pady=st.FIELD_PAD_Y)
 
         ctk.CTkLabel(
             self.email_settings_frame,
             text="Default behavior",
             font=ctk.CTkFont(size=14, weight="bold"),
-        ).pack(anchor="w", pady=(16, 8))
+        ).pack(anchor="w", padx=st.PANEL_INNER_PAD_X, pady=(st.SECTION_TITLE_TOP_PAD, st.SECTION_TITLE_BOTTOM_PAD))
         ctk.CTkCheckBox(
             self.email_settings_frame,
             text="Always send copy to me",
             variable=self.send_copy_to_self_var,
-        ).pack(anchor="w", pady=2)
+        ).pack(anchor="w", padx=st.PANEL_INNER_PAD_X, pady=2)
         ctk.CTkCheckBox(
             self.email_settings_frame,
             text="Show preview before sending",
             variable=self.show_preview_var,
-        ).pack(anchor="w", pady=2)
+        ).pack(anchor="w", padx=st.PANEL_INNER_PAD_X, pady=2)
 
         bf = ctk.CTkFrame(self.email_settings_frame, fg_color="transparent")
-        bf.pack(fill="x", pady=16)
-        ctk.CTkButton(bf, text="Save settings", command=self.save_email_settings).pack(side="left", padx=4)
-        ctk.CTkButton(bf, text="Load settings", command=self.load_email_settings).pack(side="left", padx=4)
-        ctk.CTkButton(bf, text="Test connection", command=self.test_email_connection).pack(side="right", padx=4)
+        bf.pack(fill="x", padx=st.PANEL_INNER_PAD_X, pady=st.SPACE_16)
+        ctk.CTkButton(bf, text="Save settings", command=self.save_email_settings).pack(side="left", padx=st.BUTTON_PAD_X)
+        ctk.CTkButton(bf, text="Load settings", command=self.load_email_settings).pack(side="left", padx=st.BUTTON_PAD_X)
+        ctk.CTkButton(bf, text="Test connection", command=self.test_email_connection).pack(side="right", padx=st.BUTTON_PAD_X)
 
     def _build_templates_view(self) -> None:
         self.email_templates_frame = ctk.CTkFrame(self.email_view_container, fg_color="transparent")
 
         sel = ctk.CTkFrame(self.email_templates_frame, fg_color="transparent")
-        sel.pack(fill="x", padx=8, pady=8)
+        sel.pack(fill="x", padx=st.PANEL_PAD_X, pady=st.SPACE_8)
         ctk.CTkLabel(sel, text="Template:").pack(side="left", padx=4)
         self.template_combo = ctk.CTkComboBox(sel, values=[], width=200, state="readonly")
         self.template_combo.pack(side="left", padx=4)
@@ -162,7 +164,7 @@ class CtkEmailTab:
         )
 
         editor_wrap = ctk.CTkFrame(self.email_templates_frame, fg_color="transparent")
-        editor_wrap.pack(fill="both", expand=True, padx=8, pady=4)
+        editor_wrap.pack(fill="both", expand=True, padx=st.PANEL_PAD_X, pady=st.SPACE_4)
 
         left = ctk.CTkFrame(editor_wrap, fg_color="transparent")
         left.pack(side="left", fill="both", expand=True, padx=(0, 6))
@@ -226,9 +228,9 @@ class CtkEmailTab:
         ctk.CTkButton(right, text="Update preview", command=self.update_template_preview).pack(pady=6)
 
         bot = ctk.CTkFrame(self.email_templates_frame, fg_color="transparent")
-        bot.pack(fill="x", padx=8, pady=8)
-        ctk.CTkButton(bot, text="Save template", command=self.save_current_template).pack(side="left", padx=4)
-        ctk.CTkButton(bot, text="Send test email", command=self.send_test_template_email).pack(side="right", padx=4)
+        bot.pack(fill="x", padx=st.PANEL_PAD_X, pady=st.SPACE_8)
+        ctk.CTkButton(bot, text="Save template", command=self.save_current_template).pack(side="left", padx=st.BUTTON_PAD_X)
+        ctk.CTkButton(bot, text="Send test email", command=self.send_test_template_email).pack(side="right", padx=st.BUTTON_PAD_X)
 
     def on_email_provider_select(self) -> None:
         provider = self.email_provider_var.get()

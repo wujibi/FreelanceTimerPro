@@ -9,6 +9,7 @@ from tkinter import filedialog, messagebox
 import customtkinter as ctk
 
 from models import CompanyInfo
+from ui.ctk import style_tokens as st
 from ui_helpers import load_ctk_ui_preferences, save_ctk_ui_preferences
 
 _APPEARANCE_LABELS = ("System", "Light", "Dark")
@@ -36,65 +37,65 @@ class CtkCompanyTab:
 
     def _build_ui(self) -> None:
         scroll = ctk.CTkScrollableFrame(self.parent, fg_color="transparent")
-        scroll.pack(fill="both", expand=True, padx=8, pady=8)
+        scroll.pack(fill="both", expand=True, padx=st.PANEL_PAD_X, pady=st.SPACE_8)
 
         ctk.CTkLabel(
             scroll,
             text="Company information (for invoices)",
             font=ctk.CTkFont(size=14, weight="bold"),
-        ).pack(anchor="w", pady=(0, 8))
+        ).pack(anchor="w", padx=st.PANEL_INNER_PAD_X, pady=(0, st.SECTION_TITLE_BOTTOM_PAD))
 
         form = ctk.CTkFrame(scroll, fg_color="transparent")
-        form.pack(fill="x")
+        form.pack(fill="x", padx=st.PANEL_INNER_PAD_X)
 
-        ctk.CTkLabel(form, text="Company name:").grid(row=0, column=0, sticky="w", pady=4)
+        ctk.CTkLabel(form, text="Company name:").grid(row=0, column=0, sticky="w", pady=st.FIELD_PAD_Y)
         self.company_name_entry = ctk.CTkEntry(form, width=420)
-        self.company_name_entry.grid(row=0, column=1, sticky="ew", padx=8, pady=4)
+        self.company_name_entry.grid(row=0, column=1, sticky="ew", padx=st.GRID_PAD_X, pady=st.FIELD_PAD_Y)
 
-        ctk.CTkLabel(form, text="Address:").grid(row=1, column=0, sticky="nw", pady=4)
-        self.company_address_text = ctk.CTkTextbox(form, width=420, height=88)
-        self.company_address_text.grid(row=1, column=1, sticky="ew", padx=8, pady=4)
+        ctk.CTkLabel(form, text="Address:").grid(row=1, column=0, sticky="nw", pady=st.FIELD_PAD_Y)
+        self.company_address_text = ctk.CTkTextbox(form, width=420, height=st.TEXTBOX_MEDIUM_HEIGHT)
+        self.company_address_text.grid(row=1, column=1, sticky="ew", padx=st.GRID_PAD_X, pady=st.FIELD_PAD_Y)
 
-        ctk.CTkLabel(form, text="Phone:").grid(row=2, column=0, sticky="w", pady=4)
+        ctk.CTkLabel(form, text="Phone:").grid(row=2, column=0, sticky="w", pady=st.FIELD_PAD_Y)
         self.company_phone_entry = ctk.CTkEntry(form, width=420)
-        self.company_phone_entry.grid(row=2, column=1, sticky="ew", padx=8, pady=4)
+        self.company_phone_entry.grid(row=2, column=1, sticky="ew", padx=st.GRID_PAD_X, pady=st.FIELD_PAD_Y)
 
-        ctk.CTkLabel(form, text="Email:").grid(row=3, column=0, sticky="w", pady=4)
+        ctk.CTkLabel(form, text="Email:").grid(row=3, column=0, sticky="w", pady=st.FIELD_PAD_Y)
         self.company_email_entry = ctk.CTkEntry(form, width=420)
-        self.company_email_entry.grid(row=3, column=1, sticky="ew", padx=8, pady=4)
+        self.company_email_entry.grid(row=3, column=1, sticky="ew", padx=st.GRID_PAD_X, pady=st.FIELD_PAD_Y)
 
-        ctk.CTkLabel(form, text="Logo:").grid(row=4, column=0, sticky="w", pady=4)
+        ctk.CTkLabel(form, text="Logo:").grid(row=4, column=0, sticky="w", pady=st.FIELD_PAD_Y)
         logo_row = ctk.CTkFrame(form, fg_color="transparent")
-        logo_row.grid(row=4, column=1, sticky="ew", padx=8, pady=4)
+        logo_row.grid(row=4, column=1, sticky="ew", padx=st.GRID_PAD_X, pady=st.FIELD_PAD_Y)
         self.logo_path_var = tk.StringVar()
         self.logo_entry = ctk.CTkEntry(logo_row, textvariable=self.logo_path_var, width=320, state="readonly")
         self.logo_entry.pack(side="left", fill="x", expand=True)
-        ctk.CTkButton(logo_row, text="Browse", width=88, command=self.browse_logo).pack(side="left", padx=(8, 0))
+        ctk.CTkButton(logo_row, text="Browse", width=88, command=self.browse_logo).pack(side="left", padx=(st.GRID_PAD_X, 0))
 
-        ctk.CTkLabel(form, text="Website:").grid(row=5, column=0, sticky="w", pady=4)
+        ctk.CTkLabel(form, text="Website:").grid(row=5, column=0, sticky="w", pady=st.FIELD_PAD_Y)
         self.company_website_entry = ctk.CTkEntry(form, width=420)
-        self.company_website_entry.grid(row=5, column=1, sticky="ew", padx=8, pady=4)
+        self.company_website_entry.grid(row=5, column=1, sticky="ew", padx=st.GRID_PAD_X, pady=st.FIELD_PAD_Y)
 
-        ctk.CTkLabel(form, text="Payment terms:").grid(row=6, column=0, sticky="w", pady=4)
+        ctk.CTkLabel(form, text="Payment terms:").grid(row=6, column=0, sticky="w", pady=st.FIELD_PAD_Y)
         self.company_payment_terms_entry = ctk.CTkEntry(form, width=420)
-        self.company_payment_terms_entry.grid(row=6, column=1, sticky="ew", padx=8, pady=4)
+        self.company_payment_terms_entry.grid(row=6, column=1, sticky="ew", padx=st.GRID_PAD_X, pady=st.FIELD_PAD_Y)
 
-        ctk.CTkLabel(form, text="Thank you message:").grid(row=7, column=0, sticky="w", pady=4)
+        ctk.CTkLabel(form, text="Thank you message:").grid(row=7, column=0, sticky="w", pady=st.FIELD_PAD_Y)
         self.company_thank_you_entry = ctk.CTkEntry(form, width=420)
-        self.company_thank_you_entry.grid(row=7, column=1, sticky="ew", padx=8, pady=4)
+        self.company_thank_you_entry.grid(row=7, column=1, sticky="ew", padx=st.GRID_PAD_X, pady=st.FIELD_PAD_Y)
 
         form.columnconfigure(1, weight=1)
 
         actions = ctk.CTkFrame(scroll, fg_color="transparent")
-        actions.pack(fill="x", pady=(12, 0))
-        ctk.CTkButton(actions, text="Save company info", command=self.save_company_info).pack(side="left", padx=4)
-        ctk.CTkButton(actions, text="Load current info", command=self.load_company_info).pack(side="left", padx=4)
+        actions.pack(fill="x", padx=st.PANEL_INNER_PAD_X, pady=(st.SECTION_GAP, 0))
+        ctk.CTkButton(actions, text="Save company info", command=self.save_company_info).pack(side="left", padx=st.BUTTON_PAD_X)
+        ctk.CTkButton(actions, text="Load current info", command=self.load_company_info).pack(side="left", padx=st.BUTTON_PAD_X)
 
         ctk.CTkLabel(
             scroll,
             text="Appearance",
             font=ctk.CTkFont(size=14, weight="bold"),
-        ).pack(anchor="w", pady=(20, 8))
+        ).pack(anchor="w", padx=st.PANEL_INNER_PAD_X, pady=(st.SECTION_TITLE_TOP_PAD, st.SECTION_TITLE_BOTTOM_PAD))
         ctk.CTkLabel(
             scroll,
             text="Light or dark mode and accent theme for this window.",
@@ -105,7 +106,7 @@ class CtkCompanyTab:
         ).pack(anchor="w", pady=(0, 8))
 
         theme_row = ctk.CTkFrame(scroll, fg_color="transparent")
-        theme_row.pack(fill="x")
+        theme_row.pack(fill="x", padx=st.PANEL_INNER_PAD_X)
 
         ctk.CTkLabel(theme_row, text="Mode:").pack(side="left", padx=(0, 8))
         self.appearance_combo = ctk.CTkComboBox(
