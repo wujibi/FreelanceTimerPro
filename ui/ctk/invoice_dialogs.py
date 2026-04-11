@@ -267,12 +267,24 @@ def show_invoice_preview_dialog_ctk(
         JOIN tasks t ON te.task_id = t.id
         JOIN projects p ON te.project_id = p.id
         WHERE te.id IN ({placeholders})
+          AND COALESCE(te.duration_minutes, 0) > 0
     """,
         entry_ids,
     )
 
     entries = cursor.fetchall()
     conn.row_factory = None
+
+    if not entries:
+        messagebox.showinfo(
+            "No billable time",
+            "None of the selected entries have billable time (all are zero hours).\n\n"
+            "Edit those entries to add duration, or choose entries with time logged.",
+        )
+        preview_dialog.destroy()
+        return
+
+    billable_entry_ids = [int(entry["entry_id"]) for entry in entries]
 
     project_groups: dict = {}
     for entry in entries:
@@ -309,11 +321,10 @@ def show_invoice_preview_dialog_ctk(
 
         project_subtotal = 0.0
         for task_name, task_data in project_data["tasks"].items():
-            hours = task_data["minutes"] / 60.0
-            total_hours += hours
+            hours_exact = task_data["minutes"] / 60.0
 
             if task_data["is_lump_sum"]:
-                amount = task_data["lump_sum_amount"]
+                amount = round(float(task_data["lump_sum_amount"] or 0), 2)
                 invoice_items.append(
                     {
                         "description": f"  • {task_name}",
@@ -324,12 +335,15 @@ def show_invoice_preview_dialog_ctk(
                     }
                 )
             else:
-                amount = hours * (task_data["rate"] or 0)
+                rate = task_data["rate"] or 0
+                qty_hrs = round(hours_exact, 2)
+                amount = round(qty_hrs * rate, 2)
+                total_hours += qty_hrs
                 invoice_items.append(
                     {
                         "description": f"  • {task_name}",
-                        "quantity": f"{hours:.2f} hrs",
-                        "rate": f"${task_data['rate']:.2f}/hr",
+                        "quantity": f"{qty_hrs:.2f} hrs",
+                        "rate": f"${rate:.2f}/hr",
                         "amount": amount,
                         "is_task": True,
                     }
@@ -342,11 +356,14 @@ def show_invoice_preview_dialog_ctk(
                 "description": f"  {project_name} Subtotal",
                 "quantity": "",
                 "rate": "",
-                "amount": project_subtotal,
+                "amount": round(project_subtotal, 2),
                 "is_subtotal": True,
             }
         )
-        total_amount += project_subtotal
+        total_amount += round(project_subtotal, 2)
+
+    total_amount = round(total_amount, 2)
+    total_hours = round(total_hours, 2)
 
     start_dates = [datetime.fromisoformat(e["start_time"]) for e in entries]
     start_date = min(start_dates) if start_dates else datetime.now()
@@ -356,9 +373,10 @@ def show_invoice_preview_dialog_ctk(
         "current_invoice_data": {
             "client_id": client_id,
             "client_name": client_name,
-            "entry_ids": entry_ids,
+            "entry_ids": billable_entry_ids,
             "items": invoice_items,
             "total": total_amount,
+            "total_hours": total_hours,
             "start_date": start_date,
             "end_date": end_date,
         }
@@ -425,7 +443,9 @@ def show_invoice_preview_dialog_ctk(
     def create_invoice():
         if messagebox.askyesno(
             "Confirm",
-            f"Create invoice for ${total_amount:.2f}?\n\nThis will mark all selected time entries as BILLED.",
+            f"Create invoice for ${total_amount:.2f}?\n\n"
+            f"This will mark {len(billable_entry_ids)} billable time entr"
+            f"{'y' if len(billable_entry_ids) == 1 else 'ies'} as BILLED.",
         ):
             invoice_date = datetime.now()
             invoice_number = f"INV-{invoice_date.strftime('%Y%m%d-%H%M%S')}"
@@ -444,7 +464,7 @@ def show_invoice_preview_dialog_ctk(
                     data = preview_state["current_invoice_data"]
                     generator.generate_pdf(data, filename, invoice_number)
 
-                    update_placeholders = ",".join(["?" for _ in entry_ids])
+                    update_placeholders = ",".join(["?" for _ in billable_entry_ids])
                     cursor2 = db.conn.cursor()
                     cursor2.execute(
                         f"""
@@ -454,7 +474,7 @@ def show_invoice_preview_dialog_ctk(
                             billing_date = ?
                         WHERE id IN ({update_placeholders})
                     """,
-                        [invoice_number, invoice_date.strftime("%Y-%m-%d")] + entry_ids,
+                        [invoice_number, invoice_date.strftime("%Y-%m-%d")] + billable_entry_ids,
                     )
                     db.conn.commit()
                     db.save_billing_history(data, invoice_number, filename)
@@ -470,7 +490,7 @@ def show_invoice_preview_dialog_ctk(
                         f"File: {filename}\n"
                         f"Invoice #: {invoice_number}\n"
                         f"Total: ${total_amount:.2f}\n\n"
-                        f"{len(entry_ids)} time entries marked as billed.",
+                        f"{len(billable_entry_ids)} time entries marked as billed.",
                     )
                 except Exception as e:
                     messagebox.showerror("Error", f"Failed to create invoice:\n\n{e}\n\nCheck console for details.")
@@ -609,7 +629,7 @@ def show_invoice_preview_dialog_ctk(
             client_name,
             client_email,
             client_id,
-            entry_ids,
+            billable_entry_ids,
             invoice_items,
             total_amount,
             start_date,

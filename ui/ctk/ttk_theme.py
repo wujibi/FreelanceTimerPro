@@ -8,9 +8,7 @@ from tkinter import ttk
 
 import customtkinter as ctk
 
-# Minimum point size for Treeview body — default ttk is often 9px and looks tiny vs CTk labels.
-_TREE_BODY_PT = 12
-_TREE_ROW_HEIGHT = 30
+from ui.ctk.style_tokens import TREE_FONT_BODY_PT, TREE_ROW_HEIGHT
 
 # Approximate CTk surface colors so plain tk.Frame hosts sit flush with the tree.
 _LIGHT_HOST = "#ebebeb"
@@ -38,17 +36,12 @@ def embedded_tk_frame_bg() -> str:
 
 
 def get_tree_ui_font(_master: tk.Misc | None = None) -> tuple[str, int]:
-    """Font tuple for Treeview cells (family from TkDefaultFont, readable body size)."""
+    """Font tuple for Treeview cells (family from OS default; size from style_tokens)."""
     try:
         family = tkfont.nametofont("TkDefaultFont").actual("family")
     except tk.TclError:
         family = "Segoe UI"
-    try:
-        base_pt = int(tkfont.nametofont("TkDefaultFont").actual("size"))
-    except tk.TclError:
-        base_pt = 9
-    pt = max(_TREE_BODY_PT, base_pt)
-    return (family, pt)
+    return (family, TREE_FONT_BODY_PT)
 
 
 def get_tree_ui_font_bold(master: tk.Misc | None = None) -> tuple[str, int, str]:
@@ -110,7 +103,7 @@ def apply_ctk_aligned_ttk_theme(master: tk.Misc) -> ttk.Style:
         bordercolor=border,
         lightcolor=border,
         darkcolor=border,
-        rowheight=_TREE_ROW_HEIGHT,
+        rowheight=TREE_ROW_HEIGHT,
         font=body_font,
     )
     style.map(

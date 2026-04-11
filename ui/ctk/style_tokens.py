@@ -24,6 +24,11 @@ BUTTON_ROW_PAD_Y = 4
 BUTTON_ROW_BOTTOM_PAD = 8
 SECTION_GAP = 12
 
+# Embedded ttk.Treeview (Clients, Projects, Tasks, Time Entries, Invoices — one knob for all)
+# Match CTk form body (~11pt); was 12pt + 30px rows and felt heavy vs labels.
+TREE_FONT_BODY_PT = 10
+TREE_ROW_HEIGHT = 26
+
 # Control sizing
 COMBO_WIDTH = 320
 TEXTBOX_SHORT_HEIGHT = 72

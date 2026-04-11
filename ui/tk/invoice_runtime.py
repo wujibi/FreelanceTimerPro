@@ -21,6 +21,7 @@ class InvoiceRuntimeMixin:
             SELECT * FROM invoice_view
             WHERE entry_id IN ({placeholders})
             AND (is_billed = 0 OR is_billed IS NULL)
+            AND COALESCE(duration_minutes, 0) > 0
         """,
             entry_ids,
         )
@@ -45,12 +46,27 @@ class InvoiceRuntimeMixin:
                     tasks[key] = {"minutes": 0, "rate": row["task_rate"] or row["project_rate"], "is_lump_sum": False, "lump_sum_amount": 0}
             tasks[key]["minutes"] += row["duration_minutes"] or 0
 
+        total_hours_all = 0.0
         for task_name, data in tasks.items():
-            hours = data["minutes"] / 60.0
+            hours_exact = data["minutes"] / 60.0
             if data["is_lump_sum"]:
-                invoice_items.append({"description": task_name, "quantity": "1", "rate": f"${data['lump_sum_amount']:.2f}", "amount": data["lump_sum_amount"]})
+                amt = round(float(data["lump_sum_amount"] or 0), 2)
+                invoice_items.append(
+                    {"description": task_name, "quantity": "1", "rate": f"${amt:.2f}", "amount": amt}
+                )
             else:
-                invoice_items.append({"description": task_name, "quantity": f"{hours:.2f} hrs", "rate": f"${data['rate']:.2f}/hr", "amount": hours * data["rate"]})
+                rate = data["rate"] or 0
+                qty_hrs = round(hours_exact, 2)
+                total_hours_all += qty_hrs
+                amt = round(qty_hrs * rate, 2)
+                invoice_items.append(
+                    {
+                        "description": task_name,
+                        "quantity": f"{qty_hrs:.2f} hrs",
+                        "rate": f"${rate:.2f}/hr",
+                        "amount": amt,
+                    }
+                )
 
         start_date = None
         end_date = None
@@ -66,7 +82,8 @@ class InvoiceRuntimeMixin:
             "start_date": datetime.combine(start_date, datetime.min.time()),
             "end_date": datetime.combine(end_date, datetime.max.time()),
             "items": invoice_items,
-            "total": sum(item["amount"] for item in invoice_items),
+            "total": round(sum(item["amount"] for item in invoice_items), 2),
+            "total_hours": round(total_hours_all, 2),
         }
 
         self.notebook.select(6)
@@ -234,12 +251,24 @@ class InvoiceRuntimeMixin:
             JOIN tasks t ON te.task_id = t.id
             JOIN projects p ON te.project_id = p.id
             WHERE te.id IN ({placeholders})
+              AND COALESCE(te.duration_minutes, 0) > 0
         """,
             entry_ids,
         )
 
         entries = cursor.fetchall()
         conn.row_factory = None
+
+        if not entries:
+            messagebox.showinfo(
+                "No billable time",
+                "None of the selected entries have billable time (all are zero hours).\n\n"
+                "Edit those entries to add duration, or choose entries with time logged.",
+            )
+            preview_dialog.destroy()
+            return
+
+        billable_entry_ids = [int(entry["entry_id"]) for entry in entries]
 
         project_groups = {}
         for entry in entries:
@@ -261,7 +290,7 @@ class InvoiceRuntimeMixin:
 
         invoice_items = []
         total_amount = 0
-        total_hours = 0
+        total_hours = 0.0
 
         for project_name, project_data in project_groups.items():
             invoice_items.append(
@@ -276,11 +305,10 @@ class InvoiceRuntimeMixin:
 
             project_subtotal = 0
             for task_name, task_data in project_data["tasks"].items():
-                hours = task_data["minutes"] / 60.0
-                total_hours += hours
+                hours_exact = task_data["minutes"] / 60.0
 
                 if task_data["is_lump_sum"]:
-                    amount = task_data["lump_sum_amount"]
+                    amount = round(float(task_data["lump_sum_amount"] or 0), 2)
                     invoice_items.append(
                         {
                             "description": f"  • {task_name}",
@@ -291,12 +319,15 @@ class InvoiceRuntimeMixin:
                         }
                     )
                 else:
-                    amount = hours * task_data["rate"]
+                    rate = task_data["rate"] or 0
+                    qty_hrs = round(hours_exact, 2)
+                    amount = round(qty_hrs * rate, 2)
+                    total_hours += qty_hrs
                     invoice_items.append(
                         {
                             "description": f"  • {task_name}",
-                            "quantity": f"{hours:.2f} hrs",
-                            "rate": f"${task_data['rate']:.2f}/hr",
+                            "quantity": f"{qty_hrs:.2f} hrs",
+                            "rate": f"${rate:.2f}/hr",
                             "amount": amount,
                             "is_task": True,
                         }
@@ -304,16 +335,20 @@ class InvoiceRuntimeMixin:
 
                 project_subtotal += amount
 
+            sub_rounded = round(project_subtotal, 2)
             invoice_items.append(
                 {
                     "description": f"  {project_name} Subtotal",
                     "quantity": "",
                     "rate": "",
-                    "amount": project_subtotal,
+                    "amount": sub_rounded,
                     "is_subtotal": True,
                 }
             )
-            total_amount += project_subtotal
+            total_amount += sub_rounded
+
+        total_amount = round(total_amount, 2)
+        total_hours = round(total_hours, 2)
 
         start_dates = [datetime.fromisoformat(e["start_time"]) for e in entries]
         start_date = min(start_dates) if start_dates else datetime.now()
@@ -322,9 +357,10 @@ class InvoiceRuntimeMixin:
         self.current_invoice_data = {
             "client_id": client_id,
             "client_name": client_name,
-            "entry_ids": entry_ids,
+            "entry_ids": billable_entry_ids,
             "items": invoice_items,
             "total": total_amount,
+            "total_hours": total_hours,
             "start_date": start_date,
             "end_date": end_date,
         }
@@ -378,7 +414,9 @@ class InvoiceRuntimeMixin:
         def create_invoice():
             if messagebox.askyesno(
                 "Confirm",
-                f"Create invoice for ${total_amount:.2f}?\n\nThis will mark all selected time entries as BILLED.",
+                f"Create invoice for ${total_amount:.2f}?\n\n"
+                f"This will mark {len(billable_entry_ids)} billable time entr"
+                f"{'y' if len(billable_entry_ids) == 1 else 'ies'} as BILLED.",
             ):
                 invoice_date = datetime.now()
                 invoice_number = f"INV-{invoice_date.strftime('%Y%m%d-%H%M%S')}"
@@ -396,7 +434,7 @@ class InvoiceRuntimeMixin:
                         generator = InvoiceGenerator(self.db)
                         generator.generate_pdf(self.current_invoice_data, filename, invoice_number)
 
-                        update_placeholders = ",".join(["?" for _ in entry_ids])
+                        update_placeholders = ",".join(["?" for _ in billable_entry_ids])
                         cursor = self.db.conn.cursor()
                         cursor.execute(
                             f"""
@@ -406,7 +444,7 @@ class InvoiceRuntimeMixin:
                                 billing_date = ?
                             WHERE id IN ({update_placeholders})
                         """,
-                            [invoice_number, invoice_date.strftime("%Y-%m-%d")] + entry_ids,
+                            [invoice_number, invoice_date.strftime("%Y-%m-%d")] + billable_entry_ids,
                         )
                         self.db.conn.commit()
                         self.db.save_billing_history(self.current_invoice_data, invoice_number, filename)
@@ -420,7 +458,7 @@ class InvoiceRuntimeMixin:
                             f"File: {filename}\n"
                             f"Invoice #: {invoice_number}\n"
                             f"Total: ${total_amount:.2f}\n\n"
-                            f"{len(entry_ids)} time entries marked as billed.",
+                            f"{len(billable_entry_ids)} time entries marked as billed.",
                         )
                     except Exception as e:
                         messagebox.showerror("Error", f"Failed to create invoice:\n\n{e}\n\nCheck console for details.")
@@ -545,7 +583,7 @@ class InvoiceRuntimeMixin:
                 client_name,
                 client_email,
                 client_id,
-                entry_ids,
+                billable_entry_ids,
                 invoice_items,
                 total_amount,
                 start_date,

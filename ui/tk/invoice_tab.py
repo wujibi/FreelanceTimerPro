@@ -138,23 +138,21 @@ class InvoiceTabMixin:
 
         self.invoice_entries_tree = ttk.Treeview(
             tree_container,
-            columns=("Date", "Project", "Task", "Duration", "Description"),
+            columns=("Date", "Task", "Duration", "Description"),
             selectmode="extended",
         )
 
         self.invoice_entries_tree.heading("#0", text="Select")
         self.invoice_entries_tree.heading("Date", text="Date")
-        self.invoice_entries_tree.heading("Project", text="Project")
         self.invoice_entries_tree.heading("Task", text="Task")
         self.invoice_entries_tree.heading("Duration", text="Duration")
         self.invoice_entries_tree.heading("Description", text="Description")
 
-        self.invoice_entries_tree.column("#0", width=50)
-        self.invoice_entries_tree.column("Date", width=100)
-        self.invoice_entries_tree.column("Project", width=150)
-        self.invoice_entries_tree.column("Task", width=150)
-        self.invoice_entries_tree.column("Duration", width=100)
-        self.invoice_entries_tree.column("Description", width=250)
+        self.invoice_entries_tree.column("#0", width=72)
+        self.invoice_entries_tree.column("Date", width=118)
+        self.invoice_entries_tree.column("Task", width=168)
+        self.invoice_entries_tree.column("Duration", width=108)
+        self.invoice_entries_tree.column("Description", width=400)
 
         tree_scroll = ttk.Scrollbar(tree_container, orient="vertical", command=self.invoice_entries_tree.yview)
         self.invoice_entries_tree.configure(yscrollcommand=tree_scroll.set)
@@ -485,6 +483,7 @@ class InvoiceTabMixin:
                     JOIN tasks t ON te.task_id = t.id
                     JOIN projects p ON te.project_id = p.id
                     WHERE p.client_id = ? AND p.id = ? AND (te.is_billed = 0 OR te.is_billed IS NULL)
+                          AND COALESCE(te.duration_minutes, 0) > 0
                     ORDER BY te.start_time DESC
                 """,
                     (client_id, project_id),
@@ -498,6 +497,7 @@ class InvoiceTabMixin:
                     JOIN tasks t ON te.task_id = t.id
                     JOIN projects p ON te.project_id = p.id
                     WHERE p.client_id = ? AND (te.is_billed = 0 OR te.is_billed IS NULL)
+                          AND COALESCE(te.duration_minutes, 0) > 0
                     ORDER BY te.start_time DESC
                 """,
                     (client_id,),
@@ -521,6 +521,7 @@ class InvoiceTabMixin:
                     WHERE p.client_id = ? AND p.id = ?
                           AND DATE(te.start_time) BETWEEN ? AND ?
                           AND (te.is_billed = 0 OR te.is_billed IS NULL)
+                          AND COALESCE(te.duration_minutes, 0) > 0
                     ORDER BY te.start_time DESC
                 """,
                     (client_id, project_id, start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d")),
@@ -536,6 +537,7 @@ class InvoiceTabMixin:
                     WHERE p.client_id = ?
                           AND DATE(te.start_time) BETWEEN ? AND ?
                           AND (te.is_billed = 0 OR te.is_billed IS NULL)
+                          AND COALESCE(te.duration_minutes, 0) > 0
                     ORDER BY te.start_time DESC
                 """,
                     (client_id, start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d")),
@@ -568,7 +570,7 @@ class InvoiceTabMixin:
                 "",
                 "end",
                 text=f"📁 {project_name}",
-                values=("", "", "", f"{project_hours:.2f} hrs", f"{project_entry_count} entries"),
+                values=("", "", f"{project_hours:.2f} hrs", f"{project_entry_count} entries"),
                 tags=("project", "project_row"),
             )
 
@@ -579,7 +581,7 @@ class InvoiceTabMixin:
                     project_node,
                     "end",
                     text=f"  📋 {task_name}",
-                    values=("", "", "", f"{task_hours:.2f} hrs", f"{len(task_entries)} entries"),
+                    values=("", "", f"{task_hours:.2f} hrs", f"{len(task_entries)} entries"),
                     tags=("task", "task_row"),
                 )
 
@@ -598,7 +600,7 @@ class InvoiceTabMixin:
                         task_node,
                         "end",
                         text="    ⏱️",
-                        values=(date_display, "", "", f"{hours:.2f} hrs", description or ""),
+                        values=(date_display, "", f"{hours:.2f} hrs", description or ""),
                         tags=(f"entry_id_{entry_id}", "entry", "entry_row"),
                     )
 

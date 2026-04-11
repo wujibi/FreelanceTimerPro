@@ -269,6 +269,7 @@ class RefreshRuntimeMixin:
               AND DATE (start_time) BETWEEN ?
               AND ?
               AND (is_billed = 0 OR is_billed IS NULL)
+              AND COALESCE(duration_minutes, 0) > 0
             """,
             (client_id, start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d")),
         )
@@ -289,14 +290,19 @@ class RefreshRuntimeMixin:
                 tasks[key] = {"minutes": 0, "rate": row["task_rate"] or row["project_rate"]}
             tasks[key]["minutes"] += row["duration_minutes"] or 0
 
+        total_hours_all = 0.0
         for task_name, data in tasks.items():
-            hours = data["minutes"] / 60.0
+            hours_exact = data["minutes"] / 60.0
+            rate = data["rate"] or 0
+            qty_hrs = round(hours_exact, 2)
+            total_hours_all += qty_hrs
+            amt = round(qty_hrs * rate, 2)
             invoice_items.append(
                 {
                     "description": task_name,
-                    "quantity": f"{hours:.2f} hrs",
-                    "rate": f"${data['rate']:.2f}/hr",
-                    "amount": hours * data["rate"],
+                    "quantity": f"{qty_hrs:.2f} hrs",
+                    "rate": f"${rate:.2f}/hr",
+                    "amount": amt,
                 }
             )
 
@@ -305,7 +311,8 @@ class RefreshRuntimeMixin:
             "start_date": start_date,
             "end_date": end_date,
             "items": invoice_items,
-            "total": sum(item["amount"] for item in invoice_items),
+            "total": round(sum(item["amount"] for item in invoice_items), 2),
+            "total_hours": round(total_hours_all, 2),
         }
 
     def refresh_all_data(self):

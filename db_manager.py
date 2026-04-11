@@ -602,15 +602,22 @@ class DatabaseManager:
         VALUES (?, ?, ?, datetime('now'), ?, ?, ?, ?, ?, ?)
         '''
 
-        # Calculate total hours
-        total_hours = 0
-        for item in invoice_data['items']:
-            qty_str = str(item['quantity'])
-            if 'hrs' in qty_str:
-                try:
-                    total_hours += float(qty_str.replace('hrs', '').strip())
-                except:
-                    pass
+        # Prefer exact hours computed when the invoice was built (displayed qty is rounded).
+        total_hours = invoice_data.get("total_hours")
+        if total_hours is None:
+            total_hours = 0.0
+            for item in invoice_data["items"]:
+                qty_str = str(item["quantity"])
+                if "hrs" in qty_str:
+                    try:
+                        total_hours += float(qty_str.replace("hrs", "").strip())
+                    except ValueError:
+                        pass
+        else:
+            try:
+                total_hours = float(total_hours)
+            except (TypeError, ValueError):
+                total_hours = 0.0
 
         # Get client name
         cursor = self.conn.cursor()
