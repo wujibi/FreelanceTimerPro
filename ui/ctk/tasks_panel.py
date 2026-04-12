@@ -71,19 +71,19 @@ class CtkTasksTab:
             state="readonly",
             command=self._on_task_client_selected,
         )
-        self.task_client_combo.grid(row=1, column=1, sticky="ew", padx=8, pady=4)
+        self.task_client_combo.grid(row=1, column=1, sticky="w", padx=8, pady=4)
 
         ctk.CTkLabel(form, text="Project:").grid(row=2, column=0, sticky="w", pady=4)
         self.task_project_combo = ctk.CTkComboBox(form, values=[], width=st.COMBO_WIDTH, state="readonly")
-        self.task_project_combo.grid(row=2, column=1, sticky="ew", padx=8, pady=4)
+        self.task_project_combo.grid(row=2, column=1, sticky="w", padx=8, pady=4)
 
         ctk.CTkLabel(form, text="Name:").grid(row=3, column=0, sticky="w", pady=4)
         self.task_name_entry = ctk.CTkEntry(form, width=st.COMBO_WIDTH)
-        self.task_name_entry.grid(row=3, column=1, sticky="ew", padx=8, pady=4)
+        self.task_name_entry.grid(row=3, column=1, sticky="w", padx=8, pady=4)
 
         ctk.CTkLabel(form, text="Description:").grid(row=4, column=0, sticky="nw", pady=4)
         self.task_desc_text = ctk.CTkTextbox(form, width=st.COMBO_WIDTH, height=st.TEXTBOX_SHORT_HEIGHT)
-        self.task_desc_text.grid(row=4, column=1, sticky="ew", padx=8, pady=4)
+        self.task_desc_text.grid(row=4, column=1, sticky="w", padx=8, pady=4)
 
         ctk.CTkCheckBox(
             form,

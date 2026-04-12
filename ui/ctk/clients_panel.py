@@ -12,6 +12,7 @@ import customtkinter as ctk
 
 from models import Client
 from ui.ctk import style_tokens as st
+from ui.ctk.ttk_theme import get_tree_ui_font_bold
 
 
 class CtkClientsTab:
@@ -40,24 +41,24 @@ class CtkClientsTab:
         )
 
         ctk.CTkLabel(form, text="Name:").grid(row=1, column=0, sticky="w", pady=4)
-        self.client_name_entry = ctk.CTkEntry(form, width=360)
-        self.client_name_entry.grid(row=1, column=1, sticky="ew", padx=8, pady=4)
+        self.client_name_entry = ctk.CTkEntry(form, width=st.COMBO_WIDTH)
+        self.client_name_entry.grid(row=1, column=1, sticky="w", padx=8, pady=4)
 
         ctk.CTkLabel(form, text="Company:").grid(row=2, column=0, sticky="w", pady=4)
-        self.client_company_entry = ctk.CTkEntry(form, width=360)
-        self.client_company_entry.grid(row=2, column=1, sticky="ew", padx=8, pady=4)
+        self.client_company_entry = ctk.CTkEntry(form, width=st.COMBO_WIDTH)
+        self.client_company_entry.grid(row=2, column=1, sticky="w", padx=8, pady=4)
 
         ctk.CTkLabel(form, text="Email:").grid(row=3, column=0, sticky="w", pady=4)
-        self.client_email_entry = ctk.CTkEntry(form, width=360)
-        self.client_email_entry.grid(row=3, column=1, sticky="ew", padx=8, pady=4)
+        self.client_email_entry = ctk.CTkEntry(form, width=st.COMBO_WIDTH)
+        self.client_email_entry.grid(row=3, column=1, sticky="w", padx=8, pady=4)
 
         ctk.CTkLabel(form, text="Phone:").grid(row=4, column=0, sticky="w", pady=4)
-        self.client_phone_entry = ctk.CTkEntry(form, width=360)
-        self.client_phone_entry.grid(row=4, column=1, sticky="ew", padx=8, pady=4)
+        self.client_phone_entry = ctk.CTkEntry(form, width=st.COMBO_WIDTH)
+        self.client_phone_entry.grid(row=4, column=1, sticky="w", padx=8, pady=4)
 
         ctk.CTkLabel(form, text="Address:").grid(row=5, column=0, sticky="nw", pady=4)
-        self.client_address_text = ctk.CTkTextbox(form, width=360, height=st.TEXTBOX_SHORT_HEIGHT)
-        self.client_address_text.grid(row=5, column=1, sticky="ew", padx=8, pady=4)
+        self.client_address_text = ctk.CTkTextbox(form, width=st.COMBO_WIDTH, height=st.TEXTBOX_SHORT_HEIGHT)
+        self.client_address_text.grid(row=5, column=1, sticky="w", padx=8, pady=4)
 
         form.columnconfigure(1, weight=1)
 
@@ -98,8 +99,7 @@ class CtkClientsTab:
         ys.pack(side="right", fill="y")
 
         self.client_tree.bind("<<TreeviewSelect>>", self.on_client_select)
-
-        
+        self.client_tree.tag_configure("client_row", font=get_tree_ui_font_bold(self.root))
 
     def refresh_tree(self) -> None:
         selected_client_id = None
@@ -119,6 +119,7 @@ class CtkClientsTab:
                 "",
                 "end",
                 values=(client[0], client[1], client[2] or "", client[3] or "", client[4] or ""),
+                tags=("client_row",),
             )
 
         if selected_client_id is not None and selected_client_id not in client_ids:

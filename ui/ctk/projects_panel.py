@@ -12,6 +12,7 @@ import customtkinter as ctk
 
 from models import Client, Project
 from ui.ctk import style_tokens as st
+from ui.ctk.ttk_theme import get_tree_ui_font_bold
 
 
 class CtkProjectsTab:
@@ -59,15 +60,15 @@ class CtkProjectsTab:
 
         ctk.CTkLabel(form, text="Client:").grid(row=1, column=0, sticky="w", pady=4)
         self.project_client_combo = ctk.CTkComboBox(form, values=[], width=st.COMBO_WIDTH, state="readonly")
-        self.project_client_combo.grid(row=1, column=1, sticky="ew", padx=8, pady=4)
+        self.project_client_combo.grid(row=1, column=1, sticky="w", padx=8, pady=4)
 
         ctk.CTkLabel(form, text="Name:").grid(row=2, column=0, sticky="w", pady=4)
         self.project_name_entry = ctk.CTkEntry(form, width=st.COMBO_WIDTH)
-        self.project_name_entry.grid(row=2, column=1, sticky="ew", padx=8, pady=4)
+        self.project_name_entry.grid(row=2, column=1, sticky="w", padx=8, pady=4)
 
         ctk.CTkLabel(form, text="Description:").grid(row=3, column=0, sticky="nw", pady=4)
         self.project_desc_text = ctk.CTkTextbox(form, width=st.COMBO_WIDTH, height=st.TEXTBOX_SHORT_HEIGHT)
-        self.project_desc_text.grid(row=3, column=1, sticky="ew", padx=8, pady=4)
+        self.project_desc_text.grid(row=3, column=1, sticky="w", padx=8, pady=4)
 
         br = ctk.CTkFrame(form, fg_color="transparent")
         br.grid(row=4, column=1, sticky="w", padx=8, pady=4)
@@ -129,8 +130,7 @@ class CtkProjectsTab:
         ys.pack(side="right", fill="y")
 
         self.project_tree.bind("<<TreeviewSelect>>", self.on_project_select)
-
-        
+        self.project_tree.tag_configure("project_row", font=get_tree_ui_font_bold(self.root))
 
     def refresh_tree(self) -> None:
         for item in self.project_tree.get_children():
@@ -143,6 +143,7 @@ class CtkProjectsTab:
                 "",
                 "end",
                 values=(project[0], client_name, project[2], billing_type, rate),
+                tags=("project_row",),
             )
 
     def add_project(self) -> None:

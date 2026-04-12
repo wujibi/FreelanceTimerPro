@@ -138,21 +138,19 @@ class InvoiceTabMixin:
 
         self.invoice_entries_tree = ttk.Treeview(
             tree_container,
-            columns=("Date", "Task", "Duration", "Description"),
+            columns=("Date", "Duration", "Description"),
             selectmode="extended",
         )
 
         self.invoice_entries_tree.heading("#0", text="Select")
         self.invoice_entries_tree.heading("Date", text="Date")
-        self.invoice_entries_tree.heading("Task", text="Task")
         self.invoice_entries_tree.heading("Duration", text="Duration")
         self.invoice_entries_tree.heading("Description", text="Description")
 
-        self.invoice_entries_tree.column("#0", width=72)
-        self.invoice_entries_tree.column("Date", width=118)
-        self.invoice_entries_tree.column("Task", width=168)
-        self.invoice_entries_tree.column("Duration", width=108)
-        self.invoice_entries_tree.column("Description", width=400)
+        self.invoice_entries_tree.column("#0", width=250, minwidth=80)
+        self.invoice_entries_tree.column("Date", width=50, minwidth=50)
+        self.invoice_entries_tree.column("Duration", width=50, minwidth=50)
+        self.invoice_entries_tree.column("Description", width=480, minwidth=160, stretch=True)
 
         tree_scroll = ttk.Scrollbar(tree_container, orient="vertical", command=self.invoice_entries_tree.yview)
         self.invoice_entries_tree.configure(yscrollcommand=tree_scroll.set)
@@ -570,7 +568,7 @@ class InvoiceTabMixin:
                 "",
                 "end",
                 text=f"📁 {project_name}",
-                values=("", "", f"{project_hours:.2f} hrs", f"{project_entry_count} entries"),
+                values=("", f"{project_hours:.2f} hrs", f"{project_entry_count} entries"),
                 tags=("project", "project_row"),
             )
 
@@ -581,7 +579,7 @@ class InvoiceTabMixin:
                     project_node,
                     "end",
                     text=f"  📋 {task_name}",
-                    values=("", "", f"{task_hours:.2f} hrs", f"{len(task_entries)} entries"),
+                    values=("", f"{task_hours:.2f} hrs", f"{len(task_entries)} entries"),
                     tags=("task", "task_row"),
                 )
 
@@ -589,9 +587,13 @@ class InvoiceTabMixin:
                     entry_id, start_time, description, duration_minutes, _, _ = entry
                     try:
                         dt = datetime.fromisoformat(start_time)
-                        date_display = dt.strftime("%m/%d/%y %I:%M %p")
+                        date_display = dt.strftime("%m/%d/%y")
                     except Exception:
-                        date_display = start_time[:10]
+                        raw = (start_time or "")[:10]
+                        try:
+                            date_display = datetime.strptime(raw, "%Y-%m-%d").strftime("%m/%d/%y")
+                        except Exception:
+                            date_display = raw or ""
 
                     hours = (duration_minutes or 0) / 60.0
                     total_hours += hours
@@ -600,7 +602,7 @@ class InvoiceTabMixin:
                         task_node,
                         "end",
                         text="    ⏱️",
-                        values=(date_display, "", f"{hours:.2f} hrs", description or ""),
+                        values=(date_display, f"{hours:.2f} hrs", description or ""),
                         tags=(f"entry_id_{entry_id}", "entry", "entry_row"),
                     )
 
