@@ -126,6 +126,9 @@ class TimeTrackerApp(
             self.last_timer_elapsed = 0
             self.last_timer_client_id = None
             self.last_timer_project_id = None
+            self.active_timer_client_id = None
+            self.active_timer_project_id = None
+            self.active_timer_entry_id = None
             print("[DEBUG] Timer variables initialized")
 
             print("[DEBUG] Creating widgets...")
@@ -212,7 +215,7 @@ class TimeTrackerApp(
     def create_widgets(self):
         # Create notebook for tabs
         self.notebook = ttk.Notebook(self.root)
-        self.notebook.pack(fill='both', expand=True, padx=10, pady=10)
+        self.notebook.pack(fill='both', expand=True, padx=10, pady=(16, 10))
 
         # Create tabs
         self.create_timer_tab()

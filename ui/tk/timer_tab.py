@@ -6,6 +6,17 @@ from datetime import datetime
 
 
 class TimerTabMixin:
+    def _bind_responsive_daily_totals(self, container, text_widget, min_lines=8):
+        """Resize totals text height based on available container height."""
+        def _on_resize(event):
+            try:
+                lines = max(min_lines, int(event.height / 22))
+                text_widget.configure(height=lines)
+            except Exception:
+                pass
+
+        container.bind("<Configure>", _on_resize)
+
     def create_timer_tab(self):
         """Create Timer tab with Active Timer and Manual Entry subviews"""
         timer_frame = ttk.Frame(self.notebook)
@@ -13,7 +24,7 @@ class TimerTabMixin:
 
         # Submenu bar at top
         submenu_frame = ttk.Frame(timer_frame)
-        submenu_frame.pack(fill="x", padx=10, pady=(10, 0))
+        submenu_frame.pack(fill="x", padx=10, pady=(2, 0))
 
         ttk.Label(submenu_frame, text="View:", font=("Arial", 10, "bold")).pack(side="left", padx=5)
         ttk.Button(
@@ -114,12 +125,13 @@ class TimerTabMixin:
 
         self.daily_totals_text = tk.Text(
             daily_text_frame,
-            height=12,
+            height=14,
             wrap="word",
             font=("Courier", 10),
             state="disabled",
         )
         self.daily_totals_text.pack(side="left", fill="both", expand=True)
+        self._bind_responsive_daily_totals(daily_text_frame, self.daily_totals_text, min_lines=9)
 
         # Scrollbar for daily totals
         daily_scrollbar = ttk.Scrollbar(daily_text_frame, command=self.daily_totals_text.yview)
@@ -143,7 +155,7 @@ class TimerTabMixin:
 
         # Manual time entry section
         manual_frame = ttk.LabelFrame(self.manual_entry_frame, text="Manual Time Entry")
-        manual_frame.pack(fill="both", expand=True, padx=10, pady=10)
+        manual_frame.pack(fill="x", padx=10, pady=10)
 
         form_frame = ttk.Frame(manual_frame)
         form_frame.pack(fill="x", padx=10, pady=10)
@@ -247,12 +259,17 @@ class TimerTabMixin:
 
         self.manual_daily_totals_text = tk.Text(
             manual_daily_text_frame,
-            height=10,
+            height=14,
             wrap="word",
             font=("Courier", 10),
             state="disabled",
         )
         self.manual_daily_totals_text.pack(side="left", fill="both", expand=True)
+        self._bind_responsive_daily_totals(
+            manual_daily_text_frame,
+            self.manual_daily_totals_text,
+            min_lines=9,
+        )
 
         # Scrollbar for daily totals
         manual_daily_scrollbar = ttk.Scrollbar(manual_daily_text_frame, command=self.manual_daily_totals_text.yview)

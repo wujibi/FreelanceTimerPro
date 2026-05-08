@@ -12,6 +12,31 @@ from core.task_resolution import resolve_task_id_for_timer
 class TimerRuntimeMixin:
     """Runtime timer behavior for the main app."""
 
+    def _scroll_daily_totals_to_latest(self):
+        """Keep the latest totals (at the bottom) visible in both timer views."""
+        for text_widget_name in ("daily_totals_text", "manual_daily_totals_text"):
+            text_widget = getattr(self, text_widget_name, None)
+            if text_widget is not None:
+                text_widget.yview_moveto(1.0)
+
+    def _get_time_entry_context(self, entry_id):
+        """Return (client_id, project_id) from a persisted time entry row."""
+        if not entry_id:
+            return None, None
+        try:
+            with self.db.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    "SELECT client_id, project_id FROM time_entries WHERE id = ?",
+                    (entry_id,),
+                )
+                row = cursor.fetchone()
+            if not row:
+                return None, None
+            return row[0], row[1]
+        except Exception:
+            return None, None
+
     def start_timer(self):
         if not self.timer_client_combo.get():
             messagebox.showerror("Error", "Please select a client first")
@@ -49,7 +74,20 @@ class TimerRuntimeMixin:
             self.timer_start_time = datetime.now()
 
             project_id = self.get_current_timer_project_id()
-            self.time_entry_model.start_timer(self.current_task_id, project_id_override=project_id)
+            client_id = self.get_current_timer_client_id()
+            # Lock the timer context at start so stop-time selection changes
+            # cannot cause totals to be attributed incorrectly or skipped.
+            self.active_timer_client_id = client_id
+            self.active_timer_project_id = project_id
+            self.active_timer_entry_id = self.time_entry_model.start_timer(
+                self.current_task_id,
+                project_id_override=project_id,
+            )
+            persisted_client_id, persisted_project_id = self._get_time_entry_context(self.active_timer_entry_id)
+            if persisted_client_id:
+                self.active_timer_client_id = persisted_client_id
+            if persisted_project_id:
+                self.active_timer_project_id = persisted_project_id
 
             self.start_button.config(state="disabled")
             self.stop_button.config(state="normal")
@@ -59,13 +97,18 @@ class TimerRuntimeMixin:
         except Exception as e:
             messagebox.showerror("Error", f"Failed to start timer: {str(e)}")
             self.timer_running = False
+            self.active_timer_client_id = None
+            self.active_timer_project_id = None
+            self.active_timer_entry_id = None
 
     def stop_timer(self):
         if self.timer_running:
             elapsed_seconds = (datetime.now() - self.timer_start_time).total_seconds()
 
-            client_id = self.get_current_timer_client_id()
-            project_id = self.get_current_timer_project_id()
+            # Re-read persisted context from the row created at timer start.
+            persisted_client_id, persisted_project_id = self._get_time_entry_context(self.active_timer_entry_id)
+            client_id = persisted_client_id or self.active_timer_client_id or self.get_current_timer_client_id()
+            project_id = persisted_project_id or self.active_timer_project_id or self.get_current_timer_project_id()
 
             self.timer_running = False
             self.time_entry_model.stop_timer()
@@ -84,6 +127,9 @@ class TimerRuntimeMixin:
                     self.last_timer_project_id = project_id
 
             self.last_timer_elapsed = elapsed_seconds
+            self.active_timer_client_id = None
+            self.active_timer_project_id = None
+            self.active_timer_entry_id = None
 
             self.start_button.config(state="normal")
             self.stop_button.config(state="disabled")
@@ -275,6 +321,7 @@ class TimerRuntimeMixin:
 
         self.daily_totals_text.config(state="disabled")
         self.manual_daily_totals_text.config(state="disabled")
+        self._scroll_daily_totals_to_latest()
 
     def reset_daily_totals(self):
         """Manually reset daily totals."""

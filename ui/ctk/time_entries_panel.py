@@ -379,7 +379,8 @@ class CtkTimeEntriesTab:
         ttk.Label(form_frame, text="Description:").grid(row=7, column=0, sticky="nw", pady=5)
         desc_text = tk.Text(form_frame, width=40, height=4)
         desc_text.grid(row=7, column=1, sticky="ew", padx=5, pady=5)
-        desc_text.insert("1.0", entry[11] or "")
+        # Schema-safe: description lives at index 12 in time_entries SELECT * rows.
+        desc_text.insert("1.0", entry[12] or "")
 
         form_frame.columnconfigure(1, weight=1)
 
@@ -435,8 +436,7 @@ class CtkTimeEntriesTab:
                 messagebox.showinfo(
                     "Success",
                     f"Time entry updated successfully\n\n"
-                    f"Duration: {duration_hours:.2f} hours\n\n"
-                    "Click REFRESH to update the invoice data below.",
+                    f"Duration: {duration_hours:.2f} hours",
                 )
 
             except ValueError as e:
