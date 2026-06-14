@@ -13,6 +13,7 @@ import tkinter as tk
 import customtkinter as ctk
 
 from models import TimeEntry
+from ui.ctk.brand_theme import configure_entry_row_tag, configure_group_row_tags, hint_text_color
 from ui.ctk.ttk_theme import get_tree_ui_font, get_tree_ui_font_bold
 from ui_helpers import center_dialog, restore_tree_state, save_tree_state
 
@@ -56,7 +57,7 @@ class CtkTimeEntriesTab:
         ctk.CTkLabel(
             self.parent,
             text="Tip: expand ▶ groups, select a row labeled “Entry”, then Edit or Delete.",
-            text_color=("gray30", "gray65"),
+            text_color=hint_text_color(),
             font=ctk.CTkFont(size=11),
         ).pack(anchor="w", padx=10, pady=(0, 6))
 
@@ -91,30 +92,8 @@ class CtkTimeEntriesTab:
         self.entries_tree.pack(side="left", fill="both", expand=True)
         scroll.pack(side="right", fill="y")
 
-        self.entries_tree.tag_configure(
-            "client_row",
-            background="#e8f4f8",
-            foreground="#13100f",
-            font=get_tree_ui_font_bold(self.root),
-        )
-        self.entries_tree.tag_configure(
-            "project_row",
-            background="#e8f4f8",
-            foreground="#13100f",
-            font=get_tree_ui_font_bold(self.root),
-        )
-        self.entries_tree.tag_configure(
-            "task_row",
-            background="#e8f4f8",
-            foreground="#13100f",
-            font=get_tree_ui_font(self.root),
-        )
-        self.entries_tree.tag_configure(
-            "entry_row",
-            background="white",
-            foreground="#222",
-            font=get_tree_ui_font(self.root),
-        )
+        configure_group_row_tags(self.entries_tree, self.root)
+        configure_entry_row_tag(self.entries_tree, self.root)
 
     def refresh(self) -> None:
         expanded_items = save_tree_state(self.entries_tree)
@@ -677,6 +656,9 @@ class CtkTimeEntriesTab:
             traceback.print_exc()
 
     def sync_embedded_tk_widgets(self) -> None:
-        from ui.ctk.ttk_theme import embedded_tk_frame_bg
+        from ui.ctk.ttk_theme import apply_ctk_aligned_ttk_theme, embedded_tk_frame_bg
 
+        apply_ctk_aligned_ttk_theme(self.root)
         self._tree_host.configure(bg=embedded_tk_frame_bg(), highlightthickness=0)
+        configure_group_row_tags(self.entries_tree, self.root)
+        configure_entry_row_tag(self.entries_tree, self.root)

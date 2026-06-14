@@ -16,6 +16,14 @@ from core.task_list_builders import build_task_display_id_map_for_project, build
 from core.task_resolution import GLOBAL_TASK_PREFIX, resolve_task_id_for_timer
 from models import Client, Project, Task, TimeEntry
 from ui.ctk import style_tokens as st
+from ui.ctk.brand_theme import (
+    hint_text_color,
+    primary_button_disabled_text_color,
+    timer_idle_color,
+    timer_paused_color,
+    timer_running_color,
+    warning_hint_color,
+)
 
 # Client / Project / Task dropdown width — match Active and Manual views (no horizontal stretch on Active).
 _COMBO_WIDTH = st.COMBO_WIDTH
@@ -68,7 +76,7 @@ class CtkTimerTab:
             text="",
             wraplength=880,
             justify="left",
-            text_color=("brown", "#ffb366"),
+            text_color=warning_hint_color(),
             font=ctk.CTkFont(size=12),
         )
 
@@ -170,9 +178,21 @@ class CtkTimerTab:
 
         btns = ctk.CTkFrame(disp, fg_color="transparent")
         btns.pack(pady=10)
-        self.start_button = ctk.CTkButton(btns, text="Start Timer", command=self.start_timer)
+        _disabled_text = primary_button_disabled_text_color()
+        self.start_button = ctk.CTkButton(
+            btns,
+            text="Start Timer",
+            command=self.start_timer,
+            text_color_disabled=_disabled_text,
+        )
         self.start_button.pack(side="left", padx=6)
-        self.stop_button = ctk.CTkButton(btns, text="Stop Timer", command=self.stop_timer, state="disabled")
+        self.stop_button = ctk.CTkButton(
+            btns,
+            text="Stop Timer",
+            command=self.stop_timer,
+            state="disabled",
+            text_color_disabled=_disabled_text,
+        )
         self.stop_button.pack(side="left", padx=6)
 
         daily = ctk.CTkFrame(self._active_outer)
@@ -254,7 +274,7 @@ class CtkTimerTab:
         self.manual_decimal_help = ctk.CTkLabel(
             self._manual_decimal_frame,
             text="Examples: 1.5, 0.75, 2.25",
-            text_color="gray",
+            text_color=hint_text_color(),
             font=ctk.CTkFont(size=11),
         )
         self.manual_decimal_help.grid(row=1, column=1, sticky="w", padx=8)
@@ -492,7 +512,7 @@ class CtkTimerTab:
 
             self.start_button.configure(state="disabled")
             self.stop_button.configure(state="normal")
-            self.timer_label.configure(text="00:00:00", text_color=("green", "#2fa572"))
+            self.timer_label.configure(text="00:00:00", text_color=timer_running_color())
 
             self.update_timer_display()
         except Exception as e:
@@ -545,7 +565,7 @@ class CtkTimerTab:
             minutes, seconds = divmod(remainder, 60)
             self.timer_label.configure(
                 text=f"{hours:02d}:{minutes:02d}:{seconds:02d}",
-                text_color=("green", "#2fa572"),
+                text_color=timer_running_color(),
             )
             self.root.after(1000, self.update_timer_display)
 
@@ -556,10 +576,10 @@ class CtkTimerTab:
             seconds = int(self.last_timer_elapsed % 60)
             self.timer_label.configure(
                 text=f"Last: {hours:02d}:{minutes:02d}:{seconds:02d}",
-                text_color=("gray50", "gray60"),
+                text_color=timer_paused_color(),
             )
         else:
-            self.timer_label.configure(text="00:00:00", text_color=("gray10", "gray90"))
+            self.timer_label.configure(text="00:00:00", text_color=timer_idle_color())
 
     def get_current_timer_client_id(self):
         try:
@@ -668,7 +688,7 @@ class CtkTimerTab:
             self.daily_project_totals = {}
             self.last_timer_elapsed = 0
             self.update_daily_totals_display()
-            self.timer_label.configure(text="00:00:00", text_color=("gray10", "gray90"))
+            self.timer_label.configure(text="00:00:00", text_color=timer_idle_color())
             messagebox.showinfo("Reset Complete", "Daily totals have been reset.")
 
     def get_manual_entry_project_id(self):

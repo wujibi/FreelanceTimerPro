@@ -1,18 +1,16 @@
 """CustomTkinter application bootstrap — main window and tabs."""
 
-import os
-
 import customtkinter as ctk
 
 from config import (
-    APP_ICON_FILENAME,
     APP_TITLE,
-    ASSETS_DIRNAME,
     DEFAULT_MIN_WINDOW_SIZE,
     DEFAULT_WINDOW_GEOMETRY,
 )
 from db_manager import DatabaseManager
-from ui_helpers import load_ctk_ui_preferences
+from ui_helpers import load_ctk_ui_preferences, apply_window_icon
+
+from ui.ctk.brand_theme import apply_brand_color_theme
 
 from ui.ctk.clients_panel import CtkClientsTab
 from ui.ctk.company_panel import CtkCompanyTab
@@ -26,16 +24,7 @@ from ui.ctk.timer_panel import CtkTimerTab
 
 
 def _apply_icon(root: ctk.CTk) -> None:
-    # ui/ctk/app.py → project root is two levels above this package
-    ctk_pkg = os.path.dirname(os.path.abspath(__file__))
-    project_root = os.path.dirname(os.path.dirname(ctk_pkg))
-    icon_path = os.path.join(project_root, ASSETS_DIRNAME, APP_ICON_FILENAME)
-    if not os.path.exists(icon_path):
-        return
-    try:
-        root.iconbitmap(icon_path)
-    except Exception as exc:
-        print(f"[DEBUG] CTk could not set icon: {exc}")
+    apply_window_icon(root)
 
 
 class CtkApp:
@@ -77,9 +66,9 @@ class CtkApp:
             print("[DEBUG] CTk initializing DatabaseManager with default path")
             self.db = DatabaseManager()
 
-        _mode, _theme = load_ctk_ui_preferences(self.db.db_path)
+        _mode = load_ctk_ui_preferences(self.db.db_path)
         ctk.set_appearance_mode(_mode)
-        ctk.set_default_color_theme(_theme)
+        apply_brand_color_theme()
 
         self.root = ctk.CTk()
         self.root.title(APP_TITLE)

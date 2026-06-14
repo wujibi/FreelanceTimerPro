@@ -12,6 +12,7 @@ import customtkinter as ctk
 
 from models import Client
 from ui.ctk import style_tokens as st
+from ui.ctk.brand_theme import delete_button_colors
 from ui.ctk.ttk_theme import get_tree_ui_font_bold
 
 
@@ -77,7 +78,15 @@ class CtkClientsTab:
 
         dbf = ctk.CTkFrame(list_section, fg_color="transparent")
         dbf.pack(side="bottom", fill="x", pady=st.BUTTON_ROW_BOTTOM_PAD)
-        ctk.CTkButton(dbf, text="Delete Client", command=self.delete_client, fg_color="gray40").pack(
+        delete_fg, delete_hover = delete_button_colors()
+        ctk.CTkButton(
+            dbf,
+            text="Delete Client",
+            command=self.delete_client,
+            fg_color=delete_fg,
+            hover_color=delete_hover,
+            text_color="white",
+        ).pack(
             side="left", padx=st.BUTTON_PAD_X
         )
 

@@ -14,18 +14,17 @@ import customtkinter as ctk
 from models import Client, CompanyInfo, Project
 from ui.ctk import style_tokens as st
 from ui.ctk.invoice_dialogs import show_invoice_preview_dialog_ctk
+from ui.ctk.brand_theme import (
+    configure_entry_row_tag,
+    configure_group_row_tags,
+    danger_button_color,
+    get_palette,
+)
 from ui.ctk.ttk_theme import get_tree_ui_font, get_tree_ui_font_bold
 from ui_helpers import center_dialog, restore_tree_state, save_tree_state
 
 
 class CtkInvoicesTab:
-    _TREE_COLORS = {
-        "group_heading": "#e8f4f8",
-        "group_text": "#13100f",
-        "text": "#13100f",
-        "text_secondary": "#666666",
-    }
-
     def __init__(
         self,
         parent: Any,
@@ -256,7 +255,14 @@ class CtkInvoicesTab:
         act.pack(fill="x", padx=st.PANEL_PAD_X, pady=st.SPACE_8)
         ctk.CTkButton(act, text="Mark as PAID", command=self.mark_invoices_paid_dialog).pack(side="left", padx=st.BUTTON_PAD_X)
         ctk.CTkButton(act, text="Mark as UNPAID", command=self.mark_invoices_unpaid).pack(side="left", padx=st.BUTTON_PAD_X)
-        ctk.CTkButton(act, text="Delete Invoice(s)", command=self.delete_invoices, fg_color="#b91c1c").pack(
+        ctk.CTkButton(
+            act,
+            text="Delete Invoice(s)",
+            command=self.delete_invoices,
+            fg_color=danger_button_color(),
+            hover_color=danger_button_color(),
+            text_color="white",
+        ).pack(
             side="left", padx=st.BUTTON_PAD_X
         )
         self.billed_summary_label = ctk.CTkLabel(act, text="")
@@ -271,8 +277,9 @@ class CtkInvoicesTab:
 
         invoices = self.db.get_billing_history(paid_status=paid_status)
 
-        self.billed_invoices_tree.tag_configure("paid", background="#d4edda")
-        self.billed_invoices_tree.tag_configure("unpaid", background="#fff3cd")
+        palette = get_palette()
+        self.billed_invoices_tree.tag_configure("paid", background=palette["paid_row"])
+        self.billed_invoices_tree.tag_configure("unpaid", background=palette["unpaid_row"])
 
         total = 0.0
         for inv in invoices:
@@ -610,27 +617,23 @@ class CtkInvoicesTab:
         except Exception:
             pass
 
+        palette = get_palette()
         self.invoice_entries_tree.tag_configure("project", font=get_tree_ui_font_bold(self.root))
         self.invoice_entries_tree.tag_configure("task", font=get_tree_ui_font_bold(self.root))
         self.invoice_entries_tree.tag_configure("entry", font=get_tree_ui_font(self.root))
         self.invoice_entries_tree.tag_configure(
             "project_row",
-            background=self._TREE_COLORS["group_heading"],
-            foreground=self._TREE_COLORS["group_text"],
+            background=palette["group_heading"],
+            foreground=palette["group_text"],
             font=get_tree_ui_font_bold(self.root),
         )
         self.invoice_entries_tree.tag_configure(
             "task_row",
-            background=self._TREE_COLORS["group_heading"],
-            foreground=self._TREE_COLORS["group_text"],
+            background=palette["group_heading"],
+            foreground=palette["group_text"],
             font=get_tree_ui_font_bold(self.root),
         )
-        self.invoice_entries_tree.tag_configure(
-            "entry_row",
-            background="white",
-            foreground=self._TREE_COLORS["text"],
-            font=get_tree_ui_font(self.root),
-        )
+        configure_entry_row_tag(self.invoice_entries_tree, self.root)
         restore_tree_state(self.invoice_entries_tree, expanded_items, expand_all=True)
         self.invoice_summary_label.configure(
             text=f"{total_entries} unbilled entries found | Total: {total_hours:.2f} hours"
@@ -721,7 +724,6 @@ class CtkInvoicesTab:
             client_id,
             client_name,
             entry_ids,
-            colors=self._TREE_COLORS,
             refresh_time_entries=self.entries_tab.refresh,
             load_invoiceable_entries=self.load_invoiceable_entries,
             open_edit_time_entry=lambda eid: self.entries_tab.open_edit_entry_dialog(eid),
@@ -729,8 +731,14 @@ class CtkInvoicesTab:
         )
 
     def sync_embedded_tk_widgets(self) -> None:
-        from ui.ctk.ttk_theme import embedded_tk_frame_bg
+        from ui.ctk.ttk_theme import apply_ctk_aligned_ttk_theme, embedded_tk_frame_bg
 
+        apply_ctk_aligned_ttk_theme(self.root)
         bg = embedded_tk_frame_bg()
         self.tree_wrap.configure(bg=bg, highlightthickness=0)
         self.list_fr.configure(bg=bg, highlightthickness=0)
+        palette = get_palette()
+        self.billed_invoices_tree.tag_configure("paid", background=palette["paid_row"])
+        self.billed_invoices_tree.tag_configure("unpaid", background=palette["unpaid_row"])
+        configure_group_row_tags(self.invoice_entries_tree, self.root, client=False)
+        configure_entry_row_tag(self.invoice_entries_tree, self.root)

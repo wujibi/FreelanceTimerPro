@@ -10,11 +10,11 @@ import customtkinter as ctk
 
 from models import CompanyInfo
 from ui.ctk import style_tokens as st
+from ui.ctk.brand_theme import apply_brand_color_theme, hint_text_color
 from ui_helpers import load_ctk_ui_preferences, save_ctk_ui_preferences
 
 _APPEARANCE_LABELS = ("System", "Light", "Dark")
 _APPEARANCE_VALUES = ("system", "light", "dark")
-_COLOR_THEMES = ("blue", "green", "dark-blue")
 
 
 class CtkCompanyTab:
@@ -98,12 +98,12 @@ class CtkCompanyTab:
         ).pack(anchor="w", padx=st.PANEL_INNER_PAD_X, pady=(st.SECTION_TITLE_TOP_PAD, st.SECTION_TITLE_BOTTOM_PAD))
         ctk.CTkLabel(
             scroll,
-            text="Light or dark mode and accent theme for this window.",
+            text="Light, dark, or system appearance. Brand colors are always FreelanceTimer Pro (Burnt Orange).",
             wraplength=640,
             justify="left",
-            text_color=("gray35", "gray65"),
+            text_color=hint_text_color(),
             font=ctk.CTkFont(size=12),
-        ).pack(anchor="w", pady=(0, 8))
+        ).pack(anchor="w", padx=st.PANEL_INNER_PAD_X, pady=(0, 8))
 
         theme_row = ctk.CTkFrame(scroll, fg_color="transparent")
         theme_row.pack(fill="x", padx=st.PANEL_INNER_PAD_X)
@@ -117,22 +117,12 @@ class CtkCompanyTab:
         )
         self.appearance_combo.pack(side="left", padx=4)
 
-        ctk.CTkLabel(theme_row, text="Color theme:").pack(side="left", padx=(16, 8))
-        self.color_theme_combo = ctk.CTkComboBox(
-            theme_row,
-            values=list(_COLOR_THEMES),
-            width=140,
-            state="readonly",
-        )
-        self.color_theme_combo.pack(side="left", padx=4)
-
         ctk.CTkButton(theme_row, text="Apply", width=100, command=self.apply_ctk_appearance).pack(side="left", padx=12)
 
     def _sync_appearance_controls(self) -> None:
-        mode, color_theme = load_ctk_ui_preferences(self.db.db_path)
+        mode = load_ctk_ui_preferences(self.db.db_path)
         mode_label = _APPEARANCE_LABELS[_APPEARANCE_VALUES.index(mode)] if mode in _APPEARANCE_VALUES else "System"
         self.appearance_combo.set(mode_label)
-        self.color_theme_combo.set(color_theme if color_theme in _COLOR_THEMES else "blue")
 
     def browse_logo(self) -> None:
         filename = filedialog.askopenfilename(
@@ -222,13 +212,9 @@ class CtkCompanyTab:
         except ValueError:
             mode = "system"
 
-        color_theme = self.color_theme_combo.get()
-        if color_theme not in _COLOR_THEMES:
-            color_theme = "blue"
-
         ctk.set_appearance_mode(mode)
-        ctk.set_default_color_theme(color_theme)
-        save_ctk_ui_preferences(self.db.db_path, mode, color_theme)
+        apply_brand_color_theme()
+        save_ctk_ui_preferences(self.db.db_path, mode)
         if self.on_appearance_applied:
             self.on_appearance_applied()
         messagebox.showinfo(

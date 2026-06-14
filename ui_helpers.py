@@ -1,10 +1,24 @@
 from __future__ import annotations
 
+import os
 import sqlite3
 from typing import Iterable, Set
 
 import tkinter as tk
 from tkinter import ttk
+
+from config import APP_ICON_FILENAME, ASSETS_DIRNAME
+
+
+def apply_window_icon(window: tk.Misc) -> None:
+    """Set the branded .ico on a Tk/CTk window or Toplevel (no-op if missing)."""
+    icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ASSETS_DIRNAME, APP_ICON_FILENAME)
+    if not os.path.exists(icon_path):
+        return
+    try:
+        window.iconbitmap(icon_path)
+    except Exception as exc:
+        print(f"[DEBUG] Could not set window icon: {exc}")
 
 
 def center_window(root: tk.Tk) -> None:
@@ -86,32 +100,27 @@ def save_theme_preference(db_path: str, theme_name: str) -> None:
     conn.close()
 
 
-def load_ctk_ui_preferences(db_path: str | None) -> tuple[str, str]:
-    """Load CustomTkinter appearance mode and color theme from settings (CTk UI only)."""
-    defaults = ("system", "blue")
+def load_ctk_ui_preferences(db_path: str | None) -> str:
+    """Load CustomTkinter appearance mode from settings (CTk UI only)."""
+    default = "system"
     if not db_path:
-        return defaults
+        return default
     try:
         conn = sqlite3.connect(db_path)
         conn.execute("PRAGMA foreign_keys = ON")
         cursor = conn.cursor()
         cursor.execute("SELECT value FROM settings WHERE key = 'ctk_appearance_mode'")
         row_m = cursor.fetchone()
-        cursor.execute("SELECT value FROM settings WHERE key = 'ctk_color_theme'")
-        row_t = cursor.fetchone()
         conn.close()
-        mode = (row_m[0] if row_m else defaults[0]).strip().lower()
-        theme = (row_t[0] if row_t else defaults[1]).strip().lower()
+        mode = (row_m[0] if row_m else default).strip().lower()
         if mode not in ("system", "light", "dark"):
-            mode = defaults[0]
-        if theme not in ("blue", "green", "dark-blue"):
-            theme = defaults[1]
-        return (mode, theme)
+            mode = default
+        return mode
     except Exception:
-        return defaults
+        return default
 
 
-def save_ctk_ui_preferences(db_path: str, appearance_mode: str, color_theme: str) -> None:
+def save_ctk_ui_preferences(db_path: str, appearance_mode: str) -> None:
     """Persist CustomTkinter UI preferences alongside other settings."""
     conn = sqlite3.connect(db_path)
     conn.execute("PRAGMA foreign_keys = ON")
@@ -136,7 +145,7 @@ def save_ctk_ui_preferences(db_path: str, appearance_mode: str, color_theme: str
         INSERT OR REPLACE INTO settings (key, value)
         VALUES ('ctk_color_theme', ?)
         """,
-        (color_theme.strip().lower(),),
+        ("burnt_orange_pro_v3",),
     )
     conn.commit()
     conn.close()

@@ -13,6 +13,7 @@ import customtkinter as ctk
 from core.project_resolution import resolve_project_id_by_names
 from models import Client, Project, Task
 from ui.ctk import style_tokens as st
+from ui.ctk.brand_theme import delete_button_colors, get_palette
 from ui.ctk.ttk_theme import get_tree_ui_font, get_tree_ui_font_bold
 from ui_helpers import restore_tree_state, save_tree_state
 
@@ -120,7 +121,15 @@ class CtkTasksTab:
 
         dbf = ctk.CTkFrame(list_section, fg_color="transparent")
         dbf.pack(side="bottom", fill="x", pady=st.BUTTON_ROW_BOTTOM_PAD)
-        ctk.CTkButton(dbf, text="Delete Task", command=self.delete_task, fg_color="gray40").pack(
+        delete_fg, delete_hover = delete_button_colors()
+        ctk.CTkButton(
+            dbf,
+            text="Delete Task",
+            command=self.delete_task,
+            fg_color=delete_fg,
+            hover_color=delete_hover,
+            text_color="white",
+        ).pack(
             side="left", padx=st.BUTTON_PAD_X
         )
 
@@ -243,7 +252,11 @@ class CtkTasksTab:
         self.task_tree.tag_configure("client", font=get_tree_ui_font_bold(self.root))
         self.task_tree.tag_configure("project", font=get_tree_ui_font_bold(self.root))
         self.task_tree.tag_configure("task", font=get_tree_ui_font(self.root))
-        self.task_tree.tag_configure("global", font=get_tree_ui_font_bold(self.root), foreground="#10b981")
+        self.task_tree.tag_configure(
+            "global",
+            font=get_tree_ui_font_bold(self.root),
+            foreground=get_palette()["success"],
+        )
         restore_tree_state(self.task_tree, expanded_items, expand_all=False)
         for client_item in self.task_tree.get_children(""):
             self.task_tree.item(client_item, open=True)

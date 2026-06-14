@@ -12,6 +12,7 @@ from tkinter import messagebox, ttk
 import customtkinter as ctk
 
 from ui.ctk import style_tokens as st
+from ui.ctk.brand_theme import get_palette, hint_text_color
 
 
 class CtkEmailTab:
@@ -119,7 +120,7 @@ class CtkEmailTab:
             self.email_settings_frame,
             text="Gmail: enable 2-Step Verification, then create an App Password at myaccount.google.com/security",
             font=ctk.CTkFont(size=11),
-            text_color=("gray35", "gray65"),
+            text_color=hint_text_color(),
             wraplength=640,
             justify="left",
         ).pack(anchor="w", pady=8)
@@ -209,7 +210,7 @@ class CtkEmailTab:
             right,
             text="Sample data — click Update preview",
             font=ctk.CTkFont(size=11),
-            text_color=("gray35", "gray65"),
+            text_color=hint_text_color(),
         ).pack(anchor="w", pady=4)
         self.template_preview_host = tk.Frame(right)
         self.template_preview_host.pack(fill="both", expand=True, pady=4)
@@ -218,7 +219,8 @@ class CtkEmailTab:
             height=14,
             wrap="word",
             state="disabled",
-            background="#f5f5f5",
+            background=get_palette()["preview_bg"],
+            fg=get_palette()["text"],
         )
         self.template_preview_text.pack(side="left", fill="both", expand=True)
         psb = ttk.Scrollbar(self.template_preview_host, command=self.template_preview_text.yview)
@@ -492,17 +494,18 @@ class CtkEmailTab:
             self.template_combo.set(template_names[0])
 
     def sync_embedded_tk_widgets(self) -> None:
-        from ui.ctk.ttk_theme import effective_appearance_is_dark, embedded_tk_frame_bg
+        from ui.ctk.ttk_theme import embedded_tk_frame_bg
 
         host_bg = embedded_tk_frame_bg()
         self.template_body_host.configure(bg=host_bg, highlightthickness=0)
         self.template_preview_host.configure(bg=host_bg, highlightthickness=0)
 
-        dark = effective_appearance_is_dark()
-        body_bg = "#2b2b2b" if dark else "#ffffff"
-        body_fg = "#dce4ee" if dark else "#1a1a1a"
-        preview_bg = "#252526" if dark else "#f5f5f5"
-        self.template_body_text.configure(bg=body_bg, fg=body_fg, insertbackground=body_fg)
+        palette = get_palette()
+        self.template_body_text.configure(
+            bg=palette["entry_bg"],
+            fg=palette["text"],
+            insertbackground=palette["text"],
+        )
         self.template_preview_text.configure(state="normal")
-        self.template_preview_text.configure(bg=preview_bg, fg=body_fg)
+        self.template_preview_text.configure(bg=palette["preview_bg"], fg=palette["text"])
         self.template_preview_text.configure(state="disabled")

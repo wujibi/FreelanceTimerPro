@@ -13,17 +13,19 @@ import tkinter as tk
 
 import customtkinter as ctk
 
+from ui.ctk.brand_theme import configure_invoice_preview_tree_tags, get_palette
 from ui.ctk.ttk_theme import (
     apply_ctk_aligned_ttk_theme,
     embedded_tk_frame_bg,
     get_tree_ui_font,
     get_tree_ui_font_bold,
 )
-from ui_helpers import center_dialog, center_dialog_clamped
+from ui_helpers import apply_window_icon, center_dialog, center_dialog_clamped
 
 
 def _default_invoice_colors() -> dict[str, str]:
-    return {"text": "#13100f", "text_secondary": "#666666"}
+    palette = get_palette()
+    return {"text": palette["text"], "text_secondary": palette["text_secondary"]}
 
 
 def show_email_invoice_dialog_ctk(
@@ -47,6 +49,7 @@ def show_email_invoice_dialog_ctk(
     from email_sender import EmailSender, EmailTemplate
 
     email_dialog = tk.Toplevel(parent_dialog)
+    apply_window_icon(email_dialog)
     email_dialog.title("Email Invoice")
     email_dialog.geometry("600x700")
     email_dialog.transient(parent_dialog)
@@ -245,6 +248,7 @@ def show_invoice_preview_dialog_ctk(
 
     preview_dialog = tk.Toplevel(root)
     preview_dialog.title(f"Invoice Preview - {client_name}")
+    apply_window_icon(preview_dialog)
     host_bg = embedded_tk_frame_bg()
     preview_dialog.configure(bg=host_bg)
     preview_dialog.minsize(620, 500)
@@ -417,8 +421,7 @@ def show_invoice_preview_dialog_ctk(
             amount_display = f"${item['amount']:.2f}" if isinstance(item["amount"], (int, float)) else ""
             items_tree.insert("", "end", values=(item["description"], item["quantity"], item["rate"], amount_display))
 
-    items_tree.tag_configure("header", font=get_tree_ui_font_bold(root), background="#e8f4f8")
-    items_tree.tag_configure("subtotal", font=get_tree_ui_font_bold(root), background="#f0f0f0")
+    configure_invoice_preview_tree_tags(items_tree, root)
     # Cap visible rows so Treeview min height + header/totals/buttons fits the dialog; use scrollbar for the rest.
     visible_rows = max(5, min(12, len(invoice_items) + 2))
     items_tree.configure(height=visible_rows)
@@ -497,6 +500,7 @@ def show_invoice_preview_dialog_ctk(
 
     def edit_time_entries_from_preview():
         edit_window = tk.Toplevel(preview_dialog)
+        apply_window_icon(edit_window)
         edit_window.title("Edit Time Entries")
         center_dialog(root, edit_window, 700, 500)
         ttk.Label(edit_window, text="Select a time entry to edit:", font=("Arial", 12, "bold")).pack(padx=20, pady=10)

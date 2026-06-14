@@ -1,4 +1,4 @@
-"""Align embedded ttk widgets (Treeview, scrollbars) with CustomTkinter light/dark appearance."""
+"""Align embedded ttk widgets (Treeview, scrollbars) with Burnt Orange Pro V3 branding."""
 
 from __future__ import annotations
 
@@ -6,33 +6,13 @@ import tkinter as tk
 import tkinter.font as tkfont
 from tkinter import ttk
 
-import customtkinter as ctk
-
+from ui.ctk.brand_theme import get_palette
 from ui.ctk.style_tokens import TREE_FONT_BODY_PT, TREE_ROW_HEIGHT
-
-# Approximate CTk surface colors so plain tk.Frame hosts sit flush with the tree.
-_LIGHT_HOST = "#ebebeb"
-_DARK_HOST = "#2b2b2b"
-
-
-def effective_appearance_is_dark() -> bool:
-    """Match CustomTkinter logic: Light / Dark / System (+ OS via darkdetect when available)."""
-    mode = ctk.get_appearance_mode()
-    if mode == "Dark":
-        return True
-    if mode == "Light":
-        return False
-    try:
-        import darkdetect
-
-        return bool(darkdetect.isDark())
-    except Exception:
-        return False
 
 
 def embedded_tk_frame_bg() -> str:
     """Background for tk.Frame wrappers around ttk.Treeview."""
-    return _DARK_HOST if effective_appearance_is_dark() else _LIGHT_HOST
+    return get_palette()["background"]
 
 
 def get_tree_ui_font(_master: tk.Misc | None = None) -> tuple[str, int]:
@@ -51,7 +31,7 @@ def get_tree_ui_font_bold(master: tk.Misc | None = None) -> tuple[str, int, str]
 
 def apply_ctk_aligned_ttk_theme(master: tk.Misc) -> ttk.Style:
     """
-    Configure global ttk styles for this app. Prefer 'clam' so foreground/background stick on Windows.
+    Configure global ttk styles for embedded trees — Burnt Orange Pro V3 parity with classic Tk.
     """
     style = ttk.Style(master)
     try:
@@ -59,37 +39,21 @@ def apply_ctk_aligned_ttk_theme(master: tk.Misc) -> ttk.Style:
     except tk.TclError:
         pass
 
-    dark = effective_appearance_is_dark()
-    if dark:
-        tree_bg = "#2b2b2b"
-        tree_fg = "#dce4ee"
-        heading_bg = "#3d3d3d"
-        heading_active_bg = "#424242"
-        heading_fg = "#e8e8e8"
-        select_bg = "#1f538d"
-        select_fg = "#ffffff"
-        trough = "#333333"
-        scroll_bg = "#4a4a4a"
-        scroll_active = "#5c5c5c"
-        border = "#555555"
-        heading_divider = "#666666"
-        heading_light = "#686868"
-        heading_dark = "#626262"
-    else:
-        tree_bg = "#ffffff"
-        tree_fg = "#1a1a1a"
-        heading_bg = "#e8e8e8"
-        heading_active_bg = "#ededed"
-        heading_fg = "#1a1a1a"
-        select_bg = "#3b8ed0"
-        select_fg = "#ffffff"
-        trough = "#e0e0e0"
-        scroll_bg = "#c4c4c4"
-        scroll_active = "#a0a0a0"
-        border = "#b0b0b0"
-        heading_divider = "#9d9d9d"
-        heading_light = "#a0a0a0"
-        heading_dark = "#9a9a9a"
+    colors = get_palette()
+    tree_bg = colors["tree_bg"]
+    tree_fg = colors["text"]
+    heading_bg = colors["primary"]
+    heading_active_bg = colors["orange_hover"]
+    heading_fg = colors["text"]
+    select_bg = colors["selected"]
+    select_fg = colors["group_text"]
+    trough = colors["background"]
+    scroll_bg = colors["surface"]
+    scroll_active = colors["border"]
+    border = colors["border"]
+    heading_divider = colors["border"]
+    heading_light = colors["hover"]
+    heading_dark = colors["border"]
 
     body_font = get_tree_ui_font(master)
     heading_font = get_tree_ui_font_bold(master)
@@ -115,7 +79,7 @@ def apply_ctk_aligned_ttk_theme(master: tk.Misc) -> ttk.Style:
         "Treeview.Heading",
         background=heading_bg,
         foreground=heading_fg,
-        relief="raised",
+        relief="flat",
         borderwidth=1,
         bordercolor=heading_divider,
         lightcolor=heading_light,
@@ -123,7 +87,11 @@ def apply_ctk_aligned_ttk_theme(master: tk.Misc) -> ttk.Style:
         padding=4,
         font=heading_font,
     )
-    style.map("Treeview.Heading", background=[("active", heading_active_bg)])
+    style.map(
+        "Treeview.Heading",
+        background=[("active", heading_active_bg)],
+        foreground=[("active", heading_fg)],
+    )
 
     for sb in ("Vertical.TScrollbar", "Horizontal.TScrollbar"):
         style.configure(
@@ -131,7 +99,7 @@ def apply_ctk_aligned_ttk_theme(master: tk.Misc) -> ttk.Style:
             troughcolor=trough,
             background=scroll_bg,
             bordercolor=border,
-            arrowcolor=tree_fg if dark else "#333333",
+            arrowcolor=tree_fg,
             darkcolor=scroll_bg,
             lightcolor=scroll_bg,
         )
