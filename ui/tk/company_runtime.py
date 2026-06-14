@@ -3,6 +3,8 @@ from __future__ import annotations
 import tkinter as tk
 from tkinter import filedialog, messagebox
 
+from ui_helpers import load_invoice_pdf_compact, save_invoice_pdf_compact
+
 
 class CompanyRuntimeMixin:
     """Company information runtime behavior."""
@@ -41,11 +43,14 @@ class CompanyRuntimeMixin:
                     (name, address, phone, email, logo_path, website, payment_terms, thank_you_message),
                 )
                 conn.commit()
+            save_invoice_pdf_compact(self.db.db_path, self.compact_pdf_var.get())
             messagebox.showinfo("Success", "Company information saved successfully")
         except Exception as e:
             messagebox.showerror("Error", f"Failed to save company info: {str(e)}")
 
     def load_company_info(self):
+        self.compact_pdf_var.set(load_invoice_pdf_compact(self.db.db_path))
+
         company = self.company_model.get()
         if company:
             self.company_name_entry.delete(0, tk.END)

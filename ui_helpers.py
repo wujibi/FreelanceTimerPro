@@ -151,6 +151,52 @@ def save_ctk_ui_preferences(db_path: str, appearance_mode: str) -> None:
     conn.close()
 
 
+def _ensure_settings_table(cursor) -> None:
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS settings (
+            key TEXT PRIMARY KEY,
+            value TEXT
+        )
+        """
+    )
+
+
+def load_invoice_pdf_compact(db_path: str | None) -> bool:
+    """Whether generated invoice PDFs use the compact layout (Company tab setting)."""
+    if not db_path:
+        return False
+    try:
+        conn = sqlite3.connect(db_path)
+        conn.execute("PRAGMA foreign_keys = ON")
+        cursor = conn.cursor()
+        cursor.execute("SELECT value FROM settings WHERE key = 'invoice_pdf_compact'")
+        row = cursor.fetchone()
+        conn.close()
+        if not row:
+            return False
+        return row[0].strip().lower() in ("1", "true", "yes", "on")
+    except Exception:
+        return False
+
+
+def save_invoice_pdf_compact(db_path: str, compact: bool) -> None:
+    """Persist compact invoice PDF preference."""
+    conn = sqlite3.connect(db_path)
+    conn.execute("PRAGMA foreign_keys = ON")
+    cursor = conn.cursor()
+    _ensure_settings_table(cursor)
+    cursor.execute(
+        """
+        INSERT OR REPLACE INTO settings (key, value)
+        VALUES ('invoice_pdf_compact', ?)
+        """,
+        ("1" if compact else "0",),
+    )
+    conn.commit()
+    conn.close()
+
+
 def save_tree_state(tree: ttk.Treeview) -> Set[str]:
     expanded: Set[str] = set()
 

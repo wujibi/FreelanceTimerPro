@@ -1,3 +1,5 @@
+from dataclasses import dataclass
+
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
@@ -7,125 +9,193 @@ from datetime import datetime
 import os
 
 
+@dataclass(frozen=True)
+class PdfLayout:
+    margin: float
+    logo_size: float
+    company_font: int
+    company_name_font: int
+    header_spacer: float
+    title_font: int
+    title_space_after: int
+    title_spacer: float
+    meta_font: int
+    meta_spacer: float
+    period_spacer: float
+    bill_to_font: int
+    client_font: int
+    client_indent: int
+    bill_to_spacer: float
+    table_header_font: int
+    table_header_pad: int
+    table_body_font: int
+    table_row_pad: int
+    total_font: int
+    total_pad: int
+    footer_spacer: float
+    footer_font: int
+
+
+STANDARD_LAYOUT = PdfLayout(
+    margin=0.75,
+    logo_size=1.5,
+    company_font=10,
+    company_name_font=12,
+    header_spacer=0.3,
+    title_font=28,
+    title_space_after=20,
+    title_spacer=0.1,
+    meta_font=10,
+    meta_spacer=0.05,
+    period_spacer=0.4,
+    bill_to_font=12,
+    client_font=10,
+    client_indent=10,
+    bill_to_spacer=0.4,
+    table_header_font=11,
+    table_header_pad=10,
+    table_body_font=10,
+    table_row_pad=8,
+    total_font=12,
+    total_pad=10,
+    footer_spacer=0.5,
+    footer_font=11,
+)
+
+COMPACT_LAYOUT = PdfLayout(
+    margin=0.5,
+    logo_size=0.85,
+    company_font=9,
+    company_name_font=10,
+    header_spacer=0.15,
+    title_font=20,
+    title_space_after=10,
+    title_spacer=0.05,
+    meta_font=9,
+    meta_spacer=0.03,
+    period_spacer=0.2,
+    bill_to_font=10,
+    client_font=9,
+    client_indent=6,
+    bill_to_spacer=0.2,
+    table_header_font=9,
+    table_header_pad=5,
+    table_body_font=8,
+    table_row_pad=4,
+    total_font=10,
+    total_pad=6,
+    footer_spacer=0.25,
+    footer_font=9,
+)
+
+
 class InvoiceGenerator:
     def __init__(self, db_manager):
         self.db = db_manager
 
-    def generate_pdf(self, invoice_data, filename, invoice_number):
-        """Generate a professional invoice PDF with logo support"""
-        # Create the PDF document
-        doc = SimpleDocTemplate(filename, pagesize=letter, 
-                               topMargin=0.75 * inch,
-                               bottomMargin=0.75 * inch,
-                               leftMargin=0.75 * inch,
-                               rightMargin=0.75 * inch)
+    def generate_pdf(self, invoice_data, filename, invoice_number, *, compact: bool = False):
+        """Generate a professional invoice PDF with logo support."""
+        layout = COMPACT_LAYOUT if compact else STANDARD_LAYOUT
+        margin = layout.margin * inch
+        doc = SimpleDocTemplate(
+            filename,
+            pagesize=letter,
+            topMargin=margin,
+            bottomMargin=margin,
+            leftMargin=margin,
+            rightMargin=margin,
+        )
         story = []
-
-        # Get styles
         styles = getSampleStyleSheet()
 
-        # Custom styles
         title_style = ParagraphStyle(
             'CustomTitle',
             parent=styles['Title'],
-            fontSize=28,
-            spaceAfter=20,
+            fontSize=layout.title_font,
+            spaceAfter=layout.title_space_after,
             textColor=colors.HexColor('#1a5490'),
-            alignment=0  # LEFT aligned
+            alignment=0,
         )
 
         heading_style = ParagraphStyle(
             'CustomHeading',
             parent=styles['Heading2'],
-            fontSize=12,
-            spaceAfter=10,
+            fontSize=layout.bill_to_font,
+            spaceAfter=6 if compact else 10,
             textColor=colors.HexColor('#1a5490'),
-            fontName='Helvetica-Bold'
+            fontName='Helvetica-Bold',
         )
 
-        # Get company and client info
         company = self.get_company_info()
         client = self.get_client_info(invoice_data['client_id'])
 
-        # Header - Company Info LEFT, Logo RIGHT
         if company:
-            # Check if logo exists
             logo_path = company[5] if len(company) > 5 else None
-            
+            company_style = ParagraphStyle(
+                'CompanyStyle',
+                parent=styles['Normal'],
+                fontSize=layout.company_font,
+                alignment=0,
+                textColor=colors.HexColor('#333333'),
+            )
+
             if logo_path and os.path.exists(logo_path):
-                # Create table with company info on LEFT, logo on RIGHT
                 try:
-                    logo = Image(logo_path, width=1.5*inch, height=1.5*inch, kind='proportional')
-                    company_info_text = self.format_company_info_html(company)
-                    company_para = Paragraph(company_info_text, ParagraphStyle(
-                        'CompanyStyle',
-                        parent=styles['Normal'],
-                        fontSize=10,
-                        alignment=0,  # LEFT align
-                        textColor=colors.HexColor('#333333')
-                    ))
-                    
-                    # Create header table: LEFT=company info, RIGHT=logo
+                    logo = Image(
+                        logo_path,
+                        width=layout.logo_size * inch,
+                        height=layout.logo_size * inch,
+                        kind='proportional',
+                    )
+                    company_info_text = self.format_company_info_html(company, layout=layout)
+                    company_para = Paragraph(company_info_text, company_style)
                     header_data = [[company_para, logo]]
-                    header_table = Table(header_data, colWidths=[4.7*inch, 1.8*inch])
+                    header_table = Table(header_data, colWidths=[4.7 * inch, 1.8 * inch])
                     header_table.setStyle(TableStyle([
                         ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-                        ('ALIGN', (0, 0), (0, 0), 'LEFT'),   # Company info LEFT
-                        ('ALIGN', (1, 0), (1, 0), 'RIGHT'),  # Logo RIGHT
+                        ('ALIGN', (0, 0), (0, 0), 'LEFT'),
+                        ('ALIGN', (1, 0), (1, 0), 'RIGHT'),
                         ('LEFTPADDING', (0, 0), (-1, -1), 0),
                         ('RIGHTPADDING', (0, 0), (-1, -1), 0),
                     ]))
                     story.append(header_table)
                 except Exception as e:
                     print(f"[WARNING] Could not add logo: {e}")
-                    # Fallback to text only
-                    company_info = self.format_company_info_html(company)
-                    company_para = Paragraph(company_info, ParagraphStyle(
-                        'CompanyStyle',
-                        parent=styles['Normal'],
-                        fontSize=10,
-                        alignment=0,  # LEFT align
-                        textColor=colors.HexColor('#333333')
-                    ))
+                    company_para = Paragraph(
+                        self.format_company_info_html(company, layout=layout),
+                        company_style,
+                    )
                     story.append(company_para)
             else:
-                # No logo, just company info on LEFT
-                company_info = self.format_company_info_html(company)
-                company_para = Paragraph(company_info, ParagraphStyle(
-                    'CompanyStyle',
-                    parent=styles['Normal'],
-                    fontSize=10,
-                    alignment=0,  # LEFT align
-                    textColor=colors.HexColor('#333333')
-                ))
+                company_para = Paragraph(
+                    self.format_company_info_html(company, layout=layout),
+                    company_style,
+                )
                 story.append(company_para)
-            
-            story.append(Spacer(1, 0.3 * inch))
 
-        # Invoice Title on its own line (LEFT aligned)
+            story.append(Spacer(1, layout.header_spacer * inch))
+
         story.append(Paragraph("INVOICE", title_style))
-        story.append(Spacer(1, 0.1 * inch))
+        story.append(Spacer(1, layout.title_spacer * inch))
 
-        # Invoice Number (LEFT) and Date (RIGHT) on same line
         invoice_date = datetime.now().strftime("%B %d, %Y")
-        
+        meta_style = ParagraphStyle(
+            'Meta',
+            parent=styles['Normal'],
+            fontSize=layout.meta_font,
+            textColor=colors.HexColor('#333333'),
+        )
+        meta_right_style = ParagraphStyle(
+            'MetaRight',
+            parent=meta_style,
+            alignment=2,
+        )
+
         invoice_header_data = [[
-            Paragraph(f"<b>Invoice Number:</b> {invoice_number}", ParagraphStyle(
-                'InvoiceNum',
-                parent=styles['Normal'],
-                fontSize=10,
-                textColor=colors.HexColor('#333333')
-            )),
-            Paragraph(f"<b>Invoice Date:</b> {invoice_date}", ParagraphStyle(
-                'InvoiceDate',
-                parent=styles['Normal'],
-                fontSize=10,
-                textColor=colors.HexColor('#333333'),
-                alignment=2  # RIGHT align
-            ))
+            Paragraph(f"<b>Invoice Number:</b> {invoice_number}", meta_style),
+            Paragraph(f"<b>Invoice Date:</b> {invoice_date}", meta_right_style),
         ]]
-        
-        invoice_header_table = Table(invoice_header_data, colWidths=[3.25*inch, 3.25*inch])
+        invoice_header_table = Table(invoice_header_data, colWidths=[3.25 * inch, 3.25 * inch])
         invoice_header_table.setStyle(TableStyle([
             ('ALIGN', (0, 0), (0, 0), 'LEFT'),
             ('ALIGN', (1, 0), (1, 0), 'RIGHT'),
@@ -134,33 +204,22 @@ class InvoiceGenerator:
             ('RIGHTPADDING', (0, 0), (-1, -1), 0),
         ]))
         story.append(invoice_header_table)
-        story.append(Spacer(1, 0.05 * inch))
+        story.append(Spacer(1, layout.meta_spacer * inch))
 
-        # Period (LEFT) and Payment Terms (RIGHT) on same line
-        period_text = f"<b>Invoice Period:</b> {invoice_data['start_date'].strftime('%m/%d/%Y')} - {invoice_data['end_date'].strftime('%m/%d/%Y')}"
-        
-        # Get payment terms from company info or use default
+        period_text = (
+            f"<b>Invoice Period:</b> "
+            f"{invoice_data['start_date'].strftime('%m/%d/%Y')} - "
+            f"{invoice_data['end_date'].strftime('%m/%d/%Y')}"
+        )
         payment_terms = "Payment is due within 30 days"
         if company and len(company) > 7 and company[7]:
             payment_terms = company[7]
-        
+
         period_data = [[
-            Paragraph(period_text, ParagraphStyle(
-                'Period',
-                parent=styles['Normal'],
-                fontSize=10,
-                textColor=colors.HexColor('#333333')
-            )),
-            Paragraph(f"<b>Payment Terms:</b> {payment_terms}", ParagraphStyle(
-                'Terms',
-                parent=styles['Normal'],
-                fontSize=10,
-                textColor=colors.HexColor('#333333'),
-                alignment=2  # RIGHT align
-            ))
+            Paragraph(period_text, meta_style),
+            Paragraph(f"<b>Payment Terms:</b> {payment_terms}", meta_right_style),
         ]]
-        
-        period_table = Table(period_data, colWidths=[3.25*inch, 3.25*inch])
+        period_table = Table(period_data, colWidths=[3.25 * inch, 3.25 * inch])
         period_table.setStyle(TableStyle([
             ('ALIGN', (0, 0), (0, 0), 'LEFT'),
             ('ALIGN', (1, 0), (1, 0), 'RIGHT'),
@@ -169,82 +228,72 @@ class InvoiceGenerator:
             ('RIGHTPADDING', (0, 0), (-1, -1), 0),
         ]))
         story.append(period_table)
-        story.append(Spacer(1, 0.4 * inch))
+        story.append(Spacer(1, layout.period_spacer * inch))
 
-        # Bill To Section
         story.append(Paragraph("BILL TO:", heading_style))
         if client:
-            client_info = self.format_client_info_html(client)
-            client_para = Paragraph(client_info, ParagraphStyle(
-                'ClientStyle',
-                parent=styles['Normal'],
-                fontSize=10,
-                textColor=colors.HexColor('#333333'),
-                leftIndent=10
-            ))
+            client_para = Paragraph(
+                self.format_client_info_html(client),
+                ParagraphStyle(
+                    'ClientStyle',
+                    parent=styles['Normal'],
+                    fontSize=layout.client_font,
+                    textColor=colors.HexColor('#333333'),
+                    leftIndent=layout.client_indent,
+                ),
+            )
             story.append(client_para)
-        story.append(Spacer(1, 0.4 * inch))
+        story.append(Spacer(1, layout.bill_to_spacer * inch))
 
-        # Invoice Items Table
         table_data = [['Description', 'Quantity', 'Rate', 'Amount']]
-
         for item in invoice_data['items']:
             if item.get('is_header'):
-                # Project header - bold, no values
                 table_data.append([
                     Paragraph(f"<b>{item['description'].replace('**', '')}</b>", styles['Normal']),
-                    '', '', ''
+                    '', '', '',
                 ])
             elif item.get('is_subtotal'):
-                # Project subtotal - bold, right-aligned amount
                 table_data.append([
                     Paragraph(f"<b>{item['description']}</b>", styles['Normal']),
                     '', '',
-                    f"${item['amount']:.2f}"
+                    f"${item['amount']:.2f}",
                 ])
             else:
-                # Regular task row
                 amount_display = f"${item['amount']:.2f}" if isinstance(item['amount'], (int, float)) else ''
                 table_data.append([
                     item['description'],
                     item['quantity'],
                     item['rate'],
-                    amount_display
+                    amount_display,
                 ])
 
-        # Add subtotal and total rows
-        table_data.append(['', '', '', ''])  # Blank row
+        table_data.append(['', '', '', ''])
         table_data.append(['', '', 'TOTAL:', f"${invoice_data['total']:.2f}"])
 
-        # Create table with better styling
-        items_table = Table(table_data, colWidths=[3.8*inch, 1.2*inch, 1.2*inch, 1.2*inch])
+        items_table = Table(table_data, colWidths=[3.8 * inch, 1.2 * inch, 1.2 * inch, 1.2 * inch])
+        pad = layout.table_row_pad
+        header_pad = layout.table_header_pad
+        total_pad = layout.total_pad
         items_table.setStyle(TableStyle([
-            # Header row
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1a5490')),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
             ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
             ('ALIGN', (1, 0), (-1, -1), 'RIGHT'),
             ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, 0), 11),
-            ('BOTTOMPADDING', (0, 0), (-1, 0), 10),
-            ('TOPPADDING', (0, 0), (-1, 0), 10),
-            
-            # Data rows
+            ('FONTSIZE', (0, 0), (-1, 0), layout.table_header_font),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), header_pad),
+            ('TOPPADDING', (0, 0), (-1, 0), header_pad),
             ('FONTNAME', (0, 1), (-1, -3), 'Helvetica'),
-            ('FONTSIZE', (0, 1), (-1, -3), 10),
-            ('BOTTOMPADDING', (0, 1), (-1, -3), 8),
-            ('TOPPADDING', (0, 1), (-1, -3), 8),
+            ('FONTSIZE', (0, 1), (-1, -3), layout.table_body_font),
+            ('BOTTOMPADDING', (0, 1), (-1, -3), pad),
+            ('TOPPADDING', (0, 1), (-1, -3), pad),
             ('TEXTCOLOR', (0, 1), (-1, -3), colors.HexColor('#333333')),
-            
-            # Total row
             ('FONTNAME', (2, -1), (-1, -1), 'Helvetica-Bold'),
-            ('FONTSIZE', (2, -1), (-1, -1), 12),
+            ('FONTSIZE', (2, -1), (-1, -1), layout.total_font),
             ('BACKGROUND', (2, -1), (-1, -1), colors.HexColor('#e8f4f8')),
             ('TEXTCOLOR', (2, -1), (-1, -1), colors.HexColor('#1a5490')),
-            ('TOPPADDING', (2, -1), (-1, -1), 10),
-            ('BOTTOMPADDING', (2, -1), (-1, -1), 10),
-            
-            # Borders
+            ('TOPPADDING', (2, -1), (-1, -1), total_pad),
+            ('BOTTOMPADDING', (2, -1), (-1, -1), total_pad),
             ('LINEBELOW', (0, 0), (-1, 0), 2, colors.HexColor('#1a5490')),
             ('LINEABOVE', (2, -1), (-1, -1), 1.5, colors.HexColor('#1a5490')),
             ('BOX', (0, 0), (-1, -3), 1, colors.HexColor('#cccccc')),
@@ -252,26 +301,26 @@ class InvoiceGenerator:
         ]))
 
         story.append(items_table)
-        story.append(Spacer(1, 0.5 * inch))
+        story.append(Spacer(1, layout.footer_spacer * inch))
 
-        # Footer - Thank You Message (center)
         thank_you_message = "Thank you for your business!"
         if company and len(company) > 8 and company[8]:
             thank_you_message = company[8]
-        
-        footer_text = f"<b>{thank_you_message}</b>"
-        footer_para = Paragraph(footer_text, ParagraphStyle(
-            'FooterStyle',
-            parent=styles['Normal'],
-            fontSize=11,
-            alignment=1,  # Center
-            textColor=colors.HexColor('#666666')
-        ))
-        story.append(footer_para)
 
-        # Build PDF
+        story.append(Paragraph(
+            f"<b>{thank_you_message}</b>",
+            ParagraphStyle(
+                'FooterStyle',
+                parent=styles['Normal'],
+                fontSize=layout.footer_font,
+                alignment=1,
+                textColor=colors.HexColor('#666666'),
+            ),
+        ))
+
         doc.build(story)
-        print(f"[PDF] Invoice generated successfully: {filename}")
+        mode = "compact" if compact else "standard"
+        print(f"[PDF] Invoice generated successfully ({mode}): {filename}")
 
     def get_company_info(self):
         """Get company information from database"""
@@ -295,31 +344,22 @@ class InvoiceGenerator:
             print(f"[WARNING] Could not get client info: {e}")
             return None
 
-    def format_company_info_html(self, company):
+    def format_company_info_html(self, company, *, layout: PdfLayout = STANDARD_LAYOUT):
         """Format company info as HTML for PDF"""
         if not company:
             return "<b>Your Company Name</b><br/>Your Address<br/>Your Phone<br/>Your Email"
 
         info_parts = []
-        
-        # Company name (bold and larger)
         if len(company) > 1 and company[1]:
-            info_parts.append(f"<b><font size=12>{company[1]}</font></b>")
-        
-        # Address
+            info_parts.append(
+                f"<b><font size={layout.company_name_font}>{company[1]}</font></b>"
+            )
         if len(company) > 2 and company[2]:
-            address_formatted = company[2].replace('\n', '<br/>')
-            info_parts.append(address_formatted)
-        
-        # Phone
+            info_parts.append(company[2].replace('\n', '<br/>'))
         if len(company) > 3 and company[3]:
             info_parts.append(f"Phone: {company[3]}")
-        
-        # Email
         if len(company) > 4 and company[4]:
             info_parts.append(f"Email: {company[4]}")
-        
-        # Website (if exists)
         if len(company) > 6 and company[6]:
             info_parts.append(f"Web: {company[6]}")
 
@@ -331,25 +371,14 @@ class InvoiceGenerator:
             return "<i>Client information not available</i>"
 
         info_parts = []
-        
-        # Name (bold)
         if len(client) > 1 and client[1]:
             info_parts.append(f"<b>{client[1]}</b>")
-        
-        # Company
         if len(client) > 2 and client[2]:
             info_parts.append(client[2])
-        
-        # Address
         if len(client) > 5 and client[5]:
-            address_formatted = client[5].replace('\n', '<br/>')
-            info_parts.append(address_formatted)
-        
-        # Phone
+            info_parts.append(client[5].replace('\n', '<br/>'))
         if len(client) > 4 and client[4]:
             info_parts.append(f"Phone: {client[4]}")
-        
-        # Email
         if len(client) > 3 and client[3]:
             info_parts.append(f"Email: {client[3]}")
 

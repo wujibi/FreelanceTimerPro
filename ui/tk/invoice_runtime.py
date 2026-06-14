@@ -4,6 +4,8 @@ from datetime import datetime, timedelta
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
+from ui_helpers import load_invoice_pdf_compact
+
 
 class InvoiceRuntimeMixin:
     """Invoice generation and invoice-item editing runtime behavior."""
@@ -146,7 +148,12 @@ class InvoiceRuntimeMixin:
             from invoice_generator import InvoiceGenerator
 
             generator = InvoiceGenerator(self.db)
-            generator.generate_pdf(self.current_invoice_data, filename, invoice_number)
+            generator.generate_pdf(
+                self.current_invoice_data,
+                filename,
+                invoice_number,
+                compact=load_invoice_pdf_compact(self.db.db_path),
+            )
 
             if hasattr(self, "pending_entry_ids") and self.pending_entry_ids:
                 self.db.mark_entries_billed(self.pending_entry_ids, invoice_number)
@@ -432,7 +439,12 @@ class InvoiceRuntimeMixin:
                         from invoice_generator import InvoiceGenerator
 
                         generator = InvoiceGenerator(self.db)
-                        generator.generate_pdf(self.current_invoice_data, filename, invoice_number)
+                        generator.generate_pdf(
+                self.current_invoice_data,
+                filename,
+                invoice_number,
+                compact=load_invoice_pdf_compact(self.db.db_path),
+            )
 
                         update_placeholders = ",".join(["?" for _ in billable_entry_ids])
                         cursor = self.db.conn.cursor()
@@ -720,7 +732,12 @@ class InvoiceRuntimeMixin:
                 from invoice_generator import InvoiceGenerator
 
                 generator = InvoiceGenerator(self.db)
-                generator.generate_pdf(invoice_data, pdf_path, invoice_number)
+                generator.generate_pdf(
+                    invoice_data,
+                    pdf_path,
+                    invoice_number,
+                    compact=load_invoice_pdf_compact(self.db.db_path),
+                )
                 subject = subject_entry.get().strip()
                 body_html = message_text.get("1.0", tk.END).strip()
 

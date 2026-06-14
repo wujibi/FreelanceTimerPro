@@ -11,7 +11,12 @@ import customtkinter as ctk
 from models import CompanyInfo
 from ui.ctk import style_tokens as st
 from ui.ctk.brand_theme import apply_brand_color_theme, hint_text_color
-from ui_helpers import load_ctk_ui_preferences, save_ctk_ui_preferences
+from ui_helpers import (
+    load_ctk_ui_preferences,
+    load_invoice_pdf_compact,
+    save_ctk_ui_preferences,
+    save_invoice_pdf_compact,
+)
 
 _APPEARANCE_LABELS = ("System", "Light", "Dark")
 _APPEARANCE_VALUES = ("system", "light", "dark")
@@ -86,6 +91,28 @@ class CtkCompanyTab:
 
         form.columnconfigure(1, weight=1)
 
+        pdf_section = ctk.CTkFrame(scroll, fg_color="transparent")
+        pdf_section.pack(fill="x", padx=st.PANEL_INNER_PAD_X, pady=(st.SECTION_GAP, 0))
+        ctk.CTkLabel(
+            pdf_section,
+            text="Invoice PDF",
+            font=ctk.CTkFont(size=14, weight="bold"),
+        ).pack(anchor="w", pady=(0, st.SECTION_TITLE_BOTTOM_PAD))
+        self.compact_pdf_var = tk.BooleanVar(value=False)
+        ctk.CTkCheckBox(
+            pdf_section,
+            text="Compact invoice PDF",
+            variable=self.compact_pdf_var,
+        ).pack(anchor="w")
+        ctk.CTkLabel(
+            pdf_section,
+            text="Smaller logo and header spacing — helps keep brief invoices on one page.",
+            wraplength=560,
+            justify="left",
+            text_color=hint_text_color(),
+            font=ctk.CTkFont(size=12),
+        ).pack(anchor="w", padx=(28, 0), pady=(0, 4))
+
         actions = ctk.CTkFrame(scroll, fg_color="transparent")
         actions.pack(fill="x", padx=st.PANEL_INNER_PAD_X, pady=(st.SECTION_GAP, 0))
         ctk.CTkButton(actions, text="Save company info", command=self.save_company_info).pack(side="left", padx=st.BUTTON_PAD_X)
@@ -158,11 +185,14 @@ class CtkCompanyTab:
                     (name, address, phone, email, logo_path, website, payment_terms, thank_you_message),
                 )
                 conn.commit()
+            save_invoice_pdf_compact(self.db.db_path, self.compact_pdf_var.get())
             messagebox.showinfo("Success", "Company information saved successfully")
         except Exception as e:
             messagebox.showerror("Error", f"Failed to save company info: {e}")
 
     def load_company_info(self) -> None:
+        self.compact_pdf_var.set(load_invoice_pdf_compact(self.db.db_path))
+
         company = self.company_model.get()
         if not company:
             return

@@ -20,7 +20,7 @@ from ui.ctk.ttk_theme import (
     get_tree_ui_font,
     get_tree_ui_font_bold,
 )
-from ui_helpers import apply_window_icon, center_dialog, center_dialog_clamped
+from ui_helpers import apply_window_icon, center_dialog, center_dialog_clamped, load_invoice_pdf_compact
 
 
 def _default_invoice_colors() -> dict[str, str]:
@@ -158,7 +158,12 @@ def show_email_invoice_dialog_ctk(
             from invoice_generator import InvoiceGenerator
 
             generator = InvoiceGenerator(db)
-            generator.generate_pdf(invoice_data, pdf_path, invoice_number)
+            generator.generate_pdf(
+                invoice_data,
+                pdf_path,
+                invoice_number,
+                compact=load_invoice_pdf_compact(db.db_path),
+            )
             subject = subject_entry.get().strip()
             body_html = message_text.get("1.0", tk.END).strip()
 
@@ -465,7 +470,12 @@ def show_invoice_preview_dialog_ctk(
 
                     generator = InvoiceGenerator(db)
                     data = preview_state["current_invoice_data"]
-                    generator.generate_pdf(data, filename, invoice_number)
+                    generator.generate_pdf(
+                        data,
+                        filename,
+                        invoice_number,
+                        compact=load_invoice_pdf_compact(db.db_path),
+                    )
 
                     update_placeholders = ",".join(["?" for _ in billable_entry_ids])
                     cursor2 = db.conn.cursor()

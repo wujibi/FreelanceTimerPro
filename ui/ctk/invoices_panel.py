@@ -23,6 +23,9 @@ from ui.ctk.brand_theme import (
 from ui.ctk.ttk_theme import get_tree_ui_font, get_tree_ui_font_bold
 from ui_helpers import center_dialog, restore_tree_state, save_tree_state
 
+_NARROW_CREATE_WIDTH = 720
+_CREATE_FOOTER_BTN_PAD = st.BUTTON_PAD_X
+
 
 class CtkInvoicesTab:
     def __init__(
@@ -147,6 +150,47 @@ class CtkInvoicesTab:
             font=ctk.CTkFont(size=14, weight="bold"),
         ).pack(anchor="w", padx=st.PANEL_PAD_X, pady=(st.SECTION_GAP, st.SPACE_4))
 
+        # Footer packed before the tree so expand=True cannot push actions off-screen.
+        self._invoice_footer = ctk.CTkFrame(self.invoice_create_frame, fg_color="transparent")
+        self.invoice_summary_label = ctk.CTkLabel(
+            self._invoice_footer,
+            text="No entries loaded. Select a client and click Load time entries.",
+            font=ctk.CTkFont(size=12),
+            anchor="w",
+            justify="left",
+            wraplength=560,
+        )
+        self.invoice_summary_label.pack(fill="x", anchor="w", padx=_CREATE_FOOTER_BTN_PAD, pady=(0, st.SPACE_4))
+
+        self._invoice_action_row = ctk.CTkFrame(self._invoice_footer, fg_color="transparent")
+        self._invoice_action_row.pack(fill="x")
+        ctk.CTkButton(
+            self._invoice_action_row,
+            text="Preview invoice",
+            width=120,
+            command=self.preview_invoice,
+        ).pack(side="left", padx=_CREATE_FOOTER_BTN_PAD)
+        ctk.CTkButton(
+            self._invoice_action_row,
+            text="Edit entry",
+            width=100,
+            command=self.edit_invoice_entry,
+        ).pack(side="left", padx=_CREATE_FOOTER_BTN_PAD)
+        ctk.CTkButton(
+            self._invoice_action_row,
+            text="Select all",
+            width=100,
+            command=self.select_all_invoice_entries,
+        ).pack(side="left", padx=_CREATE_FOOTER_BTN_PAD)
+        ctk.CTkButton(
+            self._invoice_action_row,
+            text="Deselect all",
+            width=100,
+            command=self.deselect_all_invoice_entries,
+        ).pack(side="left", padx=_CREATE_FOOTER_BTN_PAD)
+
+        self._invoice_footer.pack(side="bottom", fill="x", padx=st.PANEL_PAD_X, pady=st.SPACE_8)
+
         self.tree_wrap = tk.Frame(self.invoice_create_frame)
         self.tree_wrap.pack(fill="both", expand=True, padx=st.PANEL_PAD_X, pady=st.SPACE_4)
 
@@ -168,28 +212,28 @@ class CtkInvoicesTab:
         self.invoice_entries_tree.pack(side="left", fill="both", expand=True)
         ys.pack(side="right", fill="y")
 
-        sum_fr = ctk.CTkFrame(self.invoice_create_frame, fg_color="transparent")
-        sum_fr.pack(fill="x", padx=st.PANEL_PAD_X, pady=st.SPACE_8)
-        self.invoice_summary_label = ctk.CTkLabel(
-            sum_fr,
-            text="No entries loaded. Select a client and click Load time entries.",
-            font=ctk.CTkFont(size=12),
-        )
-        self.invoice_summary_label.pack(side="left", padx=st.BUTTON_PAD_X)
-        ctk.CTkButton(sum_fr, text="Deselect all", width=100, command=self.deselect_all_invoice_entries).pack(
-            side="right", padx=st.BUTTON_PAD_X
-        )
-        ctk.CTkButton(sum_fr, text="Select all", width=100, command=self.select_all_invoice_entries).pack(
-            side="right", padx=st.BUTTON_PAD_X
-        )
-        ctk.CTkButton(sum_fr, text="Edit entry", width=100, command=self.edit_invoice_entry).pack(
-            side="right", padx=st.BUTTON_PAD_X
-        )
-        ctk.CTkButton(sum_fr, text="Preview invoice", width=120, command=self.preview_invoice).pack(
-            side="right", padx=st.BUTTON_PAD_X
-        )
+        self.invoice_create_frame.bind("<Configure>", self._on_create_view_resize)
 
         self._populate_invoice_client_combo()
+
+    def _on_create_view_resize(self, event: tk.Event | None = None) -> None:
+        if event is not None and event.widget is not self.invoice_create_frame:
+            return
+        width = self.invoice_create_frame.winfo_width()
+        if width < 80:
+            return
+
+        self.invoice_summary_label.configure(wraplength=max(160, width - 24))
+
+        if width < _NARROW_CREATE_WIDTH:
+            select_w = max(96, int(width * 0.30))
+            self.invoice_entries_tree.column("#0", width=select_w)
+            self.invoice_entries_tree.column("Date", width=72)
+            self.invoice_entries_tree.column("Duration", width=58)
+        else:
+            self.invoice_entries_tree.column("#0", width=250)
+            self.invoice_entries_tree.column("Date", width=50)
+            self.invoice_entries_tree.column("Duration", width=50)
 
     def _on_invoice_client_combo(self, _choice: str) -> None:
         self.on_invoice_client_select()
@@ -228,6 +272,25 @@ class CtkInvoicesTab:
         ).pack(side="left", padx=6)
         ctk.CTkButton(ctl, text="Refresh", command=self.refresh_billed_invoices).pack(side="right", padx=4)
 
+        self._billed_footer = ctk.CTkFrame(self.invoice_billed_frame, fg_color="transparent")
+        ctk.CTkButton(self._billed_footer, text="Mark as PAID", command=self.mark_invoices_paid_dialog).pack(
+            side="left", padx=st.BUTTON_PAD_X
+        )
+        ctk.CTkButton(self._billed_footer, text="Mark as UNPAID", command=self.mark_invoices_unpaid).pack(
+            side="left", padx=st.BUTTON_PAD_X
+        )
+        ctk.CTkButton(
+            self._billed_footer,
+            text="Delete Invoice(s)",
+            command=self.delete_invoices,
+            fg_color=danger_button_color(),
+            hover_color=danger_button_color(),
+            text_color="white",
+        ).pack(side="left", padx=st.BUTTON_PAD_X)
+        self.billed_summary_label = ctk.CTkLabel(self._billed_footer, text="", anchor="w", justify="left", wraplength=560)
+        self.billed_summary_label.pack(fill="x", anchor="w", padx=st.GRID_PAD_X, pady=(st.SPACE_4, 0))
+        self._billed_footer.pack(side="bottom", fill="x", padx=st.PANEL_PAD_X, pady=st.SPACE_8)
+
         self.list_fr = tk.Frame(self.invoice_billed_frame)
         self.list_fr.pack(fill="both", expand=True, padx=st.PANEL_PAD_X, pady=st.SPACE_4)
         self.billed_invoices_tree = ttk.Treeview(
@@ -251,22 +314,15 @@ class CtkInvoicesTab:
         self.billed_invoices_tree.pack(side="left", fill="both", expand=True)
         vsb.pack(side="right", fill="y")
 
-        act = ctk.CTkFrame(self.invoice_billed_frame, fg_color="transparent")
-        act.pack(fill="x", padx=st.PANEL_PAD_X, pady=st.SPACE_8)
-        ctk.CTkButton(act, text="Mark as PAID", command=self.mark_invoices_paid_dialog).pack(side="left", padx=st.BUTTON_PAD_X)
-        ctk.CTkButton(act, text="Mark as UNPAID", command=self.mark_invoices_unpaid).pack(side="left", padx=st.BUTTON_PAD_X)
-        ctk.CTkButton(
-            act,
-            text="Delete Invoice(s)",
-            command=self.delete_invoices,
-            fg_color=danger_button_color(),
-            hover_color=danger_button_color(),
-            text_color="white",
-        ).pack(
-            side="left", padx=st.BUTTON_PAD_X
-        )
-        self.billed_summary_label = ctk.CTkLabel(act, text="")
-        self.billed_summary_label.pack(side="right", padx=st.GRID_PAD_X)
+        self.invoice_billed_frame.bind("<Configure>", self._on_billed_view_resize)
+
+    def _on_billed_view_resize(self, event: tk.Event | None = None) -> None:
+        if event is not None and event.widget is not self.invoice_billed_frame:
+            return
+        width = self.invoice_billed_frame.winfo_width()
+        if width < 80:
+            return
+        self.billed_summary_label.configure(wraplength=max(160, width - 24))
 
     def refresh_billed_invoices(self) -> None:
         for item in self.billed_invoices_tree.get_children():

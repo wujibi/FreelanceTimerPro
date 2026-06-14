@@ -60,6 +60,13 @@ class CompanyTabMixin:
         self.company_thank_you_entry = ttk.Entry(form_frame, width=50)
         self.company_thank_you_entry.grid(row=7, column=1, sticky="ew", padx=5, pady=2)
 
+        self.compact_pdf_var = tk.BooleanVar(value=False)
+        ttk.Checkbutton(
+            form_frame,
+            text="Compact invoice PDF (smaller logo and header — keeps brief invoices on one page)",
+            variable=self.compact_pdf_var,
+        ).grid(row=8, column=0, columnspan=2, sticky="w", padx=5, pady=(8, 2))
+
         form_frame.columnconfigure(1, weight=1)
 
         # Company buttons
